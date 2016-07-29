@@ -1,12 +1,12 @@
-try(destroyDialog rViscoCatalog)catch()
-rollout rViscoCatalog "VISCO | Catalog" width:650 height:600
+dddtry(destroyDialog rViscoLibrary)catch()
+rollout rViscoLibrary "VISCO Assets" width:650 height:600
 (
 	dotNetControl wb "System.Windows.Forms.WebBrowser" pos:[0,0] width:650 height:600
 	dotNetControl execCommand "System.Windows.Forms.Textbox" pos:[0,0] visible:false
 
-	global siteUrl = @"http://lib/index.html"
-	global siteUrl = @"http://www.autodesk.com"
-	global siteUrl = @"http://193.84.22.46:8282/3DLibrary"
+	--global siteUrl = @"D:\CLOUD\Yandex\YandexDisk\WEBSERVER\home\lib\www\index.html"
+	global siteUrl = @"http://192.168.0.170/"
+	--global siteUrl = @"http://193.84.22.46:8282/3DLibrary"
 	--global siteUrl = @"http://kitpes.org"
 	--global siteUrl = @"http://getbootstrap.com/"
 		
@@ -21,17 +21,22 @@ rollout rViscoCatalog "VISCO | Catalog" width:650 height:600
 
 	fn stripSpecialChars s =
 	(
-		s = filterString s "%"
-		t = ""
-		for i in s do t += (trimLeft i "5C") + "\\"
-		t = trimRight t "\\"
-					
-		return t
+		c = #(#(@"%5C", @"\"), #(@"%20", @" "))
+
+		for i in c do while (f = findString s i[1]) != undefined do s = replace s f (i[1].count) i[2]
+				
+		return s
 	)
 	
 	fn addFile f =
-	(
-		if(doesFileExist f) do mergeMaxFile f #select #mergeDups  #renameMtlDups  quiet:true 
+	(					
+		f = stripSpecialChars f
+				
+		if(not doesFileExist f) do return false
+		
+		mergeMaxFile f #select #mergeDups  #renameMtlDups  quiet:true 
+		
+		return true
 	)
 	
 	fn getHandler s =
@@ -169,14 +174,20 @@ rollout rViscoCatalog "VISCO | Catalog" width:650 height:600
 		trackCallback = mouseTrack on:o trackCallBack: mouseTrackCallback
 	)
 	
-	on rViscoCatalog open do
+	on rViscoLibrary open do
 	(
+		w = 651
+		h = 800
+		
+		rViscoLibrary.height = h
+		rViscoLibrary.width = w
+		
+		wb.height = h
+		wb.width = w
+		
 		wb.url = dotNetObject "System.Uri" siteUrl
 		wb.AllowWebBrowserDrop  = true
-		wb.ObjectForScripting = execCommand;
-		
-		
-		DownloadFile 
+		wb.ObjectForScripting = execCommand;		
 	)
 
 	on execCommand TextChanged e do
@@ -189,15 +200,15 @@ rollout rViscoCatalog "VISCO | Catalog" width:650 height:600
 		)
 		
 		execCommand.text = ""
-		setFocus rViscoCatalog.wb
+		setFocus rViscoLibrary.wb
 	)
 	
 	on wb DocumentCompleted t do
-	(		
-		u = wb.url.Query
+	(				
+		u = wb.url.query			
 		u = stripSpecialChars u
 		p = filterString u "="
-	  		
+	  	
 		case p[1] of
 		(
 			"?add_model": addFile p[2]
@@ -207,38 +218,41 @@ rollout rViscoCatalog "VISCO | Catalog" width:650 height:600
 				trackCallback = #continue
 			)
 			"?add_model_and_place": 
-			(
-				if(doesFileExist p[2]) do 
-				(
-					addFile p[2]
-					
+			(				
+				f = addFile p[2]
+				if(f) do 
+				(											
 					while trackCallback != #end do placeObject()
 					trackCallback = #continue
 				)
 			)
 			"?close": 
 			(
-				DestroyDialog rViscoCatalog
+				DestroyDialog rViscoLibrary
+			)
+			"?execute_smth":
+			(				
+				wb.navigate "javascript:fromMaxScript('Pressed favorite!')"
 			)
 		)
 
-		setFocus rViscoCatalog.wb				
+		setFocus rViscoLibrary.wb				
 	)	
 	
-	on rViscoCatalog resized s do
+	on rViscoLibrary resized s do
 	(
-		rViscoCatalog.wb.size = dotnetobject "System.Drawing.Size" s[1] s[2];
+		rViscoLibrary.wb.size = dotnetobject "System.Drawing.Size" s[1] s[2];
 	)
 	
-	on rViscoCatalog mouseMove a do
+	on rViscoLibrary mouseMove a do
 	(
-		setFocus rViscoCatalog.wb
+		setFocus rViscoLibrary.wb
 	)
 	
-	on rViscoCatalog okToClose do
+	on rViscoLibrary okToClose do
 	(
 		wb.Dispose() 
 	)
 )
 createdialog 
-CreateDialog rViscoCatalog 650 600 style:#(#style_titlebar,#style_sysmenu,#style_toolwindow,#style_resizing)
+CreateDialog rViscoLibrary 650 700 style:#(#style_titlebar,#style_sysmenu,#style_toolwindow,#style_resizing)
