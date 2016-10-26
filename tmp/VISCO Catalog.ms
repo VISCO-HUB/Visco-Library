@@ -1,4 +1,4 @@
-dddtry(destroyDialog rViscoLibrary)catch()
+try(destroyDialog rViscoLibrary)catch()
 rollout rViscoLibrary "VISCO Assets" width:650 height:600
 (
 	dotNetControl wb "System.Windows.Forms.WebBrowser" pos:[0,0] width:650 height:600

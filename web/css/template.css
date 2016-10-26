@@ -1,0 +1,34 @@
+/* TEMPLARE CSS */
+
+
+*, body {
+	border-radius: 0 !important;
+	outline: 0 !important;
+	-webkit-user-select: none; 
+	-moz-user-select: none;     
+	-ms-user-select: none;      
+	user-select: none; 
+}
+
+.form-control:focus {
+  border-color: #82C13A;
+  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.075), 0 0 8px rgba(130, 193, 58, 0.6);
+}
+
+.form-control.warning {
+  border-color: #cc6969;
+  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.075), 0 0 8px rgba(195, 60, 60, 0.3);
+}
+
+.signin { 
+	max-width: 300px;
+	padding: 15px;
+	margin: 0 auto;
+	margin-top: 20%;
+}
+
+.btn-default {
+    color: #fff;
+    background-color: #82C13A;
+    border-color: #74AD34;
+}
