@@ -34,9 +34,9 @@ CREATE TABLE `category` (
   `modified` varchar(200) DEFAULT NULL,
   `premissions` int(11) DEFAULT NULL,
   `status` int(11) DEFAULT '1',
-  `categorycol` varchar(45) DEFAULT '1',
+  `description` varchar(400) DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=49 DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB AUTO_INCREMENT=231 DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -45,7 +45,7 @@ CREATE TABLE `category` (
 
 LOCK TABLES `category` WRITE;
 /*!40000 ALTER TABLE `category` DISABLE KEYS */;
-INSERT INTO `category` VALUES (11,'Test Category',NULL,0,0,NULL,NULL,NULL,1,'1');
+INSERT INTO `category` VALUES (210,'Furniture','Furniture',206,0,NULL,NULL,NULL,1,''),(211,'Plants','Plants',206,0,NULL,NULL,NULL,1,''),(213,'Chairs','Chairs',210,0,NULL,NULL,NULL,1,''),(215,'Lights','Lights',210,0,NULL,NULL,NULL,1,''),(222,'ArchViz','ArchViz',0,0,NULL,NULL,NULL,1,'Test description for ArchViz category'),(223,'Furniture','Furniture',222,0,NULL,NULL,NULL,1,''),(224,'Peoples','Peoples',222,0,NULL,NULL,NULL,1,''),(225,'Cars','Cars',222,0,NULL,NULL,NULL,1,''),(226,'Chairs','Chairs',223,0,NULL,NULL,NULL,1,''),(227,'Lights','Lights',223,0,NULL,NULL,NULL,1,''),(228,'Sofas','Sofas',223,0,NULL,NULL,NULL,1,''),(229,'IKEA','IKEA',0,0,NULL,NULL,NULL,1,'IKEA FOREVER)'),(230,'Test','Test',229,0,NULL,NULL,NULL,1,NULL);
 /*!40000 ALTER TABLE `category` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -96,7 +96,7 @@ CREATE TABLE `users` (
 
 LOCK TABLES `users` WRITE;
 /*!40000 ALTER TABLE `users` DISABLE KEYS */;
-INSERT INTO `users` VALUES (0,'v.lukyanenko','ddafe1bb15f9e7e64fadbce2e68acc10',2,1),(0,'y.bozhyk','11fa24b36c7e6eaf0f5ee6cb1aaafaac',0,1);
+INSERT INTO `users` VALUES (0,'e.astafiev','e00309ebe88dbeb6792fe9a7853760a4',2,1),(0,'v.lukyanenko','bd5b4f4091104f74641732a6ce485fe3',2,1),(0,'y.bozhyk','11fa24b36c7e6eaf0f5ee6cb1aaafaac',0,1);
 /*!40000 ALTER TABLE `users` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
@@ -109,4 +109,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2016-10-26 10:39:57
+-- Dump completed on 2016-11-02 10:54:44

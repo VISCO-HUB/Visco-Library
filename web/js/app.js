@@ -44,6 +44,13 @@ app.config(function($routeProvider) {
 	.otherwise({redirectTo:'/home'});
 });
 
+// DIRECTIVES
+app.directive("alerts", function($rootScope) {
+    return {
+        templateUrl : 'templates/alert.html'
+    };
+});
+
 
 // CONTROLLERS
 	// ABOUT
@@ -58,7 +65,7 @@ app.controller("loginCtrl", function($scope, $rootScope, vault){
 	
 	$scope.userName = '';
 	$scope.userPassword = '';
-
+	
 	vault.showMessage('Please enter your credentials!', 'warning');
 	
 	$scope.signIn = function() {
@@ -79,21 +86,23 @@ app.controller("loginCtrl", function($scope, $rootScope, vault){
 
 	// ADMIN
 app.controller("adminCtrl", function($scope, $rootScope, vault){
-	$scope.adminSection = 'cat';
-	
+	$scope.section = 'cat';
+		
 	vault.getGlobal();
 	vault.catGet();
 		
-	$scope.adminAddCat = function() {		
-		var libName = prompt('Please enter library name!', '');			
+	$scope.adminAddCat = function(parentid) {		
+		if($scope.level[parentid] > 1) {return false;}
 		
-		if(!libName || !libName.length) {			
-			vault.showMessage('Please enter library name!', 'warning');
+		var n = prompt('Please enter the name!', '');			
+		
+		if(!n || !n.length) {			
+			vault.showMessage('Please enter the name (A-Z, numbers, spaces)!', 'warning');
 		
 			return false;
 		}
 		
-		vault.adminCatAdd(libName);
+		vault.adminCatAdd(n, parentid);
 	}
 	
 	$scope.adminGlobalChangePath = function() {
@@ -106,15 +115,83 @@ app.controller("adminCtrl", function($scope, $rootScope, vault){
 		}
 		
 		vault.adminGlobalsChange(n);		
+	}
+	
+	$scope.adminChangeDesc = function(id) {
+		var n = prompt('Please enter description!', '');			
+		
+		if(!n || !n.length) {			
+			vault.showMessage('Please enter library path!', 'warning');
+		
+			return false;
+		}
+		
+		$scope.adminCatSetParam('description', n, id);
+	}
+	
+	$scope.adminSubCatRename = function(id) {
+		if(id == $scope.adminCatEditId) {return false;}
+		
+		$scope.adminChangeName(id);
+	}
+	
+	$scope.adminSubCatDel = function(id) {
+		if(id == $scope.adminCatEditId) {return false;}
+		
+		$scope.adminCatDel(id);
+		
+		//subCatEditID=adminCatEditId
+	}
+	
+	$scope.adminChangeName = function(id) {				
+		var n = prompt('Please enter the name!', '');			
+		
+		if(!n || !n.length) {			
+			vault.showMessage('Please enter the name!', 'warning');
+		
+			return false;
+		}
+		
+		vault.adminChangeName(n, id);		
 	}	
 	
 	$scope.adminCatDel = function(id, name) {
+		if(id == $scope.adminCatEditId) {return false;}
+		
+		if(!name) {name = '';}
 		if(!confirm('Do you really want to delete category ' + name + '?')){
 			return false;
 		}
 		
 		vault.adminCatDel(id);
 	}
+	
+	$scope.isAdminCatEdit = false;
+	
+	$scope.level = {};	
+	$scope.subCatEditID = -1;		
+	$scope.adminCatEditId = -1;
+	
+	$scope.adminCatEdit = function(id) {
+		$scope.adminCatEditId = id;
+		$scope.subCatEditID  = id;
+		$scope.level[id] = 0;
+		$scope.isAdminCatEdit = true;
+		$rootScope.deleteMsg();
+	}
+	
+	$scope.isSubCatActive = function(id) {
+		return $scope.subCatEditID == id;
+	}
+	
+	$scope.subCatEdit = function(id) {
+		$scope.subCatEditID = id;
+	}
+	
+	$scope.adminCatSetParam = function(param, value, id) {
+	
+		vault.adminCatSetParam(param, value, id);
+	}	
 });
 	// HOME
 app.controller("homeCtrl", function ($scope, vault) {
@@ -149,8 +226,20 @@ app.run(function($rootScope, $location, $routeParams, vault) {
 		$rootScope.categories = {};
 		
 		$rootScope.globals = {};
+		
+		$rootScope.count = function(o) {
+			var count = 0;
+			
+			if(!o) {return 0;}
+			for(var prop in o) {
+				if(o.hasOwnProperty(prop))
+					count = count + 1;
+			}
+			return count;
+		}
     });
 });
+
 // SERVICES
 
 app.service('vault', function($http, $rootScope, $timeout, $interval, $templateCache) {
@@ -167,11 +256,17 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		var s = {};
 		switch(r.responce)
 		{			
-			case 'CATDELBAD': s.warn = 'Category can\'t be removed!';
+			case 'RENOK': s.success = 'Category renamed success!';
+			break;
+			case 'RENBAD': s.error = 'Category can\'t be renamed!';
+			break;
+			case 'CATDELBAD': s.warning = 'Category can\'t be removed!';
 			break;
 			case 'CATDELOK': s.success = 'Category deleted success!';
 			break;
-			case 'USERBAD': s.warn = 'Please enter correct credentials!';
+			case 'CATDELWARN': s.warning = 'Sorry! This category contains the files, remove them first!';
+			break;
+			case 'USERBAD': s.warning = 'Please enter correct credentials!';
 			break;
 			case 'USEROK': s.success = 'Logged success!';
 			break;
@@ -183,7 +278,7 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 			break;
 			case 'SETTINGOK': s.success = 'Success setting changed!';
 			break;
-			case 'SETTINGBAD': s.error = 'Success not changed!';
+			case 'SETTINGBAD': s.error = 'Setting not changed!';
 			break;
 			case 'ERROR': s.error = 'MySQL Error!';
 			break;
@@ -247,10 +342,16 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 	// ADMIN
 	
 	
-	var catGet = function() {
-		httpGet('CATGET').then(function(r){						
+	var catGet = function(parentid) {
+		if(parentid == null) {parentid = 0;}
+		
+		var json = {'parentid': parentid};
+		
+		HttpPost('CATGET', json).then(function(r){						
 			
-			$rootScope.categories = r.data;			
+			$rootScope.categories = r.data;
+			responceMessage(r.data);
+			console.log(r.data)
 		},
 		function(r){
 			responceMessage(r);
@@ -266,28 +367,40 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		});
 	}
 	
-	var adminCatAdd = function(name, path, id) {
-		if(path == null) path = '';
-		if(id == null) id = '0';
+	var adminCatAdd = function(name, parentid) {
+		if(parentid == null) parentid = '0';
 		
-		var json = {'id': id, 'path': path, 'name': name};
+		var json = {'parentid': parentid, 'name': name};
 		
 		HttpPost('CATADD', json).then(function(r){						
 			catGet();
-			console.log(r.data)		
+			console.log(r.data)
 			responceMessage(r.data);
 		},
 		function(r){
 			responceMessage(r);
 		});
 	}
-	
+		
 	var adminCatDel = function(id) {				
 		var json = {'id': id};
 		
 		HttpPost('CATDEL', json).then(function(r){						
 			catGet();
+			console.log(r.data)
 			responceMessage(r.data);
+		},
+		function(r){
+			responceMessage(r);
+		});
+	}
+		
+	var adminCatSetParam = function(param, value, id) {
+		var json = {'param': param, 'value': value, 'id': id};
+		
+		HttpPost('CATSETPARAM', json).then(function(r){									
+			console.log(r.data)
+			catGet();		
 		},
 		function(r){
 			responceMessage(r);
@@ -307,6 +420,21 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		function(r){
 			responceMessage(r);
 		});
+	}	
+	
+	var adminChangeName = function(name, id) {
+		if(name == null) name = '';
+			
+		var json = {'name': name, 'id': id};
+		
+		HttpPost('CATRENAME', json).then(function(r){									
+			catGet();
+			console.log(r.data)	
+			responceMessage(r.data);			
+		},
+		function(r){
+			responceMessage(r);
+		});
 	}
 			
 	return {
@@ -317,7 +445,9 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		adminCatDel: adminCatDel,
 		adminCatAdd: adminCatAdd,
 		getGlobal: getGlobal,
-		adminGlobalsChange: adminGlobalsChange
+		adminGlobalsChange: adminGlobalsChange,
+		adminCatSetParam: adminCatSetParam,
+		adminChangeName: adminChangeName
 	};
 });
 

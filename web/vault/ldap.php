@@ -99,7 +99,7 @@ function mydap_members($object_dn,$object_class='g') {
 // Establish connection
 mydap_start(
 	'v.lukyanenko@visco.no', // Active Directory search user
-	'fisart', // Active Directory search user password
+	'', // Active Directory search user password
 	'192.168.1.18', // Active Directory server
 	389 // Port (optional)
 );

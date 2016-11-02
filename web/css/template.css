@@ -27,8 +27,123 @@
 	margin-top: 20%;
 }
 
-.btn-default {
+.btn-native {
     color: #fff;
     background-color: #82C13A;
     border-color: #74AD34;
+}
+
+.admin-cat-hierarchy {
+	border: 1px solid #eee;
+	display: block;
+	padding: 15px;
+	overflow-y:	auto;
+	height: 300px;
+	margin: 20px 0;
+}
+
+.admin-cat-hierarchy ul {
+	list-style: none;
+	padding-left: 0;
+	margin-left: 10px;
+	line-height: 25px;
+}
+
+.admin-cat-hierarchy li li {
+	border-left: 0;
+	padding-left: 0;
+}
+
+.admin-cat-hierarchy li {
+	padding-left: 10px;
+	border-left: 1px dashed #eee;
+}
+
+.admin-cat-hierarchy li.yes:before, 
+.admin-cat-hierarchy li.no:before {
+    font-size: 23px;
+    color: #82C13A;
+    position: absolute;
+    margin-left: -17px;
+    margin-top: 0;
+    cursor: pointer;
+    font-weight: 600;	
+}
+
+.admin-cat-hierarchy li.yes:before {
+	content: '\002b';	   
+}
+
+.admin-cat-hierarchy li.no:before {
+	content: '\2212';   
+}
+
+.admin-cat-hierarchy a {
+	color: #888888;
+	line-height: 130%;
+}
+
+.admin-cat-hierarchy a.active {
+	text-decoration: underline;
+}
+
+.pointer {
+	cursor: pointer;
+}
+
+.overlay{
+	background: rgba(0,0,0, 0.8);
+	display: block;
+	width: 100%;
+	height: 100%;
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	z-index: 100 !important;
+} 
+.lightbox {
+	position: absolute;
+	top: 0;
+	right: 0;
+	left: 0;
+	margin: 25px;
+	background: #FFF;
+	padding: 30px;
+	z-index: 110;
+	padding-top: 10px;	
+}
+
+.lightbox .lightbox-close {
+	position: absolute;
+	top: 0;
+	right: 0;
+	padding: 20px;
+	content: '';
+	cursor: pointer;
+}
+
+.lightbox:before {	
+	position: absolute;
+	top: -13px;
+	right: 10px;
+	content: '×';
+	font-size: 57px;
+	color: #333333;
+	display: block;
+	cursor: pointer;
+}
+
+.alert {
+	z-index: 101;
+}
+
+.clear {
+	clear: both;
+}
+
+.badge {
+	border-radius: 10px !important;
+	margin-left: 10px;
 }

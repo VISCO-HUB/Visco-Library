@@ -31,15 +31,11 @@
 <body>
 
 <br>
-<div class="container">
-	<div ng-show="msg.error || msg.success || msg.warning" class="alert alert-dismissible fade in" ng-class="{'alert-warning': msg.warning, 'alert-success': msg.success, 'alert-danger': msg.error}" role="alert">
-		<button type="button" class="close"  aria-label="Close" ng-click="deleteMsg()"><span aria-hidden="true">&times;</span></button>
-		{{msg.error}}{{msg.success}}{{msg.warning}}		
-	</div>
-</div>	
+<div class="container" alerts></div>	
 
 <div ng-view></div>  
 
 </body>
 
 </html>
+

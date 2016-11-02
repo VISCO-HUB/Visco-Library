@@ -12,7 +12,7 @@
 			<input type="text" id="name" class="form-control" placeholder="User name" required="" autofocus="" ng-model="userName" ng-class="{warning: badUserName}">
 			<input type="password" id="password" class="form-control" placeholder="Password" required="" ng-model="userPassword" ng-class="{warning: badUserPassword}">
 			<br>
-			<button class="btn btn-lg btn-default btn-block" type="submit">Sign in</button>
+			<button class="btn btn-lg btn-native btn-block" type="submit">Sign in</button>
 		</from>
 	</div>
 	
