@@ -51,6 +51,22 @@ app.directive("alerts", function($rootScope) {
     };
 });
 
+// FILTERS
+
+app.filter('orderObjectBy', function() {
+  return function(items, field, reverse) {
+    var filtered = [];
+    angular.forEach(items, function(item) {
+      filtered.push(item);
+    });
+    filtered.sort(function (a, b) {
+      return (a[field] > b[field] ? 1 : -1);
+    });
+    if(reverse) filtered.reverse();
+    return filtered;
+  };
+});
+
 
 // CONTROLLERS
 	// ABOUT
@@ -87,11 +103,23 @@ app.controller("loginCtrl", function($scope, $rootScope, vault){
 	// ADMIN
 app.controller("adminCtrl", function($scope, $rootScope, vault){
 	$scope.section = 'cat';
-		
+
 	vault.getGlobal();
 	vault.catGet();
+	
+	$scope.addLibrary = function(type) {
+		var n = prompt('Please enter the name!', '');			
 		
-	$scope.adminAddCat = function(parentid) {		
+		if(!n || !n.length) {			
+			vault.showMessage('Please enter the name (A-z, numbers, spaces)!', 'warning');
+		
+			return false;
+		}
+		
+		vault.adminCatAdd(n, 0, type);
+	}
+	
+	$scope.adminAddCat = function(parentid, type) {		
 		if($scope.level[parentid] > 1) {return false;}
 		
 		var n = prompt('Please enter the name!', '');			
@@ -102,7 +130,7 @@ app.controller("adminCtrl", function($scope, $rootScope, vault){
 			return false;
 		}
 		
-		vault.adminCatAdd(n, parentid);
+		vault.adminCatAdd(n, parentid, type);
 	}
 	
 	$scope.adminGlobalChangePath = function() {
@@ -115,6 +143,22 @@ app.controller("adminCtrl", function($scope, $rootScope, vault){
 		}
 		
 		vault.adminGlobalsChange(n);		
+	}
+	
+	$scope.libType = function(type) {
+		var t = '';
+		
+		switch(type)
+		{			
+			case '1': t = 'Models';
+			break;
+			case '2': t = 'Textures';
+			break;
+			default: t = 'Unknown';
+			break;
+		}
+		
+		return t;
 	}
 	
 	$scope.adminChangeDesc = function(id) {
@@ -154,6 +198,19 @@ app.controller("adminCtrl", function($scope, $rootScope, vault){
 		
 		vault.adminChangeName(n, id);		
 	}	
+	
+	$scope.libDel = function(id, name) {				
+		if(!name) {name = '';}
+		if(!confirm('Do you really want to delete category ' + name + '?')){
+			return false;
+		}
+		
+		vault.adminCatDel(id);
+	}
+	
+	$scope.changeSort = function(id, sort) {
+		vault.adminCatSort(id, sort);
+	}
 	
 	$scope.adminCatDel = function(id, name) {
 		if(id == $scope.adminCatEditId) {return false;}
@@ -366,11 +423,11 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 			responceMessage(r);
 		});
 	}
-	
-	var adminCatAdd = function(name, parentid) {
+		
+	var adminCatAdd = function(name, parentid, type) {
 		if(parentid == null) parentid = '0';
 		
-		var json = {'parentid': parentid, 'name': name};
+		var json = {'parentid': parentid, 'name': name, 'type': type};
 		
 		HttpPost('CATADD', json).then(function(r){						
 			catGet();
@@ -436,6 +493,19 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 			responceMessage(r);
 		});
 	}
+	
+	var adminCatSort = function(id, sort) {		
+		var json = {'id': id, 'sort': sort};
+		
+		HttpPost('CATSORT', json).then(function(r){									
+			catGet();
+			console.log(r.data)	
+			responceMessage(r.data);			
+		},
+		function(r){
+			responceMessage(r);
+		});
+	}
 			
 	return {
 		showMessage: showMessage,
@@ -447,7 +517,8 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		getGlobal: getGlobal,
 		adminGlobalsChange: adminGlobalsChange,
 		adminCatSetParam: adminCatSetParam,
-		adminChangeName: adminChangeName
+		adminChangeName: adminChangeName,
+		adminCatSort: adminCatSort
 	};
 });
 

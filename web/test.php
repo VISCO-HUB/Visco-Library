@@ -2,21 +2,19 @@
 
 
 
-$PATH = 'Z:\\';
+$ARR = array('11111', '22222', '33333');
 
-$isFolder = is_dir($PATH);
-var_dump($isFolder); //TRUE	
-$dir = '\\\\visco.local\\data\\Library\\';
 
-FUNCTION IS_DIR_EMPTY($DIR) {
-  IF (!IS_READABLE($DIR)) RETURN NULL; 
-  print_r(SCANDIR($DIR));
-  //RETURN (COUNT(SCANDIR($DIR)) == 2);
-  
+FUNCTION CHANGESORT($A, $POS, $SHIFT) {
+	$I = $A[$POS];
+	UNSET($A[$POS]);
+	ARRAY_SPLICE($A, $POS + $SHIFT , 0, $I);
+
+	RETURN $A;
 }
 
-$a = is_dir($dir);
-IF($a) DIE('EEEE');
-ECHO 'NOT ';
+$A = CHANGESORT($ARR, 1, -1);
+
+print_r($A);
 ?>
 

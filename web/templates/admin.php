@@ -40,21 +40,28 @@
 		<div class="table-responsive">
 			<table class="table table-hover">
 				<tr>
-					<th width="30px">#</th>
-					<th>Library</span></th>					
+					<th width="30px">#</th>				
+					<th>Library</th>		
+					<th>Type</th>					
 					<th>Status</th>
+					<th>Sort</th>
 					<th width="150px">Actions</th>
 				</tr>
-				<tr ng-repeat="cat in categories" >
+				<tr ng-repeat="cat in categories | orderObjectBy:'sort'" >
 					<td>{{$index + 1}}.</td>
 					<td><a href="" ng-click="adminCatEdit(cat.id)">{{cat.name}}</a></td>
+					<td>{{libType(cat.type)}}</td>
 					<td>
 						<span ng-show="cat.status==0" class="label label-danger pointer" ng-click="adminCatSetParam('status', '1', cat.id); isAdminCatEdit=false;">Disabled</span> 
 						<span ng-show="cat.status==1" class="label label-success pointer" ng-click="adminCatSetParam('status', '0', cat.id); isAdminCatEdit=false;">Enabled</span>
 					</td>
 					<td>
+						<span class="glyphicon glyphicon-triangle-bottom pointer" aria-hidden="true" ng-click="changeSort(cat.id, -1)"></span>&nbsp;&nbsp;
+						<span class="glyphicon glyphicon-triangle-top pointer" aria-hidden="true" ng-click="changeSort(cat.id, 1)"></span>
+					</td>
+					<td>
 						<a href="" ng-click="adminCatEdit(cat.id)">Edit</a> &nbsp;&nbsp;|&nbsp;&nbsp;
-						<a href="" ng-click="adminCatDel(cat.id, cat.name)">Delete</a>
+						<a href="" ng-click="libDel(cat.id, cat.name)">Delete</a>
 					</td>					
 				</tr>
 			</table>
@@ -67,8 +74,8 @@
 			<span class="sr-only">Toggle Dropdown</span>
 		  </button>
 			<ul class="dropdown-menu" aria-labelledby="dropdownMenu1" tooltip-placement="left" uib-tooltip="Creates specific library type. After creation you can't change library type.">
-				<li><a href="" ng-click="adminAddCat(1)" >Model Library</a></li>        			
-				<li><a href="" ng-click="adminAddCat(2)" >Texture Library</a></li> 
+				<li><a href="" ng-click="addLibrary(1)" >Model Library</a></li>        			
+				<li><a href="" ng-click="addLibrary(2)" >Texture Library</a></li> 
 			</ul>
 		</div>
 		
@@ -97,6 +104,8 @@
 	
 	<h1>Edit Library: {{categories[adminCatEditId].name}}</h1>
 	<div alerts></div>
+	<h2><small>Library Type:</small></h2>
+	<input type="text" class="form-control" disabled placeholder="{{libType(categories[adminCatEditId].type)}}">
 	<h2><small>Status:</small></h2>
 	<div class="btn-group" data-toggle="buttons">
 		<button type="button" class="btn" ng-class="categories[adminCatEditId].status == 1 ? 'btn-success' : 'btn-default'" ng-click="adminCatSetParam('status', '1', adminCatEditId)">&nbsp;ON&nbsp;</button>
@@ -125,7 +134,7 @@
 			</ul>  				
 		</div>
 	</div>
-	<button class="btn btn-primary" ng-click="adminAddCat(subCatEditID)" ng-class="{disabled: level[subCatEditID] > 1}">Add</button> 
+	<button class="btn btn-primary" ng-click="adminAddCat(subCatEditID, categories[adminCatEditId].type)" ng-class="{disabled: level[subCatEditID] > 1}">Add</button> 
 	<button class="btn btn-danger" ng-class="{disabled: subCatEditID == adminCatEditId}" ng-click="adminSubCatDel(subCatEditID)">Delete</button>
 	<button class="btn btn-warning" ng-class="{disabled: subCatEditID == adminCatEditId}" ng-click="adminSubCatRename(subCatEditID)">Rename</button>
 </div>

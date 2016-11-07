@@ -21,27 +21,11 @@
 			$MYSQLI = $GLOBALS['MYSQLI'];
 			$MYSQLI->CLOSE();	
 		}
-		
-		// SELECT
-		PUBLIC STATIC FUNCTION SELECTALL($TABLE){		
+			
+		PUBLIC STATIC FUNCTION SELECT($TABLE, $WHERE = [], $SORT = NULL, $AND = NULL) {		
+			
 			$MYSQLI = $GLOBALS['MYSQLI'];
-			$JSON = [];
-			$QUERY = "SELECT * FROM " . $TABLE . ";";	
 						
-			IF ($RESULT = $MYSQLI->query($QUERY)) {
-				
-				WHILE($ROW = $RESULT->fetch_object()) {
-					$JSON[] = $ROW;							
-				}
-			}
-		
-			RETURN $JSON;
-		}
-		
-		PUBLIC STATIC FUNCTION SELECT($TABLE, $WHERE = []) {		
-			
-			$MYSQLI = $GLOBALS['MYSQLI'];
-			
 			$W = [];
 			FOREACH($WHERE AS $KEY => $VALUE) {							
 				$VALUE = SELF::STRIP($VALUE);							
@@ -50,11 +34,13 @@
 				$W[] = $KEY . "=" . "'" . $VALUE . "'";
 			}
 			$ATTACH = '';
+			$BOOL = $AND ? 'AND' : 'OR';
+			IF(COUNT($W)) $ATTACH = " WHERE " . IMPLODE(' ' . $BOOL . ' ', $W);
+	
+			$ATTACHSORT = '';
+			IF($SORT) $ATTACHSORT = ' ORDER BY ' . SELF::STRIP($SORT);
 			
-			IF(COUNT($W)) $ATTACH = " WHERE " . IMPLODE(' OR ', $W);
-			
-			$QUERY = "SELECT * FROM " . $TABLE . $ATTACH . ";";	
-		
+			$QUERY = "SELECT * FROM " . $TABLE . $ATTACH . $ATTACHSORT . ";";			
 			$RESULT = $MYSQLI->query($QUERY);
 		
 			RETURN $RESULT;
@@ -62,7 +48,7 @@
 		
 		PUBLIC STATIC FUNCTION TOARRAY($RESULT) {
 			$ROWS = [];
-			WHILE($ROW = $RESULT->fetch_object()) {
+			WHILE($ROW = $RESULT->fetch_object()) {				
 				$ROWS[] = $ROW;							
 			}
 			
@@ -133,7 +119,7 @@
 			}
 			
 			$QUERY = "UPDATE " . $TABLE . " SET " . IMPLODE(',', $V) . " WHERE " . IMPLODE(' OR ', $W) . ";";						
-			
+	
 			$RESULT = $MYSQLI->query($QUERY);		
 			
 			RETURN $MYSQLI->affected_rows;
@@ -243,7 +229,8 @@
 	
 	CLASS GLOBS {
 		PUBLIC STATIC FUNCTION GET() {
-			$RESULT = DB::SELECTALL('global');
+			$RES = DB::SELECT('global');
+			$RESULT = DB::TOARRAY($RES);
 			$OUT = [];
 			
 			FOREACH($RESULT AS $VALUE) {
@@ -303,6 +290,38 @@
 			
 			RETURN @RENAME($DIR, $DIR2);		  
 		}
+		
+		PUBLIC STATIC FUNCTION CLEAR($DIR, $PATTERN = "*") {	
+			$FILES = GLOB($DIR . "/$PATTERN"); 
+    
+			FOREACH($FILES as $FILE){ 
+			
+				IF(IS_DIR($FILE) AND !IN_ARRAY($FILE, ARRAY('..', '.')))  {					
+					SELF::CLEAR($FILE, $PATTERN);
+								
+					RMDIR($FILE);
+				} 
+				ELSE IF(IS_FILE($FILE) AND ($FILE != __FILE__)) {					
+					UNLINK($FILE); 
+				}
+			}					
+		}
+		
+		PUBLIC STATIC FUNCTION MOVE($DIR1, $DIR2) {
+			    $DIR = OPENDIR($DIR1); 
+				SELF::CREATEDIR($DIR2); 
+				WHILE(FALSE !== ($FILE = READDIR($DIR))) { 
+					IF(( $FILE != '.' ) && ( $FILE != '..' )) { 
+						IF(IS_DIR($DIR1 . '/' . $FILE)) { 
+							SELF::MOVE($DIR1 . '/' . $FILE, $DIR2 . '/' . $FILE); 
+						} 
+						ELSE { 
+							COPY($DIR1 . '/' . $FILE, $DIR2 . '/' . $FILE); 
+						} 
+					} 
+				} 
+				CLOSEDIR($DIR); 
+			} 
 	}
 	
 	///////////////////////////////////////////////////////
@@ -311,7 +330,7 @@
 
 	CLASS CAT {
 		PUBLIC STATIC FUNCTION CLEAR($S) {
-			$S = STR_REPLACE(' ', '', $S); 
+			$S = STR_REPLACE(' ', '-', $S); 
 			$S = PREG_REPLACE('/[^A-Za-z0-9\-]/', '', $S); 
 			RETURN $S;
 		}
@@ -327,6 +346,7 @@
 			
 			$SET['name'] = $DATA->name;
 			$SET['parent'] = $PARENTID;
+			$SET['type'] = $DATA->type;
 			$SET['path'] = SELF::CLEAR($DATA->name);
 	
 			$RESULT = DB::INSERT('category', $SET);
@@ -382,8 +402,7 @@
 			$SET['name'] = $DATA->name;
 			$SET['path'] = $P;
 			$WHERE['id'] = $ID;
-			
-			
+						
 			$PATH = SELF::BUILDPATH($ID);
 			
 			IF(FS::REN($PATH, $P)) {
@@ -406,6 +425,8 @@
 					$I['status'] = $CATEGORY->status;
 					$I['path'] = $CATEGORY->path;
 					$I['desc'] = $CATEGORY->description;
+					$I['type'] = $CATEGORY->type;
+					$I['sort'] = $CATEGORY->sort;
 										
 					FOREACH($CATEGORIES AS $SUBCAT) {
 						IF($SUBCAT->parent == $CATEGORY->id)
@@ -462,18 +483,67 @@
 			RETURN $P;
 		}
 		
-		PUBLIC STATIC FUNCTION GETTREE($DATA) {			
-			
-			$WHERE = [];
-			$ID = -1;
-			IF(ISSET($DATA->id)) $ID = $DATA->id;
-				
-			$RESULT = DB::SELECT('category');
+		PUBLIC STATIC FUNCTION GETTREE() {								
+			$RESULT = DB::SELECT('category', [], 'sort');
 			$CATEGORIES = DB::TOARRAY($RESULT);
 			
 			$RESULT = SELF::BUILDTREE($CATEGORIES, 0);
 			
 			RETURN JSON_ENCODE($RESULT);
+		}
+		
+		PUBLIC STATIC FUNCTION CHANGESORT($A, $POS, $SHIFT) {
+			$I = $A[$POS];
+			UNSET($A[$POS]);
+			ARRAY_SPLICE($A, $POS - $SHIFT , 0, [$I]);
+
+			RETURN $A;
+		}
+				
+		PUBLIC STATIC FUNCTION SORTORDER($DATA) {
+			$ERROR = '{"responce": "CATSORTBAD"}';
+			$SUCCESS = '{"responce": "CATSORTOK"}';
+			
+			IF(!ISSET($DATA->id) OR !ISSET($DATA->sort))RETURN $ERROR;
+			$ID = $DATA->id;
+			$SORT = $DATA->sort;
+			
+			$WHERE['id'] = $ID;
+			$RESULT = DB::SELECT('category', $WHERE);
+			$CAT = DB::TOARRAY($RESULT);
+			
+			$PARENT = -1;			
+			IF($CAT[0]) $PARENT = $CAT[0]->parent;
+			
+			// GET ALL PARENT
+			$WHERE['parent'] = $PARENT;
+			$RESULT = DB::SELECT('category', $WHERE, 'sort');
+			$CATEGORIES = DB::TOARRAY($RESULT);
+			UNSET($WHERE);
+			
+			// GET POS IN CATEGORY
+			$POS = -1;
+			FOREACH($CATEGORIES AS $KEY => $VALUE) {
+				IF($VALUE->id == $ID) {
+					$POS = $KEY;
+					BREAK;
+				}				
+			}
+			
+			IF($POS == -1) RETURN $ERROR;
+			
+			//	SORT
+			$NEW = SELF::CHANGESORT($CATEGORIES, $POS, $SORT);
+			// UPDATE
+			$CNT = 0;
+			FOREACH($NEW AS $VALUE) {				
+				$SET['sort'] = $CNT; 				
+				$WHERE['id'] = $VALUE->id;				
+				DB::UPDATE('category', $SET, $WHERE);
+				$CNT++;
+			}
+			
+			RETURN $SUCCESS;
 		}
 		
 		PUBLIC STATIC FUNCTION DEL($DATA) {

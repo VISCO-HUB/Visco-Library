@@ -10,12 +10,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<link rel="icon" href="img/favicon.ico" type="image/x-icon">
     <title>Assets Library</title>
-    <!--<link rel="stylesheet" type="text/css" href="css/template.css">-->
-    <script type="text/javascript" src="https://code.angularjs.org/1.5.8/angular.min.js"></script>
+    <!--<link rel="stylesheet" type="text/css" href="css/template.css">-->	   
+	<script src="http://code.jquery.com/jquery-latest.js"></script>
+	<script type="text/javascript" src="https://code.angularjs.org/1.5.8/angular.min.js"></script>	
     <script type="text/javascript" src="https://code.angularjs.org/1.5.8/angular-route.min.js"></script>
     <script type="text/javascript" src="https://code.angularjs.org/1.5.8/angular-sanitize.min.js"></script>    
-    <script type="text/javascript" src="js/app.js"></script>
-    <script src="http://code.jquery.com/jquery-latest.js"></script>
+   	<script type="text/javascript" src="js/app.js"></script>   
     <script type="text/javascript" src="js/bootstrap.min.js"></script>
 	<script type="text/javascript" src="js/ui-bootstrap-tpls-2.1.3.min.js"></script>
     <link href="css/bootstrap.css" rel="stylesheet" type="text/css">

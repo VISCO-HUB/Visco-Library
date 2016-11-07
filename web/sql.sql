@@ -35,8 +35,9 @@ CREATE TABLE `category` (
   `premissions` int(11) DEFAULT NULL,
   `status` int(11) DEFAULT '1',
   `description` varchar(400) DEFAULT NULL,
+  `type` int(11) DEFAULT '0',
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=231 DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB AUTO_INCREMENT=258 DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -45,7 +46,7 @@ CREATE TABLE `category` (
 
 LOCK TABLES `category` WRITE;
 /*!40000 ALTER TABLE `category` DISABLE KEYS */;
-INSERT INTO `category` VALUES (210,'Furniture','Furniture',206,0,NULL,NULL,NULL,1,''),(211,'Plants','Plants',206,0,NULL,NULL,NULL,1,''),(213,'Chairs','Chairs',210,0,NULL,NULL,NULL,1,''),(215,'Lights','Lights',210,0,NULL,NULL,NULL,1,''),(222,'ArchViz','ArchViz',0,0,NULL,NULL,NULL,1,'Test description for ArchViz category'),(223,'Furniture','Furniture',222,0,NULL,NULL,NULL,1,''),(224,'Peoples','Peoples',222,0,NULL,NULL,NULL,1,''),(225,'Cars','Cars',222,0,NULL,NULL,NULL,1,''),(226,'Chairs','Chairs',223,0,NULL,NULL,NULL,1,''),(227,'Lights','Lights',223,0,NULL,NULL,NULL,1,''),(228,'Sofas','Sofas',223,0,NULL,NULL,NULL,1,''),(229,'IKEA','IKEA',0,0,NULL,NULL,NULL,1,'IKEA FOREVER)'),(230,'Test','Test',229,0,NULL,NULL,NULL,1,NULL);
+INSERT INTO `category` VALUES (246,'ArchViz','ArchViz',0,2,NULL,NULL,NULL,1,'Test description for ArchViz library.',1),(247,'Just Textures','JustTextures',0,0,NULL,NULL,NULL,1,NULL,2),(248,'Furniture','Furniture',246,0,NULL,NULL,NULL,1,NULL,1),(249,'Decor','Decor',246,0,NULL,NULL,NULL,1,NULL,1),(250,'Lights','Lights',246,0,NULL,NULL,NULL,1,NULL,1),(252,'Chairs','Chairs',248,0,NULL,NULL,NULL,1,NULL,1),(253,'Sofas','Sofas',248,0,NULL,NULL,NULL,1,NULL,1),(254,'Tables','Tables',248,0,NULL,NULL,NULL,1,NULL,1),(255,'Test','Test',0,1,NULL,NULL,NULL,1,NULL,1),(257,'Pendant','Pendant',249,0,NULL,NULL,NULL,1,NULL,1);
 /*!40000 ALTER TABLE `category` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -74,6 +75,94 @@ INSERT INTO `global` VALUES ('path','\\\\visco.local\\data\\Library\\');
 UNLOCK TABLES;
 
 --
+-- Table structure for table `models`
+--
+
+DROP TABLE IF EXISTS `models`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `models` (
+  `id` int(11) NOT NULL,
+  `catid` int(11) DEFAULT '0',
+  `name` varchar(255) DEFAULT NULL,
+  `format` varchar(45) DEFAULT NULL,
+  `preview` int(11) DEFAULT '0',
+  `units` varchar(45) DEFAULT NULL,
+  `dim` varchar(255) DEFAULT NULL,
+  `polys` varchar(45) DEFAULT NULL,
+  `render` varchar(45) DEFAULT NULL,
+  `rigged` int(11) DEFAULT '0',
+  `uvw` int(11) DEFAULT '0',
+  `unwrap` int(11) DEFAULT '0',
+  `lods` int(11) DEFAULT '0',
+  `projectid` int(11) DEFAULT '0',
+  `modeller` varchar(45) DEFAULT NULL,
+  `previews` varchar(800) DEFAULT NULL,
+  `files` varchar(1000) DEFAULT NULL,
+  `tags` varchar(600) DEFAULT NULL,
+  `manufacture` varchar(200) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `models`
+--
+
+LOCK TABLES `models` WRITE;
+/*!40000 ALTER TABLE `models` DISABLE KEYS */;
+INSERT INTO `models` VALUES (0,252,'Tabano Chair Leather','2013',1,'Millimeters','923.17 x 968.23 x 1074.48','72 723','Corona',NULL,1,1,0,0,'v.lukyanenko',NULL,NULL,'chair,leather,aluminium,corona','Cassina');
+/*!40000 ALTER TABLE `models` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `projects`
+--
+
+DROP TABLE IF EXISTS `projects`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `projects` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(200) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `projects`
+--
+
+LOCK TABLES `projects` WRITE;
+/*!40000 ALTER TABLE `projects` DISABLE KEYS */;
+INSERT INTO `projects` VALUES (1,'Wind Jammer'),(2,'WBA 18');
+/*!40000 ALTER TABLE `projects` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `tags`
+--
+
+DROP TABLE IF EXISTS `tags`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `tags` (
+  `name` varchar(45) NOT NULL,
+  PRIMARY KEY (`name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `tags`
+--
+
+LOCK TABLES `tags` WRITE;
+/*!40000 ALTER TABLE `tags` DISABLE KEYS */;
+INSERT INTO `tags` VALUES ('aluminium'),('chair'),('cool'),('corona'),('leather'),('light'),('ling'),('lip'),('lister'),('new'),('super');
+/*!40000 ALTER TABLE `tags` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `users`
 --
 
@@ -96,7 +185,7 @@ CREATE TABLE `users` (
 
 LOCK TABLES `users` WRITE;
 /*!40000 ALTER TABLE `users` DISABLE KEYS */;
-INSERT INTO `users` VALUES (0,'e.astafiev','e00309ebe88dbeb6792fe9a7853760a4',2,1),(0,'v.lukyanenko','bd5b4f4091104f74641732a6ce485fe3',2,1),(0,'y.bozhyk','11fa24b36c7e6eaf0f5ee6cb1aaafaac',0,1);
+INSERT INTO `users` VALUES (0,'e.astafiev','e00309ebe88dbeb6792fe9a7853760a4',2,1),(0,'v.lukyanenko','b7b9962a95ded7ed439e1328ff5facb1',2,1),(0,'v.melnykovych','0c5ffd3bf7584cc17aeee5174f8a9d10',0,1),(0,'y.bozhyk','11fa24b36c7e6eaf0f5ee6cb1aaafaac',0,1);
 /*!40000 ALTER TABLE `users` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
@@ -109,4 +198,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2016-11-02 10:54:44
+-- Dump completed on 2016-11-07 17:28:08
