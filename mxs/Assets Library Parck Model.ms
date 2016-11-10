@@ -1,5 +1,7 @@
 /* GLOBAL SETTINGS */
+
 global _URL = "http://svg-web-003/"
+global _SAVEPATH = @"C:\temp\Assets Library\"
 
 try(closeRolloutFloater rAssetsLibraryModelPack)catch()
 global rAssetsLibraryModelPack = newRolloutFloater "Pack Model" 280 680
@@ -14,18 +16,22 @@ global _STEP5
 global rAbout
 
 global Keys = dotNetClass "System.Windows.Forms.Keys"
-global szGoodChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890_-" 
+global szGoodChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890_- " 
+global BitmapTypes = #(Bitmaptexture, CoronaBitmap)
 
 global isLoadedStep1 = false
 global catID = -1
-global category1 = #()
-global category2 = #()
-global category3 = #()
+global category1 = #(#("0", ""))
+global category2 = #(#("0", ""))
+global category3 = #(#("0", ""))
 global tags = #()
 global modellers = #()
 global models= #()
 global projects = #()
-global manufacturers= #()
+global manufacturers = #()
+global sPreviewPath = #()
+global bMainPreview = #()
+global sOverview = ""
 
 global sModelName = ""
 global sManufacturer = ""
@@ -35,18 +41,150 @@ global sTags = ""
 
 global bRigged = false
 global bAnimated = false
-global bUvw = false
+global bBakedTextures = false
 global bUnwrap = false
 
 global iCat1 = 1
 global iCat2 = 1
 global iCat3 = 1
 
+/* CLASSES */
+
+struct zip
+(
+	dirs = #(),
+	files = #(),
+	
+	fn getRecusive d =
+	(		
+		c = getDirectories (d + "*")
+		f = getFiles (d + "*")
+		join dirs c
+		join files f
+		for i in c do getRecusive i
+	),
+	fn writeFile f t =
+	(
+		local tmp
+		try(tmp = createFile f) catch (return false)			
+		format t to:tmp
+		flush tmp
+		close tmp
+				
+		return true
+	),
+	
+	fn br t =
+	(
+		return "\"" + t + "\""
+	),
+	
+	fn rmDir d =
+	(
+		cmd = "RMDIR " + (br d) + " /S /Q"
+		hiddendosCommand cmd 				
+	),
+	
+	fn packFiles source: "" target: "" name: "tmpzip" del: false =
+	(
+		dirs = #()
+		files = #()
+		
+		makeDir @"C:\temp\"
+		makeDir target
+		tmp = @"C:\temp\ziptmp.txt" 
+		maxZip = (getDir #maxRoot) + "maxzip.exe"
+			
+		source = (trimRight source "\\") + "\\"
+		target = (trimRight target "\\") + "\\"
+		
+		if(not doesFileExist source or source.count < 2) do return false
+		if(not doesFileExist target or target.count < 2) do return false
+		
+		getRecusive source
+		
+		if(files.count == 0) do return false
+		
+		if(doesFileExist tmp) do deleteFile tmp
+		t = ""		
+		for i in files do t += (substituteString i source "") + "\n"
+		writeFile tmp t
+		
+		curDir = sysInfo.currentDir
+		sysInfo.currentDir = source
+		out = target + name + ".zip"
+		
+		cmd = (br maxZip) + " " + (br out) + " @" + tmp
+		
+		hiddendosCommand cmd exitcode:&exitcode
+		sysInfo.currentDir = curDir 
+		
+		if(del == true) do rmDir source
+		
+		if(exitcode == 0) do return true 
+		return false
+	)
+)
+
 /* MAIN FUNCTIONS */
+
+fn invalidBitmap b = 
+(	
+	return b == undefined or b.filename == undefined or b.filename == "" or b.filename.count == 0
+)
+
+fn validBitmap b = 
+(	
+	return b != undefined and b.filename != undefined and b.filename != "" and b.filename.count != 0
+)
+
+fn getFullPath p = 
+(	
+	if(doesFileExist p) do return p
+	
+	return mapPaths.getFullFilePath (filenameFromPath  p)
+)
+
+fn getColor r g b = (dotnetclass "System.Drawing.Color").FromArgb r g b
+
+fn getUnits = 
+(	
+	u = trimLeft (units.SystemType as string) "#"
+	u[1] = toUpper u[1]
+	return u
+)
+
+fn stripName n =
+(
+	n = substituteString n " " "-"
+)
+
+fn getDim s =
+(
+	d = s.max - s.min
+	
+	d = for i in 1 to 3 collect ((d[i] * 100) as integer / 100.0 ) as string
+	
+	return d[1] + " x " + d[2] + " x " + d[3]
+)
+
+fn getBgColor = 
+(
+	b = (colorman.getcolor #background) * 255
+	c = getColor b[1] b[2] b[3]
+	return c
+)
+
+fn getTextColor =
+(
+	t = (colorMan.getColor #text) * 255
+	c = getColor t[1] t[2] t[3]
+	return c
+)
 
 fn goStep step =
 (
-	k = #(_STEP1, _STEP2, _STEP3, _STEP4, _STEP5, rAbout)
+	k = #(_STEP1, _STEP2, _STEP3, _STEP4, _STEP5, rAbout) 
 	for i in k do 
 	(
 		removeRollout i rAssetsLibraryModelPack
@@ -55,7 +193,6 @@ fn goStep step =
 	addRollout k[step] rAssetsLibraryModelPack border: true
 	addRollout rAbout rAssetsLibraryModelPack border: true rolledUp: true
 )
-
 
 fn isSelected =
 (
@@ -90,7 +227,84 @@ fn isValidText t title: undefined =
 	)
 	
 	return true
-)	
+)
+
+fn getMaxVersion =
+(
+	v = maxVersion()
+	v = (v[1] / 1000) - 2
+	
+	a = 2000 + v
+	
+	o = case v of 
+	(
+		11: #(a - 1, a)
+		12: #(a - 2, a - 1, a)
+		default: #(a - 3, a - 2, a - 1, a)		
+	)
+	
+	return (for i in o collect i as string)
+)
+
+fn getRender =
+(
+	r = renderers.current as string
+
+	if matchpattern r pattern:"*Corona*" do return #("_corona", "Corona")
+	if matchpattern r pattern:"*V_Ray_Adv*" do return #("_vray", "VRay")
+	if matchpattern r pattern:"*Default_Scanline*" do return #("_scanline", "Default Scanline")
+	if matchpattern r pattern:"*mental_ray*" do return #("_mentalray", "Mental Ray")
+	if matchpattern r pattern:"*iray_Renderer*" do return #("_iray", "IRay")
+	if matchpattern r pattern:"*maxwell*" do return #("_maxwell", "Maxwell")
+		
+	return #("", "")
+)
+
+fn getNum n c:3 =
+(
+	n = n as string
+	
+	if(n.count < c) do
+	(
+		d = c - n.count
+		
+		s = ""
+		
+		for i in 1 to d do s += "0"
+		return s + n
+	)
+	
+	return n
+)
+
+fn polyCount s  =
+(	
+	iPoly = 0
+	
+	a = for i in s collect (getPolygonCount i)[1]
+	for i in a do iPoly += i
+	
+	r = ""
+	ii = 1
+	sPoly = iPoly as string
+	
+	for i in sPoly.count to 1 by -1 do
+	(
+		space = ""	
+			
+		if (ii == 3) do 
+		(
+			space = " "
+			ii = 0
+		)
+		
+		ii += 1
+		
+		r = space + sPoly[i] + r
+	)
+
+	return (trimLeft r " ")
+)
 
 fn ungroupRecursive s = for i in s where isGroupHead i and isValidNode i do explodeGroup i
 	
@@ -147,14 +361,23 @@ rollout _STEP1 "STEP 1: Model Info"
 
 	group "Category"
 	(
-		dropdownlist ddlLib "Library:" 
-		dropdownlist ddlCat "Category:"
-		dropdownlist ddlSubCat "Sub Category:"
+		label lbl6 "Library:" align: #left across: 2 
+		dotNetControl lblWarn3 "System.Windows.Forms.Label" text: "*" offset: [-84, 0] 		
+		dropdownlist ddlLib "" 
+		
+		label lbl7 "Category:" align: #left across: 2 
+		dotNetControl lblWarn4 "System.Windows.Forms.Label" text: "*" offset: [-72, 0] 
+		dropdownlist ddlCat ""
+		
+		label lbl8 "Sub Category:" align: #left across: 2 
+		dotNetControl lblWarn5 "System.Windows.Forms.Label" text: "*" offset: [-51, 0] 
+		dropdownlist ddlSubCat ""
 	)
 	
 	group "Model Info"
 	(
-		label lbl1 "Model Name:" align: #left		
+		label lbl1 "Model Name:" align: #left across: 2  	
+		dotNetControl lblWarn1 "System.Windows.Forms.Label" text: "*" offset: [-59, 0] 	
 		dotNetControl edtModelName "System.Windows.Forms.TextBox" height: 25
 		label lbl2 "Manufacturer:" align: #left		
 		dotNetControl edtManufacturer "System.Windows.Forms.TextBox" height: 25
@@ -162,7 +385,8 @@ rollout _STEP1 "STEP 1: Model Info"
 		dotNetControl edtModeller "System.Windows.Forms.TextBox" height: 25
 		label lbl4 "Project:" align: #left		
 		dotNetControl edtProject "System.Windows.Forms.TextBox" height: 25
-		label lbl5 "Tags:" align: #left		
+		label lbl5 "Tags:" align: #left across: 2 	
+		dotNetControl lblWarn2 "System.Windows.Forms.Label" text: "*" offset: [-94, 0]
 		dotNetControl edtTags "System.Windows.Forms.TextBox" height: 25
 		
 		button btnTag1 "" across: 4 visible: false width: 60 border: false
@@ -175,7 +399,7 @@ rollout _STEP1 "STEP 1: Model Info"
 	(
 		checkbox cbxRigged "Rigged"
 		checkbox cbxAnimated "Animated"
-		checkbox cbxUbw "UVW"
+		checkbox cbxBakedTextures "Baked Textures"
 		checkbox cbxUnwrap "Unwrap"
 	)
 	
@@ -185,6 +409,32 @@ rollout _STEP1 "STEP 1: Model Info"
 	
 	global bgErrorColor = getColor 255 229 153
 	global fgErrorColor = getColor 215 144 0
+	
+	fn initDotNet = 
+	(
+		edtModeller.AutoCompleteMode = edtModeller.AutoCompleteMode.SuggestAppend
+		edtModeller.AutoCompleteSource = edtModeller.AutoCompleteSource.CustomSource
+		
+		edtModelName.AutoCompleteMode = edtModelName.AutoCompleteMode.SuggestAppend
+		edtModelName.AutoCompleteSource = edtModelName.AutoCompleteSource.CustomSource
+		
+		edtManufacturer.AutoCompleteMode = edtManufacturer.AutoCompleteMode.SuggestAppend
+		edtManufacturer.AutoCompleteSource = edtManufacturer.AutoCompleteSource.CustomSource		
+		
+		edtProject.AutoCompleteMode = edtProject.AutoCompleteMode.SuggestAppend
+		edtProject.AutoCompleteSource = edtProject.AutoCompleteSource.CustomSource	
+		
+	
+		warnLabels = #(lblWarn1, lblWarn2, lblWarn3, lblWarn4, lblWarn5)
+		bg = getBgColor()
+		txt = getTextColor()
+				
+		for i in warnLabels do 
+		(
+			i.backColor = bg
+			i.foreColor = i.foreColor.red
+		)
+	)
 	
 	fn trim t = trimLeft (trimRight t " ") " "
 	
@@ -232,7 +482,7 @@ rollout _STEP1 "STEP 1: Model Info"
 
 		bRigged = cbxRigged.checked
 		bAnimated = cbxAnimated.checked
-		bUvw = cbxUbw.checked
+		bBakedTextures = cbxBakedTextures.checked
 		bUnwrap = cbxUnwrap.checked
 			
 		iCat1 = ddlLib.selection
@@ -242,10 +492,10 @@ rollout _STEP1 "STEP 1: Model Info"
 		if(catID == -1) do return messageBox "Please select the category!" title: "Warning!"		
 		if(sModelName.count == 0) do return messageBox "Please enter correct Model Name!" title: "Warning!"		
 		if(sTags.count == 0) do return messageBox "Please enter few tags!" title: "Warning!"
-		if(not bUvw and not bUnwrap) do return messageBox "Please check if model has Uvw or Unwrap!" title: "Warning!"
-		
+				
 		if(not isValidText sModelName title: "Model Name") do return false 
 		if(not isValidText sManufacturer title: "Manufacturer") do return false 
+		if(not isSelected()) do return false
 		
 		goStep 2	
 	)
@@ -315,6 +565,8 @@ rollout _STEP1 "STEP 1: Model Info"
 	
 	on _STEP1 open do
 	(	
+		initDotNet()
+		
 		edtModelName.text = sModelName
 		edtModelName.text = sModelName
 		edtManufacturer.text = sManufacturer 
@@ -324,7 +576,7 @@ rollout _STEP1 "STEP 1: Model Info"
 
 		cbxRigged.checked = bRigged
 		cbxAnimated.checked = bAnimated
-		cbxUbw.checked = bUvw
+		cbxBakedTextures.checked = bBakedTextures
 		cbxUnwrap.checked	= bUnwrap
 		
 		ddlLib.items = for i in category1 collect i[2]
@@ -334,21 +586,9 @@ rollout _STEP1 "STEP 1: Model Info"
 		ddlLib.selection = iCat1
 		ddlCat.selection = iCat2
 		ddlSubCat.selection = iCat3
-
 		
-		edtModeller.AutoCompleteMode = edtModeller.AutoCompleteMode.SuggestAppend
-		edtModeller.AutoCompleteSource = edtModeller.AutoCompleteSource.CustomSource
-		
-		edtModelName.AutoCompleteMode = edtModelName.AutoCompleteMode.SuggestAppend
-		edtModelName.AutoCompleteSource = edtModelName.AutoCompleteSource.CustomSource
-		
-		edtManufacturer.AutoCompleteMode = edtManufacturer.AutoCompleteMode.SuggestAppend
-		edtManufacturer.AutoCompleteSource = edtManufacturer.AutoCompleteSource.CustomSource		
-		
-		edtProject.AutoCompleteMode = edtProject.AutoCompleteMode.SuggestAppend
-		edtProject.AutoCompleteSource = edtProject.AutoCompleteSource.CustomSource	
-		
-		tmr1.active = true		
+		tmr1.active = true	
+	
 	)
 		
 	on _STEP1 close do
@@ -418,7 +658,47 @@ rollout _STEP1 "STEP 1: Model Info"
 	
 )
 
-rollout _STEP2 "STEP 2: Model Transform" 
+rollout _STEP2 "STEP 2: Model Overview" 
+(
+	group "Overview"
+	(
+		dotNetControl edtOverview "System.Windows.Forms.TextBox"  height: 250
+	)
+		
+	on _STEP2 open do
+	(
+		edtOverview.MultiLine = true
+		edtOverview.scrollbars = (dotnetclass "System.Windows.Forms.ScrollBars").vertical		
+		edtOverview.acceptsReturn = true
+		edtOverview.acceptsTab = true
+		edtOverview.wordWrap = true
+		
+		edtOverview.text = sOverview
+	)
+	
+	on edtOverview keyPress s a do
+	(
+		if(a.keyChar == "\r") do 
+		(
+			edtOverview.text += "\r\n"
+			edtOverview.SelectionStart = (edtOverview.text.count)
+		)
+	)
+	
+	progressBar hr "" height: 3 offset:[0,15]
+	button btnPrev "<< Back" align: #left  across: 2
+	button btnNext "Next >>" align: #right  enabled: true	
+	on btnPrev pressed do goStep 1		
+	on btnNext pressed do 
+	(
+		if(not isSelected()) do return false
+		
+		sOverview = edtOverview.text
+		goStep 3		
+	)
+)
+
+rollout _STEP3 "STEP 3: Model Transform" 
 (
 	group "1. Geometry Fix"
 	(
@@ -428,7 +708,8 @@ rollout _STEP2 "STEP 2: Model Transform"
 
 	group "2. Group"
 	(
-		button btnGroup "Make Group" width: 80 tooltip: "Make group from selected objects."
+		button btnGroup "Group All" width: 80 tooltip: "Make group from selected objects." across: 2
+		button btnUngroup "Ungroup All" width: 80 tooltip: "Recursive explode all groups."
 	)
 	
 	group "3. Set Pivot"
@@ -534,6 +815,13 @@ rollout _STEP2 "STEP 2: Model Transform"
 		group selection name: sModelName select:true
 	)
 
+	on btnUngroup pressed do
+	(
+		if(not isSelected()) do return false
+			
+		ungroupRecursive selection
+	)
+	
 	on btnSetPivotBotton pressed do
 	(
 		if(not isSelected()) do return false
@@ -570,36 +858,437 @@ rollout _STEP2 "STEP 2: Model Transform"
 	progressBar hr "" height: 3 offset:[0,15]
 	button btnPrev "<< Back" align: #left  across: 2
 	button btnNext "Next >>" align: #right  enabled: true	
-	on btnPrev pressed do goStep 1		
-	on btnNext pressed do goStep 3		
+	on btnPrev pressed do goStep 2		
+	on btnNext pressed do 
+	(
+		if(not isSelected()) do return false		
+		goStep 4		
+	)
 )
 
+/*
 rollout _STEP3 "STEP 3: Basic Setup" 
 (	
-	
+	group "Geometry"
+	(
+		checkbox cbxRenameObjects "Rename Objects" checked: true align: #left tooltip: "Rename objects to name specified in STEP 1."
+		checkbox cbxLayer0 "Remove Layers" checked: true align: #left tooltip: "Remove all layers.\nSet default (0) layer for all objects."
+	)
+	group "Materials"
+	(
+		checkbox cbxSetMaterialNames "Rename Materials" checked: true tooltip: "Rename materials to name specified in STEP 1."
+		checkbox cbxTexturesRename "Rename Textures" checked: true tooltip: "Add model tag in textures file name specified in STEP 1."		
+	)
 	
 	progressBar hr "" height: 3 offset:[0,15]
 	button btnPrev "<< Back" align: #left  across: 2
 	button btnNext "Next >>" align: #right  enabled: true	
 	on btnPrev pressed do goStep 2		
 	on btnNext pressed do goStep 4
-)
+)*/
 
 rollout _STEP4 "STEP 4: Preview" 
 (
+	group "Preview"
+	(
+		dotNetControl btmPreview "System.Windows.Forms.PictureBox" width: 240 height: 240		
+		label lblDimensions ""
+		dropdownlist ddlPreview "" align: #left width: 210 across: 2
+		button btnDelPreview "X" align: #right tooltip: "Delete Preview"
+		checkbox cbxMainPreview "Main Preview"
+	)
+
+	button btnPreviewAdd "Add New Picture" offset: [0, 12]
 		
 	progressBar hr "" height: 3 offset:[0,15]
 	button btnPrev "<< Back" align: #left  across: 2
 	button btnNext "Next >>" align: #right  enabled: true	
 	on btnPrev pressed do goStep 3		
-	on btnNext pressed do goStep 5
+	on btnNext pressed do 
+	(	
+		if(not isSelected()) do return false
+		if(sPreviewPath.count == 0) do return messageBox "Please add at least one image!" title: "Warning!"
+		goStep 5
+	)
 	
+	on _STEP4 open do
+	(
+		btmPreview.SizeMode = (dotNetclass "System.Windows.Forms.PictureBoxSizeMode").Zoom  
+	)
 	
+	fn checkMainPreview =
+	(
+		a = makeUniqueArray bMainPreview
+		if(a.count == 1 and a[1] == false) do bMainPreview[1] = true
+		s = ddlPreview.selection 
+		if(s != 0) do cbxMainPreview.checked = if(bMainPreview[s] == true) then true else false
+	)
+	
+	fn setMainPreview i x =
+	(
+		for p in 1 to bMainPreview.count do bMainPreview[p] = false
+		bMainPreview[i] = x				
+	)
+	
+	fn getOpenImage = 
+	(
+		f = #()
+		
+		imageDialog = dotNetObject "System.Windows.Forms.OpenFileDialog" 
+		imageDialog.title = "Select Pictures"
+		imageDialog.Multiselect = true
+		imageDialog.Filter = "JPG (*.jpg)|*.jpg|PNG (*.png)|*.png|BMP (*.bmp)|*bmp"
+		imageDialog.FilterIndex = 1
+		
+		result = imageDialog.showDialog() 
+		result.ToString() 
+		result.Equals result.OK 
+		result.Equals result.Cancel 
+		
+		f = imageDialog.fileNames 
+		 
+		return f
+	)
+	
+	fn showPreview f show: false =
+	(	
+		s = ddlPreview.selection 
+			
+		if(f == undefined or not doesFileExist f) do return false
+		
+		b = openBitMap f
+		setClipboardBitmap  b
+		clipboard = dotNetClass "System.Windows.Forms.Clipboard"
+		img = clipboard.GetImage()
+		btmPreview.image = img
+		
+		w = b.width as string
+		h = b.height as string
+		
+		lblDimensions.caption = w + " x " + h	
+		
+		checkMainPreview()
+	)
+	
+	on ddlPreview selected x do
+	(
+		showPreview sPreviewPath[x]
+	)
+	
+	on btnPreviewAdd pressed do
+	(
+		f = getOpenImage()
+				
+		if(f.count != 0) do
+		(
+			checkMainPreview()
+			
+			for i in f do 
+			(	
+				append sPreviewPath i
+				append bMainPreview false
+			)
+						
+			ddlPreview.items = for i in sPreviewPath collect filenameFromPath i
+
+			ddlPreview.selection = sPreviewPath.count
+
+			showPreview f[f.count]							
+		)
+	)
+	
+	on btnDelPreview pressed do
+	(
+		s = ddlPreview.selection
+				
+		if(s != 0) do 
+		(
+			lblDimensions.caption = ""
+			cbxMainPreview.checked = false
+			deleteItem sPreviewPath s
+			deleteItem bMainPreview s
+			ddlPreview.items = for i in sPreviewPath collect filenameFromPath i
+			ddlPreview.selection = 1
+			if(sPreviewPath.count != 0) then showPreview sPreviewPath[1] else btmPreview.image = undefined			
+			checkMainPreview()
+		)
+		
+	)
+	
+	on cbxMainPreview changed x do 
+	(	
+		s = ddlPreview.selection
+				
+		if(s != 0) do 
+		(
+			setMainPreview s x
+			checkMainPreview()
+		)
+	)
 )
 
-rollout _STEP5 "STEP 5: Create Archive" 
+rollout _STEP5 "STEP 5: Pack Model" 
 (
+	group "Summary"
+	(
+		dotNetControl Category "System.Windows.Forms.Label" text: "" 
+		
+		dotNetControl lbl1 "System.Windows.Forms.Label" text: "Model Name:" across: 2 offset: [0, 20]
+		dotNetControl _lblModelName "System.Windows.Forms.Label" text: "" offset: [0, 20]
+		
+		dotNetControl lbl2 "System.Windows.Forms.Label" text: "Manufacturer:" across: 2 
+		dotNetControl _lblManufacturer "System.Windows.Forms.Label" text: "" 
+		
+		dotNetControl lbl3 "System.Windows.Forms.Label" text: "Modeller:" across: 2 
+		dotNetControl _lblModeller "System.Windows.Forms.Label" text: "" 
+		
+		dotNetControl lbl4 "System.Windows.Forms.Label" text: "Project:" across: 2 
+		dotNetControl _lblProject "System.Windows.Forms.Label" text: "" 
+		
+		dotNetControl lbl5 "System.Windows.Forms.Label" text: "Tags:" across: 2 
+		dotNetControl _lblTags "System.Windows.Forms.Label" text: "" 
+				
+		dotNetControl lbl6 "System.Windows.Forms.Label" text: "Units:" across: 2 offset: [0, 20]
+		dotNetControl _lblUnits "System.Windows.Forms.Label" text: "" offset: [0, 20]	
+
+		dotNetControl lbl7 "System.Windows.Forms.Label" text: "Dimension:" across: 2 
+		dotNetControl _lblDim "System.Windows.Forms.Label" text: "" 
+		
+		dotNetControl lbl8 "System.Windows.Forms.Label" text: "Polys:" across: 2 
+		dotNetControl _lblPolys "System.Windows.Forms.Label" text: "" 
+		
+		dotNetControl lbl9 "System.Windows.Forms.Label" text: "Render:" across: 2 
+		dotNetControl _lblRender "System.Windows.Forms.Label" text: "" 
+		
+		dotNetControl lbl10 "System.Windows.Forms.Label" text: "Overview:" across: 2 
+		dotNetControl _lblOverview "System.Windows.Forms.Label" text: "" 
+		
+		dotNetControl lbl11 "System.Windows.Forms.Label" text: "Preview:" across: 2 
+		dotNetControl _lblPreview "System.Windows.Forms.Label" text: "" 
+		
+		dotNetControl lbl12 "System.Windows.Forms.Label" text: "Rigged:" across: 2 
+		dotNetControl _lblRigged "System.Windows.Forms.Label" text: "" 
+		
+		dotNetControl lbl13 "System.Windows.Forms.Label" text: "Animated:" across: 2 
+		dotNetControl _lblAnimated "System.Windows.Forms.Label" text: "" 
+		
+		dotNetControl lbl14 "System.Windows.Forms.Label" text: "Baked:" across: 2 
+		dotNetControl _lblBaked "System.Windows.Forms.Label" text: "" 
+		
+		dotNetControl lbl15 "System.Windows.Forms.Label" text: "Unwrap:" across: 2 
+		dotNetControl _lblUnwrap "System.Windows.Forms.Label" text: "" 
+	)
 	
+	button btnPackModel "Pack Model" width: 244 height: 45
+		
+	fn getNA t = if(t == "" or t.count == 0) then "N/A" else t
+	fn getYesNo t = if(t == true) then "Yes" else "No"
+	
+	fn getControls n =
+	(
+		c = #()
+		for i in _STEP5.controls where classof i == dotNetControl do
+		(  			
+			s = filterString (i as string) ":" 
+			
+			if(matchPattern s[2] pattern: (n + "*")) do append c i
+		)
+		
+		return c
+	)
+	
+	on _STEP5 open do
+	(		
+		bg = getBgColor()
+		txt = getTextColor()
+	
+		labels = getControls "lbl"
+		
+		for i in labels do
+		(
+			i.backColor = bg
+			i.foreColor = txt
+			i.width = 100
+		)
+		
+		labels = getControls "_lbl"
+		for i in labels do
+		(
+			i.backColor = bg
+			i.foreColor = txt
+			i.pos.x -= 40
+			i.width += 40
+		)
+		
+		Category.backColor = bg
+		Category.foreColor = txt
+		
+		Category.text = "No category"
+		if(category3[iCat3][2] != "") do	Category.text = category1[iCat1][2] + " / " + category2[iCat2][2] + " / " + category3[iCat3][2]
+		_lblModelName.text = getNA sModelName
+		_lblManufacturer.text = getNA sManufacturer
+		_lblModeller.text = getNA sModeller
+		_lblProject.text = getNA sProject
+		_lblTags.text = getNA sTags
+		_lblPreview.text = getYesNo (sPreviewPath.count > 0)
+		_lblUnits.text = getUnits()
+		_lblDim.text = getDim selection
+		_lblPolys.text = polyCount selection
+		_lblRender.text = (getRender())[2]
+		_lblOverview.text = getYesNo (sOverview.count > 0)
+		_lblRigged.text = getYesNo bRigged
+		_lblAnimated.text = getYesNo bAnimated
+		_lblBaked.text = getYesNo bBakedTextures
+		_lblUnwrap.text = getYesNo bUnwrap
+	)
+		
+	fn checkTexturesError =
+	(
+		errorTex = #()
+		oldTex = #()
+				
+		for i in selection where i.material != undefined do
+		(
+			for type in BitmapTypes where classOf type == textureMap do
+			(
+				for b in getClassInstances type target:i where b != undefined do
+				(				
+					if(invalidBitmap b and findItem oldTex b == 0) then
+					(										
+						append errorTex #("empty file name path! Map: " + b.name, i.name) 
+						append oldTex b
+					)
+					else if (validBitmap b and doesFileExist (getFullPath (b.filename)) == false) then
+					(
+						append errorTex #(b.filename, i.name) 
+					)
+				)
+			)
+		)
+		
+		if (errorTex.count > 0) do
+		(
+			m = "[" + localTime + "] : Error! Not found next textures. Please fix model and try again.\n\n"
+			
+			for er in errorTex do m += "Object: " + er[2] + "\nTexture: " + er[1] + "\n\n"
+			
+			messageBox m title: "Error!"
+			
+			return true
+		)
+		
+		return false
+	)
+	
+	fn copyPreview szPreview szDir =
+	(
+		iPreview = 0
+		for i in 1 to sPreviewPath.count do
+		(
+			p = getFilenameType sPreviewPath[i] 
+			if(doesFileExist sPreviewPath[i]) do 
+			(
+				iPreview += 1
+				
+				if(bMainPreview[i]) then 
+				(
+					copyFile sPreviewPath[i] (szDir + "main" + p) 
+				)
+				else
+				(
+					copyFile sPreviewPath[i] (szPreview + "picture" + iPreview as string + p)
+				)
+			)
+		)	
+	)
+	
+	fn copyMaps szMaps szName = 
+	(
+		oldTex = #()
+		oldTexPaths = #()
+		toRename = #()
+		iCnt = 1
+				
+		for i in selection where i.material != undefined do
+		(
+			for type in BitmapTypes where classOf type == textureMap do 
+			(	
+				for b in getClassInstances type target:i where (validBitmap b) and findItem oldTex b == 0 do
+				(																	
+					f = getFullPath (b.filename)
+				
+					n = filenameFromPath f
+					p = getFilenamePath f
+					ext = getFilenameType f
+							
+					n = szName + "-" + (getNum iCnt) + ext
+										
+					if(doesFileExist f) do
+					( 
+						ep = findItem oldTexPaths b.filename
+						
+						if(ep != 0) then n = toRename[ep][5]
+						
+						append oldTex b
+						append toRename #(b, (p + n), (szMaps + n), f, n) 
+				
+						if(ep == 0) do iCnt += 1
+						append oldTexPaths b.filename
+					)												
+				)
+			)
+		)
+							
+		for t in toRename do
+		(
+			t[1].filename = @"maps\" + t[5]
+			t[1].name = getFilenameFile t[5]
+			
+			copyFile t[4] t[3]
+		)		
+	)
+	
+	on btnPackModel pressed do
+	(
+		/*fileToLoad = maxFilePath + maxFileName
+		if(fileToLoad.count < 1) do return messageBox "Please save scene!" title: "Warning!"
+		if(sModelName.count < 1) do return messageBox "Please specify Model Name in STEP 1!" title: "Warning!"
+		if(sTags.count < 1) do return messageBox "Please specify Tags in STEP 1!" title: "Warning!"
+		if(catID == -1) do return messageBox "Please select the category in STEP 1!" title: "Warning!"	*/	
+		
+		-- Set paths
+		
+		szName = stripName sModelName
+		
+		szDir = _SAVEPATH + szName + @"\"		
+		szMaps = szDir + @"maps\"
+		szAssets = szDir + @"assets\"
+		szPreview = szDir + @"preview\"
+		szExport = szDir + @"export\"
+		szInfo = szDir  + "info.txt"
+		
+		-- Set out zip
+		szZip = _SAVEPATH + szName + ".zip"		 
+				
+		-- Make dirs
+		
+		makeDir szDir	
+		makeDir szMaps	
+		makeDir szAssets
+		makeDir szPreview	
+		makeDir szExport	
+		
+		-- Check tex errors	
+		if(checkTexturesError()) do return false
+		
+		-- Copy previews
+		copyPreview szPreview szDir
+			
+		-- Copy maps
+		copyMaps szMaps szName
+			
+		currentRender = renderers.current
+	)
 	
 	progressBar hr "" height: 3 offset:[0,15]
 	button btnPrev "<< Back" align: #left 
@@ -612,11 +1301,5 @@ rollout rAbout "About"
 	
 )
 
-goStep 3
+goStep 5
 
---addRollout _STEP1 rAssetsLibraryModelPack rolledUp:false 
-/*addRollout _STEP2 rAssetsLibraryModelPack rolledUp:true 
-addRollout _STEP3 rAssetsLibraryModelPack rolledUp:true 
-addRollout _STEP4 rAssetsLibraryModelPack rolledUp:true 
-addRollout _STEP5 rAssetsLibraryModelPack rolledUp:true 
-addRollout rAbout rAssetsLibraryModelPack rolledUp:true */
