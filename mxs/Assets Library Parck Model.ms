@@ -4,7 +4,7 @@ global _URL = "http://svg-web-003/"
 global _SAVEPATH = @"C:\temp\Assets Library\"
 
 try(closeRolloutFloater rAssetsLibraryModelPack)catch()
-global rAssetsLibraryModelPack = newRolloutFloater "Pack Model" 280 680
+global rAssetsLibraryModelPack = newRolloutFloater "Pack Model" 280 700
 
 /* GLOBALS */
 
@@ -16,7 +16,7 @@ global _STEP5
 global rAbout
 
 global Keys = dotNetClass "System.Windows.Forms.Keys"
-global szGoodChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890_- " 
+global szGoodChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890&$%#()!_-+ " 
 global BitmapTypes = #(Bitmaptexture, CoronaBitmap)
 
 global isLoadedStep1 = false
@@ -42,6 +42,7 @@ global sTags = ""
 global bRigged = false
 global bAnimated = false
 global bBakedTextures = false
+global bLods = false
 global bUnwrap = false
 
 global iCat1 = 1
@@ -212,7 +213,7 @@ fn isGroup s =
 	return s
 )
 
-fn isValidText t title: undefined =
+fn isValidText t title: "" =
 (
 	c = for i in 1 to t.count where findString szGoodChars t[i] == undefined collect t[i]
 
@@ -250,12 +251,12 @@ fn getRender =
 (
 	r = renderers.current as string
 
-	if matchpattern r pattern:"*Corona*" do return #("_corona", "Corona")
-	if matchpattern r pattern:"*V_Ray_Adv*" do return #("_vray", "VRay")
-	if matchpattern r pattern:"*Default_Scanline*" do return #("_scanline", "Default Scanline")
-	if matchpattern r pattern:"*mental_ray*" do return #("_mentalray", "Mental Ray")
-	if matchpattern r pattern:"*iray_Renderer*" do return #("_iray", "IRay")
-	if matchpattern r pattern:"*maxwell*" do return #("_maxwell", "Maxwell")
+	if matchpattern r pattern:"*Corona*" do return #("-corona", "Corona")
+	if matchpattern r pattern:"*V_Ray_Adv*" do return #("-vray", "VRay")
+	if matchpattern r pattern:"*Default_Scanline*" do return #("-scanline", "Default Scanline")
+	if matchpattern r pattern:"*mental_ray*" do return #("-mentalray", "Mental Ray")
+	if matchpattern r pattern:"*iray_Renderer*" do return #("-iray", "IRay")
+	if matchpattern r pattern:"*maxwell*" do return #("-maxwell", "Maxwell")
 		
 	return #("", "")
 )
@@ -332,8 +333,7 @@ fn httpGet url =
 fn httpUpload file =
 (	
 	url = _URL + "vault/upload.php"
-	file = @"C:\Users\v.lukyanenko\Desktop\test model\Tabano_Chair_Leather\Tabano_Chair_Leather.zip"
-	
+		
 	try
 	(
 		w = dotNetObject (dotNetClass "System.Net.WebClient")
@@ -344,7 +344,7 @@ fn httpUpload file =
 	
 	return false
 )
---httpUpload ""
+
 fn findTag t =
 (
 	s = filterString t ","
@@ -397,10 +397,12 @@ rollout _STEP1 "STEP 1: Model Info"
 	
 	group "Additional Info"
 	(
+		checkbox cbxUnwrap "Unwrap"
 		checkbox cbxRigged "Rigged"
 		checkbox cbxAnimated "Animated"
 		checkbox cbxBakedTextures "Baked Textures"
-		checkbox cbxUnwrap "Unwrap"
+		checkbox cbxLods "Lods"
+		
 	)
 	
 	timer tmr1 "Tmr1" active: false interval: 300
@@ -483,6 +485,7 @@ rollout _STEP1 "STEP 1: Model Info"
 		bRigged = cbxRigged.checked
 		bAnimated = cbxAnimated.checked
 		bBakedTextures = cbxBakedTextures.checked
+		bLods = cbxLods.checked
 		bUnwrap = cbxUnwrap.checked
 			
 		iCat1 = ddlLib.selection
@@ -577,6 +580,7 @@ rollout _STEP1 "STEP 1: Model Info"
 		cbxRigged.checked = bRigged
 		cbxAnimated.checked = bAnimated
 		cbxBakedTextures.checked = bBakedTextures
+		cbxLods.checked = bLods
 		cbxUnwrap.checked	= bUnwrap
 		
 		ddlLib.items = for i in category1 collect i[2]
@@ -688,7 +692,11 @@ rollout _STEP2 "STEP 2: Model Overview"
 	progressBar hr "" height: 3 offset:[0,15]
 	button btnPrev "<< Back" align: #left  across: 2
 	button btnNext "Next >>" align: #right  enabled: true	
-	on btnPrev pressed do goStep 1		
+	on btnPrev pressed do 
+	(	
+		sOverview = edtOverview.text
+		goStep 1		
+	)
 	on btnNext pressed do 
 	(
 		if(not isSelected()) do return false
@@ -866,27 +874,6 @@ rollout _STEP3 "STEP 3: Model Transform"
 	)
 )
 
-/*
-rollout _STEP3 "STEP 3: Basic Setup" 
-(	
-	group "Geometry"
-	(
-		checkbox cbxRenameObjects "Rename Objects" checked: true align: #left tooltip: "Rename objects to name specified in STEP 1."
-		checkbox cbxLayer0 "Remove Layers" checked: true align: #left tooltip: "Remove all layers.\nSet default (0) layer for all objects."
-	)
-	group "Materials"
-	(
-		checkbox cbxSetMaterialNames "Rename Materials" checked: true tooltip: "Rename materials to name specified in STEP 1."
-		checkbox cbxTexturesRename "Rename Textures" checked: true tooltip: "Add model tag in textures file name specified in STEP 1."		
-	)
-	
-	progressBar hr "" height: 3 offset:[0,15]
-	button btnPrev "<< Back" align: #left  across: 2
-	button btnNext "Next >>" align: #right  enabled: true	
-	on btnPrev pressed do goStep 2		
-	on btnNext pressed do goStep 4
-)*/
-
 rollout _STEP4 "STEP 4: Preview" 
 (
 	group "Preview"
@@ -911,10 +898,6 @@ rollout _STEP4 "STEP 4: Preview"
 		goStep 5
 	)
 	
-	on _STEP4 open do
-	(
-		btmPreview.SizeMode = (dotNetclass "System.Windows.Forms.PictureBoxSizeMode").Zoom  
-	)
 	
 	fn checkMainPreview =
 	(
@@ -1025,6 +1008,15 @@ rollout _STEP4 "STEP 4: Preview"
 			checkMainPreview()
 		)
 	)
+	
+	on _STEP4 open do
+	(
+		btmPreview.SizeMode = (dotNetclass "System.Windows.Forms.PictureBoxSizeMode").Zoom  
+		
+		ddlPreview.items = for i in sPreviewPath collect filenameFromPath i
+
+		if(sPreviewPath.count > 0) do showPreview sPreviewPath[1]
+	)
 )
 
 rollout _STEP5 "STEP 5: Pack Model" 
@@ -1048,8 +1040,11 @@ rollout _STEP5 "STEP 5: Pack Model"
 		dotNetControl lbl5 "System.Windows.Forms.Label" text: "Tags:" across: 2 
 		dotNetControl _lblTags "System.Windows.Forms.Label" text: "" 
 				
-		dotNetControl lbl6 "System.Windows.Forms.Label" text: "Units:" across: 2 offset: [0, 20]
-		dotNetControl _lblUnits "System.Windows.Forms.Label" text: "" offset: [0, 20]	
+		dotNetControl lbl55 "System.Windows.Forms.Label" text: "Format:" across: 2 offset: [0, 20]
+		dotNetControl _lblFormat "System.Windows.Forms.Label" text: "" offset: [0, 20]	
+		
+		dotNetControl lbl6 "System.Windows.Forms.Label" text: "Units:" across: 2
+		dotNetControl _lblUnits "System.Windows.Forms.Label" text: ""	
 
 		dotNetControl lbl7 "System.Windows.Forms.Label" text: "Dimension:" across: 2 
 		dotNetControl _lblDim "System.Windows.Forms.Label" text: "" 
@@ -1077,6 +1072,9 @@ rollout _STEP5 "STEP 5: Pack Model"
 		
 		dotNetControl lbl15 "System.Windows.Forms.Label" text: "Unwrap:" across: 2 
 		dotNetControl _lblUnwrap "System.Windows.Forms.Label" text: "" 
+		
+		dotNetControl lbl16 "System.Windows.Forms.Label" text: "Lods:" across: 2 
+		dotNetControl _lblLods "System.Windows.Forms.Label" text: "" 
 	)
 	
 	button btnPackModel "Pack Model" width: 244 height: 45
@@ -1140,6 +1138,8 @@ rollout _STEP5 "STEP 5: Pack Model"
 		_lblAnimated.text = getYesNo bAnimated
 		_lblBaked.text = getYesNo bBakedTextures
 		_lblUnwrap.text = getYesNo bUnwrap
+		_lblLods.text = getYesNo bLods
+		_lblFormat.text = (getMaxVersion())[1]
 	)
 		
 	fn checkTexturesError =
@@ -1182,26 +1182,33 @@ rollout _STEP5 "STEP 5: Pack Model"
 	
 	fn copyPreview szPreview szDir =
 	(
+		out = #()
+		
 		iPreview = 0
 		for i in 1 to sPreviewPath.count do
 		(
 			p = getFilenameType sPreviewPath[i] 
 			if(doesFileExist sPreviewPath[i]) do 
-			(
-				iPreview += 1
-				
+			(								
 				if(bMainPreview[i]) then 
 				(
-					copyFile sPreviewPath[i] (szDir + "main" + p) 
+					n = (szDir + "main" + p) 
+					copyFile sPreviewPath[i] n
+					append out n
 				)
 				else
 				(
-					copyFile sPreviewPath[i] (szPreview + "picture" + iPreview as string + p)
+					iPreview += 1
+					n = (szPreview + "picture" + iPreview as string + p)
+					copyFile sPreviewPath[i] n
+					append out n
 				)
 			)
-		)	
+		)
+
+		return out
 	)
-	
+		
 	fn copyMaps szMaps szName = 
 	(
 		oldTex = #()
@@ -1248,13 +1255,136 @@ rollout _STEP5 "STEP 5: Pack Model"
 		)		
 	)
 	
+	fn renameObjects szName = 
+	(
+		g = objects
+				
+		for i in 1 to g.count where isValidNode g[i] do
+		(
+			g[i].name = szName + "-" + (getNum i) 
+		)
+	)
+	
+	fn getMaterialDependence s type =
+	(
+		sceneMaps = #()
+		
+		for c in type.classes where c != undefined and findItem BitmapTypes c == 0 do 
+		(		
+			for g in s do
+			(
+				for m in getClassInstances c target:g where m != undefined do 
+				(					
+					appendIfUnique sceneMaps m
+				)
+			)
+		)	
+		
+		return sceneMaps
+	)
+	
+	fn renameMaterials szName = 
+	(
+		oldMtl = #()
+		iCnt = 1
+						
+		toRename = #()
+		mat = getMaterialDependence selection material
+		tex = getMaterialDependence selection textureMap	
+		
+		join toRename mat
+		join toRename tex
+				
+		for i in toRename do 
+		(
+			i.name = szName + "-" + (getNum iCnt)
+			iCnt += 1	
+		)
+	)
+	
+	fn removeLayers = 
+	(
+		layer0 = LayerManager.getLayer 0
+		for i in objects do layer0.addNode i
+	)
+	
+	fn copyIES szAssets szName = 
+	(	
+		global iIesCnt = 1
+		
+		fn copyIes ies szAssets szName =
+		(
+			if(ies == undefined) do return undefined
+			
+			ies = getFullPath ies
+			
+			if(not doesFileExist ies) do return ies
+			
+			n = filenameFromPath ies
+			ext = getFilenameType ies
+			
+			f = szAssets  + "IES-" + szName + "-" + (getNum iIesCnt) + ext
+			
+			copyFile ies f
+			
+			iIesCnt += 1
+			
+			return f
+		)
+				
+		for l in lights where l.isSelected == true do
+		(
+			if(isProperty l #ies_file) do l.ies_file = copyIes (l.ies_file) szAssets szName
+			if(isProperty l #webFile) do l.webFile = copyIes (l.webFile) szAssets szName
+			if(isProperty l #iesFile) do l.iesFile = copyIes (l.iesFile) szAssets szName
+		)		
+	)
+	
+	fn createInfo szDir previewList =
+	(
+		f = szDir + "info.ini"
+		v = getMaxVersion()
+		r = getRender()
+		p = polyCount geometry
+		d = getDim geometry
+		u = getUnits()
+		
+		o = substituteString sOverview "\r\n" "|"
+		
+		setIniSetting f "INFO" "TYPE" "model"
+		setIniSetting f "INFO" "CATID" (catID as string)
+		setIniSetting f "INFO" "NAME" sModelName
+		setIniSetting f "INFO" "FORMAT" v[1]
+		setIniSetting f "INFO" "RENDER" r[2]
+		setIniSetting f "INFO" "POLYS" p
+		setIniSetting f "INFO" "UNITS" u
+		setIniSetting f "INFO" "DIMENSION" d
+		setIniSetting f "INFO" "PROJECT" (getNA sProject)
+		setIniSetting f "INFO" "RIGGED" (getYesNo bRigged)
+		setIniSetting f "INFO" "LODS" (getYesNo bLods)
+		setIniSetting f "INFO" "MODELLER" sModeller
+		setIniSetting f "INFO" "TAGS" sTags
+		setIniSetting f "INFO" "MANUFACTURER" sManufacturer
+		setIniSetting f "INFO" "OVERVIEW" o
+		setIniSetting f "INFO" "UNWRAP" (getYesNo bUnwrap)
+		setIniSetting f "INFO" "PREVIEW" (getYesNo (sPreviewPath.count > 0))
+		
+		iCnt = 0	
+		for i in previewList do 
+		(
+			j = substituteString i szDir ""
+			setIniSetting f "PREVIEW" (iCnt as string) j
+			iCnt += 1
+		)
+	)
+	
 	on btnPackModel pressed do
 	(
-		/*fileToLoad = maxFilePath + maxFileName
+		fileToLoad = maxFilePath + maxFileName
 		if(fileToLoad.count < 1) do return messageBox "Please save scene!" title: "Warning!"
 		if(sModelName.count < 1) do return messageBox "Please specify Model Name in STEP 1!" title: "Warning!"
 		if(sTags.count < 1) do return messageBox "Please specify Tags in STEP 1!" title: "Warning!"
-		if(catID == -1) do return messageBox "Please select the category in STEP 1!" title: "Warning!"	*/	
+		if(catID == -1) do return messageBox "Please select the category in STEP 1!" title: "Warning!"	
 		
 		-- Set paths
 		
@@ -1265,7 +1395,7 @@ rollout _STEP5 "STEP 5: Pack Model"
 		szAssets = szDir + @"assets\"
 		szPreview = szDir + @"preview\"
 		szExport = szDir + @"export\"
-		szInfo = szDir  + "info.txt"
+		szInfo = szDir  + "info.ini"
 		
 		-- Set out zip
 		szZip = _SAVEPATH + szName + ".zip"		 
@@ -1282,12 +1412,52 @@ rollout _STEP5 "STEP 5: Pack Model"
 		if(checkTexturesError()) do return false
 		
 		-- Copy previews
-		copyPreview szPreview szDir
+		previewList = copyPreview szPreview szDir
 			
-		-- Copy maps
+		-- Copy maps		
 		copyMaps szMaps szName
 			
+			
+		-- Copy IES
+		copyIES szAssets szName	
+			
 		currentRender = renderers.current
+			
+		-- Add Versions
+		saveNodes selection (szDir + "_tmp.max") quiet:true
+		resetMaxFile #noPrompt
+		mergeMAXFile (szDir + "_tmp.max") #select #mergedups #renameMtlDups #noRedraw quiet:true			
+		deleteFile (szDir + "_tmp.max")
+			
+		try(renderers.current = currentRender)catch()
+			
+		select objects
+			
+		renameObjects szName
+		renameMaterials szName 
+		removeLayers()
+		
+		v = getMaxVersion()
+		r = getRender()
+		
+		f = szDir + szName + r[1] + ".max"
+		saveNodes objects f saveAsVersion:(v[1] as integer) quiet:true
+		
+		f = szExport + szName + r[1] + ".fbx"
+		FBXExporterSetParam "FileVersion" "FBX201200"	-- Warning!! This option important!!
+		exportFile f #noPrompt  --selectedOnly:true
+		
+		createInfo szDir previewList
+		
+		zip = zip()
+		
+		zip.packFiles source: szDir target: _SAVEPATH name: szName del: true
+		
+		resetMaxFile #noPrompt
+		loadMaxFile fileToLoad useFileUnits: true quiet:true		
+		
+		q = queryBox "Model pack success!\nDo you want to open containing folder?" title: "Success!"
+		if(q) do shellLaunch _SAVEPATH ""		
 	)
 	
 	progressBar hr "" height: 3 offset:[0,15]
@@ -1298,8 +1468,13 @@ rollout _STEP5 "STEP 5: Pack Model"
 
 rollout rAbout "About" 
 (
+	label lbl1 "Assets Library Pack Model" offset: [0, 30]
+	label lbl2 "v1.0.0"
+	label lb3 "Vasily Lukyanenko"
+	label lb4 "VISCO" offset: [0, 20]
+	label lbl5 "" offset: [0, 15]
 	
 )
 
-goStep 5
+goStep 1
 
