@@ -21,9 +21,9 @@ global BitmapTypes = #(Bitmaptexture, CoronaBitmap)
 
 global isLoadedStep1 = false
 global catID = -1
-global category1 = #(#("0", ""))
-global category2 = #(#("0", ""))
-global category3 = #(#("0", ""))
+global category1 = #(#("0", " "))
+global category2 = #(#("0", " "))
+global category3 = #(#("0", " "))
 global tags = #()
 global modellers = #()
 global models= #()
@@ -32,7 +32,8 @@ global manufacturers = #()
 global sPreviewPath = #()
 global bMainPreview = #()
 global sOverview = ""
-
+global zipper
+	
 global sModelName = ""
 global sManufacturer = ""
 global sModeller = ""
@@ -195,6 +196,42 @@ fn goStep step =
 	addRollout rAbout rAssetsLibraryModelPack border: true rolledUp: true
 )
 
+fn implode a tag: ";" = 
+(
+	s = ""
+	for i in a do s += i as string + tag
+	return trimRight s tag
+)
+
+fn explode s tag: ";" = return filterString s tag
+	
+fn implodeCat c =
+(
+	s = ""
+	for i in c do s += i[1] as string + "|" + i[2] as string + ";"
+	return s
+)
+	
+fn explodeCat s = for i in filterString s ";" collect filterString i "|" splitEmptyTokens: true		
+
+fn saveProp p d = try(fileProperties.addProperty #custom p d) catch()
+fn getProp p type: #text =
+(
+	i = fileProperties.findProperty #custom p
+	if(type == #array and i !=0) do return explode (fileProperties.getPropertyValue #custom i)
+	if(i != 0) do return  fileProperties.getPropertyValue #custom i
+	
+	case type of
+	(
+		#bool: return false
+		#text: return ""
+		#int: return 1
+		#negative: return -1
+		#array: return #("")
+		default: ""
+	)
+)
+
 fn isSelected =
 (
 	if(selection.count < 1) do 
@@ -253,8 +290,8 @@ fn getRender =
 
 	if matchpattern r pattern:"*Corona*" do return #("-corona", "Corona")
 	if matchpattern r pattern:"*V_Ray_Adv*" do return #("-vray", "VRay")
-	if matchpattern r pattern:"*Default_Scanline*" do return #("-scanline", "Default Scanline")
-	if matchpattern r pattern:"*mental_ray*" do return #("-mentalray", "Mental Ray")
+	if matchpattern r pattern:"*Default_Scanline*" do return #("-scanline", "Scanline")
+	if matchpattern r pattern:"*mental_ray*" do return #("-mentalray", "MentalRay")
 	if matchpattern r pattern:"*iray_Renderer*" do return #("-iray", "IRay")
 	if matchpattern r pattern:"*maxwell*" do return #("-maxwell", "Maxwell")
 		
@@ -356,6 +393,31 @@ fn findTag t =
 	return find
 )
 
+fn saveAllProp = 
+(
+	saveProp "edtModelName" sModelName
+	saveProp "edtManufacturer" sManufacturer
+	saveProp "edtModeller" sModeller
+	saveProp "edtProject" sProject
+	saveProp "edtTags" sTags
+	saveProp "catID" catID
+		
+	saveProp "cbxRigged" bRigged
+	saveProp "cbxAnimated" bAnimated
+	saveProp "cbxBakedTextures" bBakedTextures
+	saveProp "cbxLods" bLods
+	saveProp "cbxUnwrap" bUnwrap
+	
+	saveProp "ddlLib" iCat1
+	saveProp "ddlCat" iCat2
+	saveProp "ddlSubCat" iCat3
+		
+	saveProp "category1" (implodeCat category1)
+	saveProp "category2" (implodeCat category2)
+	saveProp "category3" (implodeCat category3)
+	saveProp "edtOverview" sOverview
+)
+
 rollout _STEP1 "STEP 1: Model Info" 
 (	
 
@@ -438,6 +500,7 @@ rollout _STEP1 "STEP 1: Model Info"
 		)
 	)
 	
+	
 	fn trim t = trimLeft (trimRight t " ") " "
 	
 	fn setTagText t = 
@@ -491,7 +554,7 @@ rollout _STEP1 "STEP 1: Model Info"
 		iCat1 = ddlLib.selection
 		iCat2 = ddlCat.selection
 		iCat3 = ddlSubCat.selection
-		
+
 		if(catID == -1) do return messageBox "Please select the category!" title: "Warning!"		
 		if(sModelName.count == 0) do return messageBox "Please enter correct Model Name!" title: "Warning!"		
 		if(sTags.count == 0) do return messageBox "Please enter few tags!" title: "Warning!"
@@ -499,6 +562,8 @@ rollout _STEP1 "STEP 1: Model Info"
 		if(not isValidText sModelName title: "Model Name") do return false 
 		if(not isValidText sManufacturer title: "Manufacturer") do return false 
 		if(not isSelected()) do return false
+			
+		saveAllProp()
 		
 		goStep 2	
 	)
@@ -531,7 +596,7 @@ rollout _STEP1 "STEP 1: Model Info"
 	
 	fn getCat id =
 	(
-		catID = -1
+		--catID = -1
 		url = _URL + "vault/mxs/mxsGetCat.php?pid=" + id as string + "&time=" + timeStamp() as string
 		r = httpGet url
 		
@@ -569,30 +634,36 @@ rollout _STEP1 "STEP 1: Model Info"
 	on _STEP1 open do
 	(	
 		initDotNet()
-		
-		edtModelName.text = sModelName
-		edtModelName.text = sModelName
-		edtManufacturer.text = sManufacturer 
-		edtModeller.text = sModeller 
-		edtProject.text = sProject
-		edtTags.text = sTags
 
-		cbxRigged.checked = bRigged
-		cbxAnimated.checked = bAnimated
-		cbxBakedTextures.checked = bBakedTextures
-		cbxLods.checked = bLods
-		cbxUnwrap.checked	= bUnwrap
+		edtModelName.text = getProp "edtModelName"
+		edtManufacturer.text = getProp "edtManufacturer" 
+		edtModeller.text =  getProp "edtModeller"
+		edtProject.text =  getProp "edtProject"
+		edtTags.text = getProp "edtTags"
+
+		cbxRigged.checked = getProp "cbxRigged" type: #bool
+		cbxAnimated.checked = getProp "cbxAnimated" type: #bool
+		cbxBakedTextures.checked = getProp "cbxBakedTextures" type: #bool
+		cbxLods.checked = getProp "cbxLods" type: #bool
+		cbxUnwrap.checked	= getProp "cbxUnwrap" type: #bool
+		
+		category1 = explodeCat (getProp "category1")
+		category2 = explodeCat (getProp "category2")
+		category3 = explodeCat (getProp "category3")
 		
 		ddlLib.items = for i in category1 collect i[2]
 		ddlCat.items = for i in category2 collect i[2]
 		ddlSubCat.items = for i in category3 collect i[2]
 		
-		ddlLib.selection = iCat1
-		ddlCat.selection = iCat2
-		ddlSubCat.selection = iCat3
+		ddlLib.selection = getProp "ddlLib" type: #int
+		ddlCat.selection = getProp "ddlCat" type: #int
+		ddlSubCat.selection = getProp "ddlSubCat" type: #int
+		
+		catID = (getProp "catID" type: #negative) as integer
 		
 		tmr1.active = true	
 	
+		zipper = zip()
 	)
 		
 	on _STEP1 close do
@@ -605,6 +676,7 @@ rollout _STEP1 "STEP 1: Model Info"
 		if(not isLoadedStep1) do		
 		(
 			category1 = getCat 0
+					
 			ddlLib.items = for i in category1 collect i[2]
 				
 			tags = getTagsList()			
@@ -638,14 +710,16 @@ rollout _STEP1 "STEP 1: Model Info"
 	(
 		ddlCat.items = #()
 		ddlSubCat.items = #()
-		category2 = getCat (category1[v][1])		
+		category2 = getCat (category1[v][1])	
+				
 		ddlCat.items = for i in category2 collect i[2]
 	)
 	
 	on ddlCat selected v do
 	(
 		ddlSubCat.items = #()
-		category3 = getCat (category2[v][1])		
+		category3 = getCat (category2[v][1])	
+				
 		ddlSubCat.items = for i in category3 collect i[2]
 	)
 
@@ -677,7 +751,7 @@ rollout _STEP2 "STEP 2: Model Overview"
 		edtOverview.acceptsTab = true
 		edtOverview.wordWrap = true
 		
-		edtOverview.text = sOverview
+		edtOverview.text = getProp "edtOverview"
 	)
 	
 	on edtOverview keyPress s a do
@@ -700,8 +774,10 @@ rollout _STEP2 "STEP 2: Model Overview"
 	on btnNext pressed do 
 	(
 		if(not isSelected()) do return false
-		
-		sOverview = edtOverview.text
+					
+		sOverview = edtOverview.text			
+		saveProp "edtOverview" sOverview
+			
 		goStep 3		
 	)
 )
@@ -869,7 +945,8 @@ rollout _STEP3 "STEP 3: Model Transform"
 	on btnPrev pressed do goStep 2		
 	on btnNext pressed do 
 	(
-		if(not isSelected()) do return false		
+		if(not isSelected()) do return false	
+			
 		goStep 4		
 	)
 )
@@ -895,6 +972,10 @@ rollout _STEP4 "STEP 4: Preview"
 	(	
 		if(not isSelected()) do return false
 		if(sPreviewPath.count == 0) do return messageBox "Please add at least one image!" title: "Warning!"
+					
+		saveProp "sPreviewPath" (implode sPreviewPath)
+		saveProp "bMainPreview" (implode bMainPreview)
+			
 		goStep 5
 	)
 	
@@ -1012,6 +1093,10 @@ rollout _STEP4 "STEP 4: Preview"
 	on _STEP4 open do
 	(
 		btmPreview.SizeMode = (dotNetclass "System.Windows.Forms.PictureBoxSizeMode").Zoom  
+		
+		sPreviewPath = explode (getProp "sPreviewPath")
+		t = explode (getProp "bMainPreview")
+		bMainPreview = for i in t collect i as booleanClass
 		
 		ddlPreview.items = for i in sPreviewPath collect filenameFromPath i
 
@@ -1385,6 +1470,7 @@ rollout _STEP5 "STEP 5: Pack Model"
 		if(sModelName.count < 1) do return messageBox "Please specify Model Name in STEP 1!" title: "Warning!"
 		if(sTags.count < 1) do return messageBox "Please specify Tags in STEP 1!" title: "Warning!"
 		if(catID == -1) do return messageBox "Please select the category in STEP 1!" title: "Warning!"	
+		max file save
 		
 		-- Set paths
 		
@@ -1424,6 +1510,7 @@ rollout _STEP5 "STEP 5: Pack Model"
 		currentRender = renderers.current
 			
 		-- Add Versions
+		
 		saveNodes selection (szDir + "_tmp.max") quiet:true
 		resetMaxFile #noPrompt
 		mergeMAXFile (szDir + "_tmp.max") #select #mergedups #renameMtlDups #noRedraw quiet:true			
@@ -1440,23 +1527,24 @@ rollout _STEP5 "STEP 5: Pack Model"
 		v = getMaxVersion()
 		r = getRender()
 		
+		-- Save file properties
+		saveAllProp()
+		
 		f = szDir + szName + r[1] + ".max"
-		saveNodes objects f saveAsVersion:(v[1] as integer) quiet:true
+		saveMaxFile f saveAsVersion:(v[1] as integer) quiet:true
 		
 		f = szExport + szName + r[1] + ".fbx"
 		FBXExporterSetParam "FileVersion" "FBX201200"	-- Warning!! This option important!!
 		exportFile f #noPrompt  --selectedOnly:true
 		
 		createInfo szDir previewList
-		
-		zip = zip()
-		
-		zip.packFiles source: szDir target: _SAVEPATH name: szName del: true
+				
+		zipper.packFiles source: szDir target: _SAVEPATH name: (szName + " (" + r[2] + ")") del: true
 		
 		resetMaxFile #noPrompt
 		loadMaxFile fileToLoad useFileUnits: true quiet:true		
 		
-		q = queryBox "Model pack success!\nDo you want to open containing folder?" title: "Success!"
+		q = queryBox "Model packed success!\nDo you want to open containing folder?" title: "Success!"
 		if(q) do shellLaunch _SAVEPATH ""		
 	)
 	
@@ -1469,7 +1557,7 @@ rollout _STEP5 "STEP 5: Pack Model"
 rollout rAbout "About" 
 (
 	label lbl1 "Assets Library Pack Model" offset: [0, 30]
-	label lbl2 "v1.0.0"
+	label lbl2 "v1.0.1"
 	label lb3 "Vasily Lukyanenko"
 	label lb4 "VISCO" offset: [0, 20]
 	label lbl5 "" offset: [0, 15]
