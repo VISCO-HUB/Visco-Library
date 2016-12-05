@@ -2,7 +2,7 @@
 try(closeRolloutFloater fFastRender) catch()
 global fFastRender = newRolloutFloater "Make Preview" 250 800
 
-global szVer = "1.0.0"
+global szVer = "1.0.1"
 global lightHDR = undefined
 global reflectHDR = undefined
 global renderSystem = undefined
@@ -87,6 +87,13 @@ fn renderChange =
 	_rStep0.qualitySet()	
 )
 
+fn deleteDomes =
+(
+	l = for i in lights where classOf i == VrayLight and i.type == 1 collect i
+				
+	try(delete l)catch()
+)
+
 fn setRenderQuality =
 (
 	r = getRender()
@@ -100,6 +107,8 @@ fn setRenderQuality =
 	
 			renderSystem.colorMap_simpleExposure = 1.0
 			renderSystem.colorMap_highlightCompression = 2.0
+			
+			_rStep3.cbxInteractive.caption = "Interactive"
 		)
 		#Vray:
 		(
@@ -107,6 +116,8 @@ fn setRenderQuality =
 			
 			renderSystem.imageSampler_type = 1
 			renderSystem.gi_on = true
+			
+			_rStep3.cbxInteractive.caption = "Progressive"
 			
 			case q of 
 			(
@@ -183,6 +194,7 @@ rollout _rStep0  "Basic Setup"
 				sldQuality.value = s
 				
 				_rStep3.cbxInteractive.enabled = false
+				
 			)
 			#Corona:
 			(
@@ -218,12 +230,7 @@ rollout _rStep0  "Basic Setup"
 		
 		case r of
 		(
-			#VRay: 
-			(
-				l = for i in lights where classOf i == VrayLight and i.type == 1 collect i
-					
-				try(delete l)catch()
-			)
+			#VRay:  deleteDomes()			
 		)
 		
 		_rStep1.SetupScene()
@@ -324,7 +331,15 @@ rollout _rStep1  "HDRI"
 			)
 			#VRay:
 			(
+				append renderElements (VRayGlobalIllumination())
+				append renderElements (VRayReflection())
+				append renderElements (VRayRefraction())
 				
+				cm = VrayExtraTex() 				
+				cm.texture = VRayDirt()
+				cm.texture.radius = _rStep0.spnAOSize.value
+				
+				append renderElements cm
 			)
 		)
 		
@@ -453,7 +468,7 @@ rollout _rStep1  "HDRI"
 				if(h != undefined) do 
 				(
 					btnLightHDR.caption = filenameFromPath h.filename
-					
+										
 					o = getOffset h
 					spnLightHDR.value = offsetToAngle o
 					sldLightHDR.value = offsetToAngle o
@@ -478,13 +493,14 @@ rollout _rStep1  "HDRI"
 			#VRay:
 			(							
 				dome = getDome()
+				
 				if(dome == undefined) do return false
 				
 				h = getHDR dome.texmap
 				if(h != undefined) do
 				(
 					btnLightHDR.caption = filenameFromPath h.filename
-					
+										
 					o = getOffset h
 					spnLightHDR.value = offsetToAngle o
 					sldLightHDR.value = offsetToAngle o
@@ -570,7 +586,9 @@ rollout _rStep1  "HDRI"
 					lightHDR.filename = lightHDRPath
 					lightHDR.coords.mappingtype = 1
 					
-					dome = VrayLight()
+					dome = getDome()
+					if(dome == undefined) do dome = VrayLight()
+										
 					dome.type = 1
 					dome.multiplier = 1.0
 					dome.dome_spherical = true
@@ -1108,13 +1126,13 @@ fn postProcess =
 	
 	rollout rPostProcess "Post Process"
 	(
-		button btnImage "Wait while pre-rendering..." enabled: false border: false width: 640 height: 640 pos: [0, 0]
+		button btnImage "Wait while pre-rendering..." enabled: false border: false width: 800 height: 800 pos: [0, 0]
 	
 		subrollout subRollout1 "Settings"
 		
 		timer tmrShowRender "" active: false
 				
-		fn preRender = renderMap outputMap size:[640,640] filter: true scale: 1.0
+		fn preRender = renderMap outputMap size:[800, 800] filter: true scale: 1.0
 		
 		fn clearRender = 
 		(
@@ -1155,7 +1173,7 @@ fn postProcess =
 		(
 			if(postRender == undefined) do r = bitmap 1 1 color: black 
 			
-			b = bitmap 640 640 color: black 
+			b = bitmap 800 800 color: black 
 			btnImage.images = #(postRender, b, 1,1,1,1,1)
 			
 			tmrShowRender.active = false
@@ -1167,7 +1185,7 @@ fn postProcess =
 		)
 	)
 	
-	createDialog rPostProcess (640 + 250) 640
+	createDialog rPostProcess (800 + 250) 800
 
 	
 	ex = "rollout rPostSettings \"Settings\"\n "
@@ -1248,7 +1266,7 @@ fn postProcess =
 	
 	execute(ex)
 	
-	rPostProcess.subRollout1.pos = [640, 0]
+	rPostProcess.subRollout1.pos = [800, 0]
 	rPostProcess.subRollout1.width = 250
 	rPostProcess.subRollout1.height = rPostProcess.height
 	
@@ -1267,16 +1285,27 @@ rollout _rStep3  "Render / Post Process"
 	)
 	group "Post Process"
 	(
-		button btnShowFinal "Open Editor" height: 30 width: 215
+		button btnOpenEditor "Open Editor" height: 30 width: 215
 	)
+	
+	timer tmrStartRender active: false interval: 100
 	
 	fn getVFB c: 0 = 
 	(	
 		f = @"c:\temp\fast-preview\"
 		makeDir f
-			
-		b = CoronaRenderer.CoronaFp.getVfbContent c true true
-			
+		
+		r = getRender()
+		b = undefined
+		
+		case r of 
+		(
+			#Corona: b = CoronaRenderer.CoronaFp.getVfbContent c true true
+			#VRay: b = vrayVFBGetChannelBitmap c
+		)
+		b.width = 800
+		b.height = 800			
+		
 		t = timeStamp()
 		b.filename = f + t as string  + ".jpg"
 		
@@ -1296,16 +1325,12 @@ rollout _rStep3  "Render / Post Process"
 		for i in d do deleteFile i
 	)
 	
-	fn setupPostProcess =
+	fn postProcessCorona =
 	(
-		clearCache()
-		
-		_rStep1.addVFB_Elements()
-		
-		
 		vfbAlpha = getVFB c:1
 		main = getVFB c:0
-
+			
+		
 		-- Beauty / None
 		--outputMap = compositeTextureMap()
 		l = 1
@@ -1361,6 +1386,77 @@ rollout _rStep3  "Render / Post Process"
 		outputMap.opacity[l] = 25
 		outputMap.mask[l] = vfbAlpha
 		outputMap.mapList[l].name = "AO"
+	)
+
+	fn postProcessVRay =
+	(
+		vfbAlpha = getVFB c:2
+		main = getVFB c:1
+			
+		
+		-- Beauty / None
+		--outputMap = compositeTextureMap()
+		l = 1
+		outputMap.mapList[l] = main
+		outputMap.mapList[l].coords.blur = 0.01
+		outputMap.mapList[l].name = "RGB color"
+		
+
+		-- Direct Light / SoftLight
+		l = 2		
+		outputMap.mapList[l] = getVFB c: 3
+		outputMap.mapList[l].coords.blur = 0.01
+		outputMap.blendMode[l] = 15
+		outputMap.opacity[l] = 55
+		outputMap.mask[l] = vfbAlpha
+		outputMap.mapList[l].name = "Global Illumination"
+
+		-- Reflect / Screen
+		l = 3		
+		outputMap.mapList[l] = ColorCorrection()
+		outputMap.mapList[l].map = getVFB c: 4		
+		outputMap.mapList[l].map.coords.blur = 0.01
+		--outputMap.mapList[l].lightnessMode = 1
+		--outputMap.mapList[l].liftRGB = -0.35			
+		outputMap.blendMode[l] = 9
+		outputMap.opacity[l] = 60
+		outputMap.mask[l] = vfbAlpha
+		outputMap.mapList[l].name = "Reflect"
+
+		-- Refract / Screen
+		l = 4		
+		outputMap.mapList[l] = getVFB c: 5
+		outputMap.mapList[l].coords.blur = 0.01
+		outputMap.blendMode[l] = 9
+		outputMap.opacity[l] = 50
+		outputMap.mask[l] = vfbAlpha
+		outputMap.mapList[l].name = "Refract"
+
+
+		-- AO / Multiply
+		l = 5		
+		outputMap.mapList[l] = getVFB c: 6
+		outputMap.mapList[l].coords.blur = 0.01
+		outputMap.blendMode[l] = 5
+		outputMap.opacity[l] = 25
+		outputMap.mask[l] = vfbAlpha
+		outputMap.mapList[l].name = "AO"
+	)
+	
+	fn setupPostProcess =
+	(
+		clearCache()
+		
+		_rStep1.addVFB_Elements()
+		
+		
+		r = getRender()
+		
+		case r of
+		(
+			#Corona: postProcessCorona()
+			#VRay: postProcessVRay()
+		)
 		
 		/*
 		-- CA / Lighten
@@ -1421,12 +1517,17 @@ rollout _rStep3  "Render / Post Process"
 	global isRendering = true
 	
 	
-	
 	fn stopRender = CoronaRenderer.CoronaFp.stopRender()
 	
 	fn startInteractive =
 	(		
 		CoronaRenderer.CoronaFp.startInteractive()
+	)
+	
+	on tmrStartRender tick do
+	(
+		tmrStartRender.active = false
+		max quick render
 	)
 	
 	on btnStartRender pressed do 
@@ -1442,10 +1543,16 @@ rollout _rStep3  "Render / Post Process"
 			return false
 		)
 		
-		max quick render
+		if(cbxInteractive.checked and r == #VRay) do
+		(
+			renderSystem.imageSampler_type = 3			
+		)
+		
+		
+		tmrStartRender.active = true		
 	)
 		
-	on btnShowFinal pressed do 
+	on btnOpenEditor pressed do 
 	(			
 		try(setupPostProcess()) catch()		
 		--try(postProcess()) catch(messageBox "Please press \"Setup Scene\" for add default render elements!" title: "Warning!")
@@ -1456,7 +1563,8 @@ rollout _rStep3  "Render / Post Process"
 	(
 		r = getRender()
 		
-		if(r == #VRay) do _rStep3.cbxInteractive.enabled = false
+		_rStep3.cbxInteractive.caption = "Interactive"
+		if(r == #VRay) do _rStep3.cbxInteractive.caption = "Progressive"
 	)
 )
 
