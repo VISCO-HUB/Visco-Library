@@ -1,8 +1,41 @@
+/*  
+[INFO] 
+
+NAME = Make Preview
+VERSION = 1.0.2
+AUTHOR = MastaMan
+DEV = VISCO
+HELP = 
+
+[INSTALL]
+
+MACRO=MakePreview
+CAT=VISCO
+TEXT=Make Preview
+ICON=#("PhysX_Main", 25)
+
+[1.0.0]
+
+* First release =
+
+[1.0.2]
+
++ Added: VRay support=
+
+[ABOUT]
+
+This script helps to quickly make previews=
+for Assets Library=
+
+[TEST]
+
+[SCRIPT]
+*/	
+
 
 try(closeRolloutFloater fFastRender) catch()
 global fFastRender = newRolloutFloater "Make Preview" 250 800
 
-global szVer = "1.0.1"
 global lightHDR = undefined
 global reflectHDR = undefined
 global renderSystem = undefined
@@ -41,7 +74,27 @@ global 	blendOptions = #(
 	"Value"
  ) 
 
-fn useSettings k p w =
+fn getScriptInfo s releaseInfo: "" =
+(		
+	if(releaseInfo != "") do
+	(
+		r = getINISetting s releaseInfo
+		return r
+	)
+	
+	v = getINISetting s "INFO" "VERSION"
+	a = getINISetting s "INFO" "AUTHOR"
+	n = getINISetting s "INFO" "NAME"
+	o = getINISetting s "ABOUT"
+	c = getINISetting s "INFO" "DEV"
+	h = getINISetting s "INFO" "HELP"
+	
+	r = for i in (getINISetting s) where i != "ABOUT" and i != "SCRIPT" and i != "COPY" collect i
+	
+	return #(n, a, v, o, r, c, h)
+)
+ 
+ fn useSettings k p w =
 (
 	u = sysInfo.username
 	d = getFilenamePath  (getThisScriptFilename())
@@ -81,11 +134,6 @@ fn getRender =
 	return #unknown
 )
 
-fn renderChange =
-(
-	renderSystem = renderers.current 
-	_rStep0.qualitySet()	
-)
 
 fn deleteDomes =
 (
@@ -96,78 +144,105 @@ fn deleteDomes =
 
 fn setRenderQuality =
 (
+	renderSceneDialog.close()
+	
 	r = getRender()
+	q = useSettings "RENDER_QUALITY" "int" "r"
+	
+	renderSystem = renderers.current 
+	
+	s = case q of
+	(
+		1: 600
+		2: 800
+		default: 400
+	)
+					
+	renderWidth = s
+	renderHeight = s
 		
 	case r of 
-	(
+	(				
 		#Corona: 
 		(
 			renderSystem.denoise_filterType = 2
 			renderSystem.denoise_blendAmount = 0.5
 	
 			renderSystem.colorMap_simpleExposure = 1.0
-			renderSystem.colorMap_highlightCompression = 2.0
-			
-			_rStep3.cbxInteractive.caption = "Interactive"
+			renderSystem.colorMap_highlightCompression = 2.0						
 		)
 		#Vray:
-		(
-			q = useSettings "RENDER_QUALITY" "int" "r"
-			
-			renderSystem.imageSampler_type = 1
+		(						
 			renderSystem.gi_on = true
 			
-			_rStep3.cbxInteractive.caption = "Progressive"
-			
+			renderSystem.dmc_subdivs_mult = 0.0
+			renderSystem.dmc_earlyTermination_minSamples  = 32
+			renderSystem.dmc_earlyTermination_amount = 0.85
+			renderSystem.dmc_earlyTermination_threshold = 0.005
+					
 			case q of 
 			(
 				1:
 				(
+					renderSystem.imageSampler_type = 1
+					
 					renderSystem.imageSampler_shadingRate = 2				
 					renderSystem.twoLevel_baseSubdivs = 1				
 					renderSystem.twoLevel_fineSubdivs = 4				
-					renderSystem.twoLevel_threshold = 0.01									
+					renderSystem.twoLevel_threshold = 0.015									
 					renderSystem.gi_primary_type = 2				
 					renderSystem.gi_secondary_type = 2
-					renderSystem.dmcgi_subdivs	= 8
+					renderSystem.dmcgi_subdivs	= 4
 				)
 				2:
 				(
-					renderSystem.imageSampler_shadingRate = 12				
+					renderSystem.imageSampler_type = 1
+					
+					renderSystem.imageSampler_shadingRate = 15				
 					renderSystem.twoLevel_baseSubdivs = 1				
 					renderSystem.twoLevel_fineSubdivs = 8				
-					renderSystem.twoLevel_threshold = 0.005								
+					renderSystem.twoLevel_threshold = 0.001								
 					renderSystem.gi_primary_type = 2				
 					renderSystem.gi_secondary_type = 2
-					renderSystem.dmcgi_subdivs	= 16
+					renderSystem.dmcgi_subdivs	= 12
 				)
 				default:
 				(
+					renderSystem.imageSampler_type = 3
+					
 					renderSystem.imageSampler_shadingRate = 1				
 					renderSystem.twoLevel_baseSubdivs = 1				
 					renderSystem.twoLevel_fineSubdivs = 2				
-					renderSystem.twoLevel_threshold = 0.015							
+					renderSystem.twoLevel_threshold = 0.015									
 					renderSystem.gi_primary_type = 2				
 					renderSystem.gi_secondary_type = 2
 					renderSystem.dmcgi_subdivs	= 4
 				)
 			)
 		)
-	)	
+	)
+
+	renderSceneDialog.commit()
+	renderSceneDialog.update()	
+)
+
+fn renderChange =
+(
+	renderSystem = renderers.current 
+	_rStep0.qualitySet()	
+	setRenderQuality()
 )
 
 rollout _rStep0  "Basic Setup"
 (
 	group "Settings"
 	(
-		label lblRenderSize "Render Size:" across: 2 align: #left
-		spinner spnRenderSize "" range: [320, 800, 800] type: #integer fieldWidth: 50 align: #left offset: [-20, 0]
 		label lblAOSize "AO Size:" across: 2 align: #left
 		spinner spnAOSize "" range: [0.001, 99999999999.0, (units.decodeValue "8.0cm")] type: #worldunits fieldWidth: 50 align: #center offset: [-42, 0]
 		slider sldQuality "Quality:" ticks: 2 range:[0, 2, 0] type: #integer
-		label lblQualityLow "Low" align: #left across: 3
-		label lblQualityMedium "Medium" align: #center
-		label lblQualityHigh "High" align: #right
+		label lblQualityLow "Draft" align: #left across: 3
+		label lblQualityMedium "Preview" align: #center
+		label lblQualityHigh "Final" align: #right
 	)
 	
 	button btnSetupScene "Setup Scene" height: 30 width: 215
@@ -180,39 +255,19 @@ rollout _rStep0  "Basic Setup"
 		
 	fn qualitySet =
 	(
-		r = getRender()
-		case r of 
-		(
-			#VRay:
-			(
-				lblQualityHigh.enabled = true
-				lblQualityLow.enabled = true
-				lblQualityMedium.enabled = true			
-				sldQuality.enabled = true
-				
-				s = useSettings "RENDER_QUALITY" "int" "r"
-				sldQuality.value = s
-				
-				_rStep3.cbxInteractive.enabled = false
-				
-			)
-			#Corona:
-			(
-				lblQualityHigh.enabled = false
-				lblQualityLow.enabled = false
-				lblQualityMedium.enabled = false			
-				sldQuality.enabled = false
-				sldQuality.value = 3
-				
-				_rStep3.cbxInteractive.enabled = true
-			)
-		)
+		s = useSettings "RENDER_QUALITY" "int" "r"
+		sldQuality.value = s					
 	)
 	
 	on _rStep0	open do
 	(	
 		callbacks.removeScripts id:#renderChange
+		callbacks.removeScripts id:#postNew
+		callbacks.removeScripts id:#postReset
+		
 		callbacks.addScript #postRendererChange "renderChange()" id:#renderChange
+		callbacks.addScript #systemPostNew "renderChange()" id:#postNew
+		callbacks.addScript #systemPostReset "renderChange()" id:#postReset
 				
 		qualitySet()
 	)
@@ -220,6 +275,8 @@ rollout _rStep0  "Basic Setup"
 	on _rStep0 close do
 	(
 		callbacks.removeScripts id:#renderChange
+		callbacks.removeScripts id:#postNew
+		callbacks.removeScripts id:#postReset
 	)
 		
 	on btnSetupScene pressed do
@@ -235,12 +292,7 @@ rollout _rStep0  "Basic Setup"
 		
 		_rStep1.SetupScene()
 	)
-		
-	on spnRenderSize changed v do
-	(
-		useSettings "RENDER_SIZE" v "w"
-	)
-	
+			
 	on spnAOSize changed v do
 	(
 		useSettings "AO_SIZE" v "w"
@@ -646,18 +698,7 @@ rollout _rStep1  "HDRI"
 		
 		
 	)
-	
-	fn setupRenderSize =
-	(
-		renderSceneDialog.close()
-				
-		renderWidth = _rStep0.spnRenderSize.value
-		renderHeight = _rStep0.spnRenderSize.value	
-		
-		renderSceneDialog.commit()
-		renderSceneDialog.update()
-	)
-	
+
 	fn getUnit =
 	(
 		u = units.SystemType	
@@ -685,9 +726,7 @@ rollout _rStep1  "HDRI"
 		useReflect()
 				
 		addVFB_Elements()
-		
-		setupRenderSize()
-		
+				
 		setRenderQuality()			
 	)
 	
@@ -734,13 +773,8 @@ rollout _rStep1  "HDRI"
 		loadHDR()
 		enableReflections()
 		
-		s = useSettings "RENDER_SIZE" "int" "r"
-		if(s != 0) do _rStep0.spnRenderSize.value = s
-		
 		s = useSettings "AO_SIZE" "int" "r"
 		if(s != 0) do _rStep0.spnAOSize.value = s
-		
-		setupRenderSize()
 	)
 		
 	on sldLightHDR changed a do
@@ -1160,7 +1194,7 @@ fn postProcess =
 			r = preRender()
 			
 			r.filename = f
-			save r
+			save r gamma: 2.2
 			close r
 		)
 		
@@ -1280,8 +1314,7 @@ rollout _rStep3  "Render / Post Process"
 	group "Render"
 	(
 		--button btnStartInteractive "Start Interactive"
-		button btnStartRender "Start Render" height: 30 width: 215
-		checkbox cbxInteractive "Interactive" checked: false
+		button btnStartRender "Start Render" height: 30 width: 215		
 	)
 	group "Post Process"
 	(
@@ -1309,7 +1342,7 @@ rollout _rStep3  "Render / Post Process"
 		t = timeStamp()
 		b.filename = f + t as string  + ".jpg"
 		
-		save b
+		save b gamma: 2.2
 		close b
 		
 		bt = Bitmaptexture()	
@@ -1535,19 +1568,12 @@ rollout _rStep3  "Render / Post Process"
 		r = getRender()
 		
 		setRenderQuality()
-		_rStep1.setupRenderSize()
-		
-		if(cbxInteractive.checked and r == #Corona) do
+				
+		if(_rStep0.sldQuality.value == 0 and r == #Corona) do
 		(
 			startInteractive()
 			return false
 		)
-		
-		if(cbxInteractive.checked and r == #VRay) do
-		(
-			renderSystem.imageSampler_type = 3			
-		)
-		
 		
 		tmrStartRender.active = true		
 	)
@@ -1562,24 +1588,27 @@ rollout _rStep3  "Render / Post Process"
 	on _rStep3 open do
 	(
 		r = getRender()
-		
-		_rStep3.cbxInteractive.caption = "Interactive"
-		if(r == #VRay) do _rStep3.cbxInteractive.caption = "Progressive"
 	)
 )
 
+
 rollout _rAbout "About" 
 (
-	local c = color 200 200 200 
+	label lblName "" 
+	label lblVer "" 
 	
-	label lbl2 "Fast Preview" 
-	label lbl3 szVer 
+	label lblAuthor "" height: 30
+	label lblCopy ""  height: 30
 	
-	hyperLink href3 "MastaMan" address: "http://3ddd.ru/users/mastaman" align: #center hoverColor: c visitedColor: c
-	label lbl6 "" 
-		
-	hyperLink href2 "Script Home" address: "http://3ddd.ru/forum/thread/show/skript_prepare_model_3ddd/" align: #center hoverColor: c visitedColor: c
-	hyperLink href "http://3ddd.ru" address: "http://3ddd.ru" align: #center hoverColor: c visitedColor: c
+	on _rAbout open do
+	(		
+		i = getScriptInfo (getThisScriptFilename())
+			
+		lblName.caption = i[1]
+		lblAuthor.caption = i[2]
+		lblVer.caption = i[3]
+		lblCopy.caption = i[6]
+	)
 )
 
 addRollout _rStep0 fFastRender rolledUp:false
@@ -1587,45 +1616,3 @@ addRollout _rStep1 fFastRender rolledUp:true
 addRollout _rStep2 fFastRender rolledUp:true
 addRollout _rStep3 fFastRender rolledUp:false
 addRollout _rAbout fFastRender rolledUp:true 
-/*
-
-addVFB_Elements()
-
-
-
-a = getVFB c:1
-
--- Beauty / None
-outputMap = compositeTextureMap()
-outputMap.mapList[1] = getVFB c:0
-
--- Direct Light / SoftLight
-outputMap.mapList[2] = getVFB c: 2
-outputMap.blendMode[2] = 15
-outputMap.opacity[2] = 35.0
-outputMap.mask[2] = a
-
--- Reflect / Screen
-outputMap.mapList[3] = getVFB c: 3
-outputMap.mapList[3].output.rgb_offset = -0.25
-outputMap.blendMode[3] = 9
-outputMap.opacity[3] = 50.0
-outputMap.mask[3] = a
-
--- Refract / Screen
-outputMap.mapList[4] = getVFB c: 4
-outputMap.blendMode[4] = 9
-outputMap.opacity[4] = 15.0
-outputMap.mask[4] = a
-
--- AO / Multiply
-outputMap.mapList[5] = getVFB c: 5
-outputMap.blendMode[5] = 5
-outputMap.opacity[5] = 35
-outputMap.mask[5] = a
-
-
-outRender = renderMap outputMap size:[640,640] filter: true scale: 1.0
-display outRender
-
-*/
