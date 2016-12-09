@@ -1,53 +1,74 @@
-<?php
+<?php	
+	GLOBAL $GLOBS;
+	GLOBAL $MYSQLI;
+
 	INCLUDE 'config.php';
 	INCLUDE 'lib.php';
+	$ISREPLACE = ISSET($_GET['replace']);
+
+	$DATE = DATE('d.m.Y');
 	
-	$ERROR = 'Failed';
-	$SUCCESS = 'Done';
+	$ERROR = 'FAILED';
+	$SUCCESS = 'DONE';
+	$REPLASE = 'REPLACEFILE';
 	
 	$MYSQLI = DB::CONNECT();
-	$GLOBS = GLOBS::GET();
-	$GLOBS = GLOBS::PARSE();
-	$PATH = $GLOBS->path;
-
+	$GLOBS = GLOBS::GET();	
+	
 	$FTMP = $_FILES['file']['tmp_name'];
 	$ONAME = $_FILES['file']['name'];
 	
-	$TMP = $PATH . 'tmp\\';
-	$FNAME = $TMP . $ONAME;
-	$EXTRACTTO = $TMP . time();
+	$TMP = '\\tmp\\' . $DATE . '\\';
+	FS::CREATEDIR($TMP);
+	FS::CLEARCACHE('\\tmp\\', $DATE);
 	
-	FS::CLEAR($TMP);
-		
-	FUNCTION CHECKVAR($VAR) {
-		IF(!COUNT($VAR)) DIE($ERRROR);
-	}
+	$FNAME = $TMP . $ONAME;		
+	$EXTRACTTO = $TMP . TIME();
+	ECHO IMG_PATH;
+	//!!!!!!!!!! CREATE BUTTON CLEAR CACHE!
 	
+
 	IF(!MOVE_UPLOADED_FILE($FTMP, $FNAME)) DIE($ERROR);
 	
 	$ZIP = NEW ZipArchive;
-	IF($ZIP->open($FNAME) !== TRUE) DIE($ERROR);
-	
+	IF($ZIP->open($FNAME) !== TRUE) DIE($ERROR);	
 	$ZIP->extractTo($EXTRACTTO);
 	$ZIP->close();
 	
-	$INI = $EXTRACTTO . '\\info.txt';
+	$INI = $EXTRACTTO . '\\info.ini';
+	
 	IF(!IS_FILE($INI)) DIE($ERRROR);
 	
-	$PARSEDINI = PARSE_INI_FILE($INI, TRUE);
-	$INFO = $PARSEDINI['INFO'];
+	$INI_UTF8 = MB_CONVERT_ENCODING(FILE_GET_CONTENTS($INI), 'UTF-8', 'UCS-2LE');
+	$PARSEDINI = PARSE_INI_STRING($INI_UTF8, TRUE);
 	
-	IF($INFO['TYPE'] != 'model') DIE($ERRROR);
+	$INFO = $PARSEDINI['INFO'];	
+	
+	IF($INFO['TYPE'] != 'model' AND $INFO['TYPE'] != 'texture') 
+	{	
+		PRUNE();
+		DIE($ERROR);
+	}
 	
 	// !!!! MUST ADD CHEK FOR ALL FILES!
 	$ID = $INFO['CATID'];
 	$NAME = $INFO['NAME'];
-	$DEST = $PATH . CAT::BUILDPATH($ID);
-	$MOVETO = $DEST . CAT::CLEAR($NAME) . '\\';	
+	$DEST = CAT::BUILDPATH($ID);
+	$MOVETO = $DEST . CAT::CLEAR($NAME) . '\\' ;			
+	FS::CREATEDIR($MOVETO);
+	$MOVETO .= CAT::CLEAR($INFO['RENDER']) . '\\';
+	FS::CREATEDIR($MOVETO);
 		
-	FS::MOVE($EXTRACTTO, $MOVETO);	
-
+	IF(!FS::ISDIREMPTY($MOVETO) AND !$ISREPLACE) DIE($REPLASE);
+			
 	IF($INFO['TYPE'] == 'model') {
+		$WHERE['name'] = $NAME;
+		$WHERE['render'] = $INFO['RENDER'];
+		$WHERE['catid'] = $ID;
+		
+		$RESULT = DB::SELECT('models', $WHERE, NULL, TRUE);
+		$EXIST = DB::TOARRAY($RESULT);
+		
 		$SET['name'] = $NAME ;
 		$SET['catid'] = $INFO['CATID'];
 		$SET['format'] = $INFO['FORMAT'];
@@ -56,16 +77,30 @@
 		$SET['dim'] = $INFO['DIMENSION'];
 		$SET['polys'] = $INFO['POLYS'];
 		$SET['render'] = $INFO['RENDER'];
-		$SET['rigged'] = $INFO['RIGGED'];
-		$SET['uvw'] = $INFO['UVW'];
+		$SET['rigged'] = $INFO['RIGGED'];		
+		$SET['lods'] = $INFO['LODS'];		
 		$SET['unwrap'] = $INFO['UNWRAP'];
-		$SET['projectid'] = $INFO['PROJECT'];
+		$SET['project'] = $INFO['PROJECT'];
 		$SET['modeller'] = $INFO['MODELLER'];
 		$SET['tags'] = $INFO['TAGS'];
-
-		$RESULT = DB::INSERT('models', $SET);
+		$SET['manufacturer'] = $INFO['MANUFACTURER'];
+		$SET['overview'] = $INFO['OVERVIEW'];
+		$SET['status'] = 0;
+	
+		IF(COUNT($EXIST) == 0) 
+		{
+			$RESULT = DB::INSERT('models', $SET);		
+		}
+		ELSE
+		{
+			$RESULT = DB::UPDATE('models', $SET, $WHERE, TRUE);
+		}
 	}
-	file_put_contents($TMP .'debug.txt', $INFO['lol']);
+
+	IF($ISREPLACE) FS::CLEAR($MOVETO);
+	FS::MOVE($EXTRACTTO, $MOVETO);	
 	
 	DB::CLOSE();
+	
+	DIE($SUCCESS);
 ?>

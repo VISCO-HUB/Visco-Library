@@ -11,7 +11,7 @@
 	FOREACH($MODELS AS $MODEL) {		
 		ECHO $MODEL->name;
 		ECHO '|';
-		ECHO $MODEL->manufacture;		
+		ECHO $MODEL->manufacturer;		
 		ECHO ';';		
 	}
 	

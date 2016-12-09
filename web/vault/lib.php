@@ -8,6 +8,7 @@
 	CLASS DB {
 		PUBLIC STATIC FUNCTION STRIP($S) {																		
 			$MYSQLI = $GLOBALS['MYSQLI'];		
+			$S = TRIM($S);
 			$S = HTMLSPECIALCHARS($S);										
 			$S = $MYSQLI->real_escape_string($S);			
 			RETURN $S;
@@ -98,7 +99,7 @@
 		}
 		
 		// UPDATE
-		PUBLIC STATIC FUNCTION UPDATE($TABLE, $SET, $WHERE)
+		PUBLIC STATIC FUNCTION UPDATE($TABLE, $SET, $WHERE,  $AND = NULL)
 		{			
 			$MYSQLI = $GLOBALS['MYSQLI'];
 			
@@ -118,7 +119,8 @@
 				$W[] = $KEY . "=" . "'" . $VALUE . "'";
 			}
 			
-			$QUERY = "UPDATE " . $TABLE . " SET " . IMPLODE(',', $V) . " WHERE " . IMPLODE(' OR ', $W) . ";";						
+			$BOOL = $AND ? 'AND' : 'OR';
+			$QUERY = "UPDATE " . $TABLE . " SET " . IMPLODE(',', $V) . " WHERE " . IMPLODE(' ' . $BOOL . ' ', $W) . ";";						
 	
 			$RESULT = $MYSQLI->query($QUERY);		
 			
@@ -255,7 +257,7 @@
 			RETURN $ERROR ;
 		}
 		
-		PUBLIC STATIC FUNCTION PARSE() {
+		PUBLIC STATIC FUNCTION PARSE() {			
 			RETURN JSON_DECODE($GLOBALS['GLOBS']);
 		}
 	}
@@ -268,7 +270,7 @@
 		PUBLIC STATIC FUNCTION CREATEDIR($DIR) {			
 			RETURN @MKDIR($DIR, 0777, TRUE);			
 		}
-		
+				
 		PUBLIC STATIC FUNCTION ISDIREMPTY($DIR) {
 			IF (!IS_READABLE($DIR)) RETURN NULL; 
 			RETURN (COUNT(SCANDIR($DIR)) == 2);		  
@@ -276,6 +278,10 @@
 		
 		PUBLIC STATIC FUNCTION DELDIR($DIR) {	  
 			RETURN @RMDIR($DIR);		  
+		}
+		
+		PUBLIC STATIC FUNCTION DEL($FILE) {	  
+			RETURN @UNLINK($FILE);
 		}
 		
 		PUBLIC STATIC FUNCTION REN($DIR, $NAME) {	  
@@ -308,20 +314,32 @@
 		}
 		
 		PUBLIC STATIC FUNCTION MOVE($DIR1, $DIR2) {
-			    $DIR = OPENDIR($DIR1); 
-				SELF::CREATEDIR($DIR2); 
-				WHILE(FALSE !== ($FILE = READDIR($DIR))) { 
-					IF(( $FILE != '.' ) && ( $FILE != '..' )) { 
-						IF(IS_DIR($DIR1 . '/' . $FILE)) { 
-							SELF::MOVE($DIR1 . '/' . $FILE, $DIR2 . '/' . $FILE); 
-						} 
-						ELSE { 
-							COPY($DIR1 . '/' . $FILE, $DIR2 . '/' . $FILE); 
-						} 
+			$DIR = OPENDIR($DIR1); 
+			SELF::CREATEDIR($DIR2); 
+			WHILE(FALSE !== ($FILE = READDIR($DIR))) { 
+				IF(( $FILE != '.' ) && ( $FILE != '..' )) { 
+					IF(IS_DIR($DIR1 . '/' . $FILE)) { 
+						SELF::MOVE($DIR1 . '/' . $FILE, $DIR2 . '/' . $FILE); 
+					} 
+					ELSE { 
+						COPY($DIR1 . '/' . $FILE, $DIR2 . '/' . $FILE); 
 					} 
 				} 
-				CLOSEDIR($DIR); 
 			} 
+			CLOSEDIR($DIR); 
+		} 
+		
+		PUBLIC STATIC FUNCTION CLEARCACHE($DIR, $EXCLUDE) {			
+			$FILES = GLOB($DIR . "*"); 
+    
+			FOREACH($FILES as $FILE){ 
+			
+				IF(IS_DIR($FILE) AND !IN_ARRAY($FILE, ARRAY('..', '.')) AND STRPOS($FILE, $EXCLUDE) === FALSE)  {										
+					SELF::CLEAR($FILE);
+					RMDIR($FILE);
+				} 
+			}		
+		}
 	}
 	
 	///////////////////////////////////////////////////////

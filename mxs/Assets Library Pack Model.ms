@@ -382,6 +382,9 @@ fn httpUpload file =
 	return false
 )
 
+ httpUpload @"D:\PROJECTS\ASSETS LIBRARY\CD 155\aaa.zip"
+
+
 fn findTag t =
 (
 	s = filterString t ","
@@ -830,7 +833,7 @@ rollout _STEP3 "STEP 3: Model Transform"
 	
 		forSelect = #()
 		
-		for i = 1 to hObj.count where superClassOf hObj[i] == GeometryClass do
+		for i = 1 to hObj.count where not isDeleted hObj[i] and superClassOf hObj[i] == GeometryClass do
 		(														
 			g = isGroup	hObj[i]
 			
@@ -1001,7 +1004,7 @@ rollout _STEP4 "STEP 4: Preview"
 		imageDialog = dotNetObject "System.Windows.Forms.OpenFileDialog" 
 		imageDialog.title = "Select Pictures"
 		imageDialog.Multiselect = true
-		imageDialog.Filter = "JPG (*.jpg)|*.jpg|PNG (*.png)|*.png|BMP (*.bmp)|*bmp"
+		imageDialog.Filter = "JPG (*.jpg)|*.jpg"
 		imageDialog.FilterIndex = 1
 		
 		result = imageDialog.showDialog() 

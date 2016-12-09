@@ -18,7 +18,7 @@ document.addEventListener("contextmenu", function(e){
 
 /* APP */
 
-var app = angular.module('app', ['ngRoute', 'ngSanitize', 'ui.bootstrap']);
+var app = angular.module('app', ['ngRoute', 'ngSanitize', 'ui.bootstrap', 'angularFileUpload']);
 
 
 // CONFIG 
@@ -73,6 +73,66 @@ app.filter('orderObjectBy', function() {
 app.controller("aboutCtrl", function($scope){
 	
 });
+	// UPLOAD
+app.controller('uploadCtrl', ['$scope', 'FileUploader', 'vault', function($scope, FileUploader, vault) {
+	var uploader = $scope.uploader = new FileUploader({
+		url: 'vault/upload.php'
+	});
+
+	// FILTERS
+
+	uploader.filters.push({
+		name: 'customFilter',
+		fn: function(item /*{File|FileLikeObject}*/, options) {
+				return this.queue.length < 10;
+			}
+		},
+		{
+            name: 'zipFilter',
+            fn: function(item /*{File|FileLikeObject}*/, options) {
+                var type = '|' + item.type.slice(item.type.lastIndexOf('/') + 1) + '|';
+                return '|x-zip-compressed|'.indexOf(type) !== -1;
+            }
+		}
+	);
+	
+	uploader.onSuccessItem = function(fileItem, response, status, headers) {
+		vault.deleteMessage();
+		console.log(response);
+		angular.forEach(uploader.queue, function(item, key) {
+			if(fileItem.file.name == item.file.name) {					
+				uploader.queue[key].isReplace = false;
+			}
+		});
+		
+		if(response == 'REPLACEFILE') {
+			vault.showMessage('Some files already exist! Press the button replace for needed files!', 'warning');
+				
+			angular.forEach(uploader.queue, function(item, key) {
+				  if(fileItem.file.name == item.file.name) {					
+					uploader.queue[key].isReplace = true;
+					uploader.queue[key].isSuccess = false;
+					uploader.queue[key].isUploaded = false;
+					uploader.queue[key].progress = 0;
+					uploader.queue[key].url = 'vault/upload.php?replace=true';
+				}
+			});										
+		}
+    };
+	
+	$scope.replaceUpload = function(item) {		
+		
+		if(!confirm('Do you really want to update file: \"' + item.file.name + '\"?')){
+			return false;
+		}
+		
+		item.upload();
+	}
+	
+	uploader.onErrorItem = function(fileItem, response, status, headers) {
+            console.info('onErrorItem', fileItem, response, status, headers);
+	};
+ }]);
 
 	// LOGIN
 app.controller("loginCtrl", function($scope, $rootScope, vault){
@@ -102,7 +162,7 @@ app.controller("loginCtrl", function($scope, $rootScope, vault){
 
 	// ADMIN
 app.controller("adminCtrl", function($scope, $rootScope, vault){
-	$scope.section = 'cat';
+	$scope.section = 'upload';
 
 	vault.getGlobal();
 	vault.catGet();
@@ -306,6 +366,10 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		$rootScope.msg[t] = m;
 	}
 	
+	var deleteMessage = function() {
+		$rootScope.msg = {};
+	}
+	
 	var responceMessage = function(r) {
 		if(!r.responce) return false;
 		
@@ -342,6 +406,8 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 			case 'RESTRICTED': s.error = 'This user is not allowed!';
 			break;
 			case 'NORIGHTS': s.error = 'You have no rights for make changes!';
+			break;
+			case 'REPLACEFILE': s.error = 'Some files already exist! Press replace for needed files!';
 			break;
 		}
 		
@@ -509,6 +575,7 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 			
 	return {
 		showMessage: showMessage,
+		deleteMessage: deleteMessage,
 		signIn: signIn,
 		signOut: signOut,
 		catGet: catGet,
