@@ -587,4 +587,152 @@
 			RETURN $ERROR;
 		}
 	}
+	
+	CLASS PREVIEW {		
+		PUBLIC $BASE_SIZE = IMG_SIZE - (IMG_PADDING * 2);  
+		PUBLIC $OUT_SIZE = IMG_SIZE;		
+		PUBLIC $IMG = NULL; 
+		PUBLIC $BIN_MATRIX = NULL; 
+		PUBLIC $EXT = ARRAY('', 'gif', 'jpeg', 'png'); 
+		PUBLIC $CUR_IMG_WIDTH = 1;  
+		PUBLIC $CUR_IMG_HEIGHT = 1; 
+		PUBLIC $UPLOAD_DIR = IMG_PATH;
+		PUBLIC $CUR_EXT = '';
+		PUBLIC $IMG_NAME = '';
+				
+		
+		FUNCTION __CONSTRUCT($PATH, $NAME) {
+			LIST($this->CUR_IMG_WIDTH, $this->CUR_IMG_HEIGHT, $TYPE) = GETIMAGESIZE($PATH);			
+			$this->CUR_EXT = $this->EXT[$TYPE];
+						
+			IF($this->CUR_EXT) {
+				
+				$this->IMG_NAME = CAT::CLEAR($NAME);
+				$CREATE = 'imagecreatefrom' . $this->CUR_EXT;
+				$this->IMG = $CREATE($PATH);
+				
+				IF(!$this->IMG) RETURN FALSE;
+			}
+			
+			$BIN = $this->MATRIX($this->IMG, FALSE);
+			$RES = $this->MATRIXEXPLODE($BIN);
+			$HEIGHT = $RES['size'];
+			$CROPY = $RES['padding'];
+			
+			$BIN = $this->MATRIX($this->IMG, TRUE);
+			$RES = $this->MATRIXEXPLODE($BIN);
+			$WIDTH = $RES['size'];
+			$CROPX = $RES['padding'];
+			
+			$BIGSIDE = $WIDTH > $HEIGHT ? $WIDTH : $HEIGHT;
+			$this->IMG = $this->CROP($CROPX, $CROPY, $WIDTH, $HEIGHT);
+			
+			$this->CUR_IMG_WIDTH = $WIDTH;
+			$this->CUR_IMG_HEIGHT = $HEIGHT;
+						
+			IF($this->BASE_SIZE < $BIGSIDE) {
+				$N = $this->RESIZE($this->BASE_SIZE / $BIGSIDE);
+			}
+			ELSE
+			{
+				$N = $this->RESIZE(1);
+			}
+			
+			IMAGEDESTROY($this->IMG);
+			
+			RETURN $N;
+		}
+		
+		FUNCTION CROP($CROPX, $CROPY, $WIDTH, $HEIGHT) {
+			RETURN IMAGECROP($this->IMG, ['x' => $CROPX, 'y' => $CROPY, 'width' => $WIDTH, 'height' => $HEIGHT]);
+		}
+		
+		FUNCTION MATRIXEXPLODE($BIN) {
+			FOR($I = 0; $I < COUNT($BIN); $I++) {
+				$SUM = 0;
+				FOR($J = 0; $J < COUNT($BIN[0]); $J++) {
+					$SUM += $BIN[$I][$J];
+				}
+				$TEMP[] = $SUM ? 1 : 0;
+			}
+			
+			$START = FALSE;
+			$PARTS = 0;
+			$INTERVALS = ARRAY();
+			
+			FOREACH($TEMP AS $K => $V) {
+				IF($V == 1 AND !$START) {
+					$INTERVALS[$PARTS]['start'] = $K;
+					$START = TRUE;
+				}
+				
+				IF($V == 0 AND $START) {
+					$INTERVALS[$PARTS]['end'] = $K - 1;
+					$START = FALSE;
+					$PARTS++;
+				}
+			}
+			
+			$W = 1;
+			$S = 1;
+			
+			FOREACH($INTERVALS AS $K => $V) {
+				IF($V['end'] - $V['start'] > 20) {
+					$W = $V['end'] - $V['start'];
+					$S = $V['start'];
+				}
+			}
+			
+			RETURN ARRAY('size' => $W, 'padding' => $S);
+		}
+		
+		FUNCTION MATRIX($IMG, $HORIZ = FALSE) {
+			$W = IMAGESX($IMG);
+			$H = IMAGESY($IMG);
+			
+			IF($HORIZ) {
+				$W = IMAGESY($IMG);
+				$H = IMAGESX($IMG);
+			}
+			
+			$BG = 0;
+			
+			FOR($I = 0; $I < $H; $I++) {
+				FOR($J = 0; $J < $W; $J++) {
+					IF($HORIZ) {
+						$RGB = IMAGECOLORAT($IMG, $I, $J);
+					}
+					ELSE {
+						$RGB = IMAGECOLORAT($IMG, $J, $I);
+					}
+					
+					LIST($R, $G, $B) = ARRAY_VALUES(IMAGECOLORSFORINDEX($IMG, $RGB));
+					 
+					IF($I == 0 AND $J == 0)  $BG = $R;
+					$SENS = 15;
+					
+					$BIN[$I][$J] = ($R > $BG - $SENS) ? 0 : 1;
+				}
+			}
+			
+			RETURN $BIN;
+		}
+		
+		FUNCTION RESIZE($KOEF) {
+
+			$NWIDTH = $KOEF * $this->CUR_IMG_WIDTH;
+			$NHEIGHT = $KOEF * $this->CUR_IMG_HEIGHT; 
+			
+			$C = IMAGECREATETRUECOLOR($this->OUT_SIZE, $this->OUT_SIZE);			
+			$CLR = IMAGECOLORALLOCATE($C, 255, 255, 255);
+			IMAGEFILL($C, 0, 0, $CLR);
+			IMAGECOPYRESAMPLED($C, $this->IMG, ($this->OUT_SIZE - $NWIDTH) / 2, ($this->OUT_SIZE - $NHEIGHT) / 2, 0, 0, $NWIDTH, $NHEIGHT, $this->CUR_IMG_WIDTH, $this->CUR_IMG_HEIGHT);
+						
+			$N = $this->IMG_NAME . '_' . $this->OUT_SIZE . 'x' . $this->OUT_SIZE . '.jpg';
+			IMAGEJPEG($C, $this->UPLOAD_DIR . $N);
+			IMAGEDESTROY($C);
+			
+			RETURN $N;
+		}
+	}
 ?>

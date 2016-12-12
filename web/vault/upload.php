@@ -24,7 +24,7 @@
 	
 	$FNAME = $TMP . $ONAME;		
 	$EXTRACTTO = $TMP . TIME();
-	ECHO IMG_PATH;
+	
 	//!!!!!!!!!! CREATE BUTTON CLEAR CACHE!
 	
 
@@ -86,7 +86,8 @@
 		$SET['manufacturer'] = $INFO['MANUFACTURER'];
 		$SET['overview'] = $INFO['OVERVIEW'];
 		$SET['status'] = 0;
-	
+		$SET['date'] = TIME();
+		
 		IF(COUNT($EXIST) == 0) 
 		{
 			$RESULT = DB::INSERT('models', $SET);		
@@ -96,6 +97,8 @@
 			$RESULT = DB::UPDATE('models', $SET, $WHERE, TRUE);
 		}
 	}
+	
+	$AAAAA = NEW PREVIEW($EXTRACTTO . '\\main.jpg', $NAME);
 
 	IF($ISREPLACE) FS::CLEAR($MOVETO);
 	FS::MOVE($EXTRACTTO, $MOVETO);	

@@ -37,7 +37,7 @@ CREATE TABLE `category` (
   `description` varchar(400) DEFAULT NULL,
   `type` int(11) DEFAULT '0',
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=258 DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB AUTO_INCREMENT=269 DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -46,7 +46,7 @@ CREATE TABLE `category` (
 
 LOCK TABLES `category` WRITE;
 /*!40000 ALTER TABLE `category` DISABLE KEYS */;
-INSERT INTO `category` VALUES (246,'ArchViz','ArchViz',0,2,NULL,NULL,NULL,1,'Test description for ArchViz library.',1),(247,'Just Textures','JustTextures',0,0,NULL,NULL,NULL,1,NULL,2),(248,'Furniture','Furniture',246,0,NULL,NULL,NULL,1,NULL,1),(249,'Decor','Decor',246,0,NULL,NULL,NULL,1,NULL,1),(250,'Lights','Lights',246,0,NULL,NULL,NULL,1,NULL,1),(252,'Chairs','Chairs',248,0,NULL,NULL,NULL,1,NULL,1),(253,'Sofas','Sofas',248,0,NULL,NULL,NULL,1,NULL,1),(254,'Tables','Tables',248,0,NULL,NULL,NULL,1,NULL,1),(255,'Test','Test',0,1,NULL,NULL,NULL,1,NULL,1),(257,'Pendant','Pendant',249,0,NULL,NULL,NULL,1,NULL,1);
+INSERT INTO `category` VALUES (246,'ArchViz','ArchViz',0,0,NULL,NULL,NULL,1,'Test description for ArchViz library.',1),(248,'Furniture','Furniture',246,0,NULL,NULL,NULL,1,NULL,1),(249,'Decor','Decor',246,0,NULL,NULL,NULL,1,NULL,1),(250,'Lights','Lights',246,0,NULL,NULL,NULL,1,NULL,1),(252,'Chairs','Chairs',248,0,NULL,NULL,NULL,1,NULL,1),(253,'Sofas','Sofas',248,0,NULL,NULL,NULL,1,NULL,1),(255,'Test','Test',0,2,NULL,NULL,NULL,1,NULL,1),(257,'Pendant','Pendant',249,0,NULL,NULL,NULL,1,NULL,1),(259,'lala','lala',246,0,NULL,NULL,NULL,1,NULL,1),(260,'tata','tata',246,0,NULL,NULL,NULL,1,NULL,1),(261,'Evermotion','Evermotion',0,1,NULL,NULL,NULL,1,'Professional, highly detailed 3d models for architectural visualizations by Evermotion.',1),(265,'Props And Gadgets','Props-And-Gadgets',261,0,NULL,NULL,NULL,1,NULL,1),(266,'Home','Home',265,0,NULL,NULL,NULL,1,NULL,1),(267,'Office','Office',265,0,NULL,NULL,NULL,1,NULL,1),(268,'Ceramics','Ceramics',265,0,NULL,NULL,NULL,1,NULL,1);
 /*!40000 ALTER TABLE `category` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -82,27 +82,30 @@ DROP TABLE IF EXISTS `models`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `models` (
-  `id` int(11) NOT NULL,
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `status` int(11) DEFAULT '0',
   `catid` int(11) DEFAULT '0',
   `name` varchar(255) DEFAULT NULL,
   `format` varchar(45) DEFAULT NULL,
-  `preview` int(11) DEFAULT '0',
+  `preview` varchar(45) DEFAULT NULL,
   `units` varchar(45) DEFAULT NULL,
   `dim` varchar(255) DEFAULT NULL,
   `polys` varchar(45) DEFAULT NULL,
   `render` varchar(45) DEFAULT NULL,
-  `rigged` int(11) DEFAULT '0',
-  `uvw` int(11) DEFAULT '0',
-  `unwrap` int(11) DEFAULT '0',
-  `lods` int(11) DEFAULT '0',
-  `projectid` int(11) DEFAULT '0',
+  `rigged` varchar(45) DEFAULT NULL,
+  `baked` varchar(45) DEFAULT NULL,
+  `unwrap` varchar(45) DEFAULT NULL,
+  `lods` varchar(45) DEFAULT NULL,
+  `project` varchar(45) DEFAULT NULL,
   `modeller` varchar(45) DEFAULT NULL,
   `previews` varchar(800) DEFAULT NULL,
   `files` varchar(1000) DEFAULT NULL,
   `tags` varchar(600) DEFAULT NULL,
-  `manufacture` varchar(200) DEFAULT NULL,
+  `manufacturer` varchar(200) DEFAULT NULL,
+  `overview` varchar(1000) DEFAULT NULL,
+  `date` int(11) DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB AUTO_INCREMENT=21 DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -111,7 +114,7 @@ CREATE TABLE `models` (
 
 LOCK TABLES `models` WRITE;
 /*!40000 ALTER TABLE `models` DISABLE KEYS */;
-INSERT INTO `models` VALUES (0,252,'Tabano Chair Leather','2013',1,'Millimeters','923.17 x 968.23 x 1074.48','72 723','Corona',NULL,1,1,0,0,'v.lukyanenko',NULL,NULL,'chair,leather,aluminium,corona','Cassina');
+INSERT INTO `models` VALUES (18,0,266,'Interior Props 08 am155','2013','1','Centimeters','31.73 x 32.25 x 32.07','0','VRay','',NULL,'1','','Evermotion','Evermotion',NULL,NULL,'cd155,evermotion,owl,books,bronze,statuette','Evermotion','Highly detailed 3d models of interior props with all textures, shaders and materials. It is ready to use, just put it into your scene.',1481562884),(19,0,266,'Interior Props 09 am155','2013','1','Centimeters','42.77 x 30.52 x 10.57','41 936','VRay','',NULL,'1','','Evermotion','Evermotion',NULL,NULL,'cd155,evermotion,vray,book,pen,pyramid,glasses','Evermotion','Highly detailed 3d models of interior props with all textures, shaders and materials. It is ready to use, just put it into your scene.',1481559844),(20,0,266,'Interior Props 16 am155','2013','1','Centimeters','42.54 x 42.5 x 45.13','1 337 691','VRay','',NULL,'1','','Evermotion','Evermotion',NULL,NULL,'cd155,evermotion,vray,flower,box,wood,bucket,painted,steel','Evermotion','Highly detailed 3d models of interior props with all textures, shaders and materials. It is ready to use, just put it into your scene.',1481562955);
 /*!40000 ALTER TABLE `models` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -185,7 +188,7 @@ CREATE TABLE `users` (
 
 LOCK TABLES `users` WRITE;
 /*!40000 ALTER TABLE `users` DISABLE KEYS */;
-INSERT INTO `users` VALUES (0,'e.astafiev','e00309ebe88dbeb6792fe9a7853760a4',2,1),(0,'v.lukyanenko','b7b9962a95ded7ed439e1328ff5facb1',2,1),(0,'v.melnykovych','0c5ffd3bf7584cc17aeee5174f8a9d10',0,1),(0,'y.bozhyk','11fa24b36c7e6eaf0f5ee6cb1aaafaac',0,1);
+INSERT INTO `users` VALUES (0,'e.astafiev','51d5a02dad25647dc42b49ec60d1421e',2,1),(0,'r.stray','f33f11cd9f5d35a4bccfc61d88ef7c8a',0,1),(0,'v.lukyanenko','2efedb13bfe62b8799e1ad3bb13fab0d',2,1),(0,'v.melnykovych','0c5ffd3bf7584cc17aeee5174f8a9d10',0,1),(0,'y.bozhyk','11fa24b36c7e6eaf0f5ee6cb1aaafaac',0,1);
 /*!40000 ALTER TABLE `users` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
@@ -198,4 +201,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2016-11-07 17:28:08
+-- Dump completed on 2016-12-12 18:23:57
