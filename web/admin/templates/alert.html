@@ -1,0 +1,6 @@
+<div class="col-sm-12 col-md-12 col-lg-12">
+	<div ng-controller="msgCtrl" ng-show="msg.error || msg.success || msg.warning" class="alert alert-dismissible fade in" ng-class="{'alert-warning': msg.warning, 'alert-success': msg.success, 'alert-danger': msg.error}" role="alert">
+		<button type="button" class="close"  aria-label="Close" ng-click="deleteMsg()"><span aria-hidden="true">&times;</span></button>
+		{{msg.error}}{{msg.success}}{{msg.warning}}		
+	</div>
+</div>

@@ -88,6 +88,19 @@
 		$SET['status'] = 0;
 		$SET['date'] = TIME();
 		
+		$IMG_CNT = 0;
+		$N = $INFO['CATID'] . '-' . CAT::CLEAR($NAME) . '-' . $INFO['RENDER'];
+		$RENDERS[] = $N . '-' . $IMG_CNT;
+		NEW PREVIEW($EXTRACTTO . '\\main.jpg', END($RENDERS));
+		
+		FOREACH(GLOB($EXTRACTTO . '\\preview\\*.jpg') AS $V) {				
+			$IMG_CNT++;
+			$RENDERS[] = $N . '-' . $IMG_CNT;
+			NEW PREVIEW($V, END($RENDERS));
+		}
+		
+		$SET['previews'] = IMPLODE(';', $RENDERS);
+		
 		IF(COUNT($EXIST) == 0) 
 		{
 			$RESULT = DB::INSERT('models', $SET);		
@@ -97,8 +110,7 @@
 			$RESULT = DB::UPDATE('models', $SET, $WHERE, TRUE);
 		}
 	}
-	
-	$AAAAA = NEW PREVIEW($EXTRACTTO . '\\main.jpg', $NAME);
+		
 
 	IF($ISREPLACE) FS::CLEAR($MOVETO);
 	FS::MOVE($EXTRACTTO, $MOVETO);	

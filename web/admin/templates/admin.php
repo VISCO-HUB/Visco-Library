@@ -1,7 +1,7 @@
 <?php
 
-	INCLUDE '../vault/config.php';
-	INCLUDE '../vault/lib.php';
+	INCLUDE '../../vault/config.php';
+	INCLUDE '../../vault/lib.php';
 	
 	AUTH::ADMIN();		
 ?>

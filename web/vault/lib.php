@@ -200,7 +200,7 @@
 								
 			IF($AUTH['exist'] == TRUE AND $AUTH['user']->status == 1) {
 				UNSET($AUTH['user']->token);				
-				ECHO '{{setAuth(' . JSON_ENCODE($AUTH['user']) . ')}}';				
+				RETURN '{{setAuth(' . JSON_ENCODE($AUTH['user']) . ')}}';				
 			}
 			ELSE {
 				ECHO '{{goLogin()}}';				
@@ -216,11 +216,12 @@
 								
 			IF($AUTH['exist'] == TRUE AND $AUTH['user']->status == 1 AND $AUTH['user']->rights > 0) {
 				UNSET($AUTH['user']->token);				
-				ECHO '{{setAuth(' . JSON_ENCODE($AUTH['user']) . ')}}';				
+				RETURN '{{setAuth(' . JSON_ENCODE($AUTH['user']) . ')}}';				
 			}
 			ELSE {
-				ECHO '{{goHome()}}';				
+				HEADER("Location: http://" . GLOBAL_URL . '/login/');			
 				EXIT;
+				RETURN FALSE;
 			}
 		}
 	}
@@ -718,21 +719,35 @@
 			RETURN $BIN;
 		}
 		
+		FUNCTION MAKETHUMB($IMG, $NSIZE){						
+			$IMG_P = IMAGECREATETRUECOLOR($NSIZE, $NSIZE);
+			IMAGECOPYRESAMPLED($IMG_P, $IMG, 0, 0, 0, 0, $NSIZE, $NSIZE, $this->OUT_SIZE, $this->OUT_SIZE);
+			$N = $this->IMG_NAME . '_' . $NSIZE . 'x' . $NSIZE . '.jpg';			
+			IMAGEJPEG($IMG_P, $this->UPLOAD_DIR . $N, 100);
+			IMAGEDESTROY($IMG_P);
+
+			RETURN $N;
+		}
+		
 		FUNCTION RESIZE($KOEF) {
 
 			$NWIDTH = $KOEF * $this->CUR_IMG_WIDTH;
 			$NHEIGHT = $KOEF * $this->CUR_IMG_HEIGHT; 
 			
-			$C = IMAGECREATETRUECOLOR($this->OUT_SIZE, $this->OUT_SIZE);			
-			$CLR = IMAGECOLORALLOCATE($C, 255, 255, 255);
-			IMAGEFILL($C, 0, 0, $CLR);
-			IMAGECOPYRESAMPLED($C, $this->IMG, ($this->OUT_SIZE - $NWIDTH) / 2, ($this->OUT_SIZE - $NHEIGHT) / 2, 0, 0, $NWIDTH, $NHEIGHT, $this->CUR_IMG_WIDTH, $this->CUR_IMG_HEIGHT);
+			$IMG_P = IMAGECREATETRUECOLOR($this->OUT_SIZE, $this->OUT_SIZE);			
+			$CLR = IMAGECOLORALLOCATE($IMG_P, 255, 255, 255);
+			IMAGEFILL($IMG_P, 0, 0, $CLR);
+			IMAGECOPYRESAMPLED($IMG_P, $this->IMG, ($this->OUT_SIZE - $NWIDTH) / 2, ($this->OUT_SIZE - $NHEIGHT) / 2, 0, 0, $NWIDTH, $NHEIGHT, $this->CUR_IMG_WIDTH, $this->CUR_IMG_HEIGHT);
 						
-			$N = $this->IMG_NAME . '_' . $this->OUT_SIZE . 'x' . $this->OUT_SIZE . '.jpg';
-			IMAGEJPEG($C, $this->UPLOAD_DIR . $N);
-			IMAGEDESTROY($C);
+			$T1 = $this->IMG_NAME . '_' . $this->OUT_SIZE . 'x' . $this->OUT_SIZE . '.jpg';
+			IMAGEJPEG($IMG_P, $this->UPLOAD_DIR . $T1, 99);
+						
+			$T2 = $this->MAKETHUMB($IMG_P, IMG_THUMB);
+			$T3 = $this->MAKETHUMB($IMG_P, IMG_SMALL);
 			
-			RETURN $N;
+			IMAGEDESTROY($IMG_P);
+			
+			RETURN [$T1, $T2, $T3];
 		}
 	}
 ?>

@@ -1,7 +1,7 @@
 <?php
 
-	INCLUDE '../vault/config.php';
-	INCLUDE '../vault/lib.php';
+	INCLUDE '../../vault/config.php';
+	INCLUDE '../../vault/lib.php';
 	
 	$MYSQLI = DB::CONNECT();
 	AUTH::USER();		
@@ -11,7 +11,7 @@
 	Yeah! You success logged!
 	<br>
 	<br>
-	<a href="/admin">Open Admin Panel</a>
+	<a href="#/admin">Open Admin Panel</a>
 	<br>
 	<br>
 	<br>

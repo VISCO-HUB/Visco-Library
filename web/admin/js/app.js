@@ -16,8 +16,6 @@ document.addEventListener("contextmenu", function(e){
    e.preventDefault();
 }, false);
 
-var hostname = 'http://' + window.location.hostname + '/';
-
 /* APP */
 
 var app = angular.module('app', ['ngRoute', 'ngSanitize', 'ui.bootstrap', 'angularFileUpload']);
@@ -27,23 +25,19 @@ var app = angular.module('app', ['ngRoute', 'ngSanitize', 'ui.bootstrap', 'angul
 app.config(function($routeProvider) {    
 	
 	$routeProvider
-    .when('/home', {
-        templateUrl : 'templates/home.php',
-		controller: 'homeCtrl'
+    .when('/global', {
+        templateUrl : 'templates/global.php',
+		controller: 'globalCtrl'
     })
-    .when('/admin', {
-        templateUrl : "templates/admin.php",
-		controller: 'adminCtrl'
+    .when('/category', {
+        templateUrl : "templates/category.php",
+		controller: 'categoryCtrl'
     })
-	.when('/login', {
-        templateUrl : "templates/login.php",
-		controller: 'loginCtrl'
+	.when('/category-edit/:id', {
+        templateUrl : "templates/category-edit.php",
+		controller: 'categoryEditCtrl'
     })
-	.when('/about/', {
-        templateUrl : "templates/about.html",
-		controller: 'aboutCtrl'
-    }) 	
-	.otherwise({redirectTo:'/home'});
+	.otherwise({redirectTo:'/global'});
 });
 
 // DIRECTIVES
@@ -71,10 +65,7 @@ app.filter('orderObjectBy', function() {
 
 
 // CONTROLLERS
-	// ABOUT
-app.controller("aboutCtrl", function($scope){
-	
-});
+
 	// UPLOAD
 app.controller('uploadCtrl', ['$scope', 'FileUploader', 'vault', function($scope, FileUploader, vault) {
 	var uploader = $scope.uploader = new FileUploader({
@@ -136,52 +127,24 @@ app.controller('uploadCtrl', ['$scope', 'FileUploader', 'vault', function($scope
 	};
  }]);
 
-	// LOGIN
-app.controller("loginCtrl", function($scope, $rootScope, vault){
-	$scope.badUserName = false;
-	$scope.badUserPassword = false;
-	
-	$scope.userName = '';
-	$scope.userPassword = '';
-	
-	vault.showMessage('Please enter your credentials!', 'warning');
-	
-	$scope.signIn = function() {
-		$scope.badUserName = $scope.userName == '';
-		$scope.badUserPassword = $scope.userPassword == '';
-		
-		if(!$scope.badUserName && !$scope.badUserPassword) {
-			var u = $scope.userName;
-			var p = $scope.userPassword;
-			
-			vault.signIn(u, p);
-		}
-		else {
-			vault.showMessage('Please enter correct your credentials!', 'error');
-		}
-	}
-});
-
-	// ADMIN
-app.controller("adminCtrl", function($scope, $rootScope, vault){
-	$scope.section = 'models';
-
+ 	// CATEGORY	
+app.controller("categoryEditCtrl", function ($scope, $rootScope, $routeParams, vault) {
 	vault.getGlobal();
 	vault.catGet();
+		
+	$rootScope.section = '/category';
+		
+	var id = $routeParams.id;
+	$scope.catId = id;
+	$scope.subCatEditID = id;
+	$scope.level = {};
 	
-	$scope.addLibrary = function(type) {
-		var n = prompt('Please enter the name!', '');			
-		
-		if(!n || !n.length) {			
-			vault.showMessage('Please enter the name (A-z, numbers, spaces)!', 'warning');
-		
-			return false;
-		}
-		
-		vault.adminCatAdd(n, 0, type);
-	}
+	$rootScope.addCrumb('Categories', '#/category');
+	$rootScope.addCrumb('Edit Library', '');
 	
-	$scope.adminAddCat = function(parentid, type) {		
+	$rootScope.deleteMsg();
+		
+	$scope.addCat = function(parentid, type) {		
 		if($scope.level[parentid] > 1) {return false;}
 		
 		var n = prompt('Please enter the name!', '');			
@@ -192,11 +155,12 @@ app.controller("adminCtrl", function($scope, $rootScope, vault){
 			return false;
 		}
 		
-		vault.adminCatAdd(n, parentid, type);
+		vault.catAdd(n, parentid, type);
 	}
 	
-	$scope.adminGlobalChangePath = function() {
-		var n = prompt('Please enter library path!', '');			
+	
+	$scope.catChangeDesc = function(id) {
+		var n = prompt('Please enter description!', '');			
 		
 		if(!n || !n.length) {			
 			vault.showMessage('Please enter library path!', 'warning');
@@ -204,24 +168,82 @@ app.controller("adminCtrl", function($scope, $rootScope, vault){
 			return false;
 		}
 		
-		vault.adminGlobalsChange(n);		
+		$scope.catSetParam('description', n, id);
 	}
 	
-	$scope.libType = function(type) {
-		var t = '';
+	$scope.subCatRename = function(id) {
+		if(id == $scope.catId) {return false;}
 		
-		switch(type)
-		{			
-			case '1': t = 'Models';
-			break;
-			case '2': t = 'Textures';
-			break;
-			default: t = 'Unknown';
-			break;
+		$scope.catChangeName(id);
+	}
+	
+	$scope.subCatDel = function(id) {
+		if(id == $scope.catId) {return false;}
+		
+		$scope.catDel(id);
+		
+		//subCatEditID=adminCatEditId
+	}
+	
+	$scope.catChangeName = function(id) {				
+		var n = prompt('Please enter the name!', '');			
+		
+		if(!n || !n.length) {			
+			vault.showMessage('Please enter the name!', 'warning');
+		
+			return false;
 		}
 		
-		return t;
+		vault.catChangeName(n, id);		
+	}	
+		
+	$scope.changeSort = function(id, sort) {
+		vault.catSort(id, sort);
 	}
+	
+	$scope.catDel = function(id, name) {
+		if(id == $scope.catId) {return false;}
+		
+		if(!name) {name = '';}
+		if(!confirm('Do you really want to delete category ' + name + '?')){
+			return false;
+		}
+		
+		vault.catDel(id);
+	}
+	
+	$scope.isSubCatActive = function(id) {
+		return $scope.subCatEditID == id;
+	}
+	
+	$scope.subCatEdit = function(id) {
+		$scope.subCatEditID = id;
+	}
+	
+	$scope.catSetParam = function(param, value, id) {
+	
+		vault.catSetParam(param, value, id);
+	}
+});
+	// CATEGORY EDIT
+app.controller("categoryCtrl", function ($scope, $rootScope, vault) {
+	vault.getGlobal();
+	vault.catGet();
+	
+	$rootScope.addCrumb('Categories', '#/category');
+	
+	$scope.addLibrary = function(type) {
+		var n = prompt('Please enter the name!', '');			
+		
+		if(!n || !n.length) {			
+			vault.showMessage('Please enter the name (A-z, numbers, spaces)!', 'warning');
+		
+			return false;
+		}
+		
+		vault.catAdd(n, 0, type);
+	}
+	
 	
 	$scope.adminChangeDesc = function(id) {
 		var n = prompt('Please enter description!', '');			
@@ -234,102 +256,66 @@ app.controller("adminCtrl", function($scope, $rootScope, vault){
 		
 		$scope.adminCatSetParam('description', n, id);
 	}
-	
-	$scope.adminSubCatRename = function(id) {
-		if(id == $scope.adminCatEditId) {return false;}
 		
-		$scope.adminChangeName(id);
-	}
-	
-	$scope.adminSubCatDel = function(id) {
-		if(id == $scope.adminCatEditId) {return false;}
-		
-		$scope.adminCatDel(id);
-		
-		//subCatEditID=adminCatEditId
-	}
-	
-	$scope.adminChangeName = function(id) {				
-		var n = prompt('Please enter the name!', '');			
-		
-		if(!n || !n.length) {			
-			vault.showMessage('Please enter the name!', 'warning');
-		
-			return false;
-		}
-		
-		vault.adminChangeName(n, id);		
-	}	
-	
 	$scope.libDel = function(id, name) {				
 		if(!name) {name = '';}
 		if(!confirm('Do you really want to delete category ' + name + '?')){
 			return false;
 		}
 		
-		vault.adminCatDel(id);
+		vault.catDel(id);
 	}
 	
 	$scope.changeSort = function(id, sort) {
-		vault.adminCatSort(id, sort);
+		vault.catSort(id, sort);
 	}
 	
-	$scope.adminCatDel = function(id, name) {
-		if(id == $scope.adminCatEditId) {return false;}
+	$scope.catSetParam = function(param, value, id) {
+	
+		vault.catSetParam(param, value, id);
+	}
+});
+
+	// MSG
+app.controller("msgCtrl", function ($scope, $rootScope, vault) {
+	
+});
+
+	// GLOBAL
+app.controller("globalCtrl", function ($scope, $rootScope, vault) {
+	vault.getGlobal();
+	
+	$rootScope.addCrumb('Global', '');
+	
+	$scope.adminGlobalChangePath = function() {
+		var n = prompt('Please enter library path!', '');			
 		
-		if(!name) {name = '';}
-		if(!confirm('Do you really want to delete category ' + name + '?')){
+		if(!n || !n.length) {			
+			vault.showMessage('Please enter library path!', 'warning');
+		
 			return false;
 		}
 		
-		vault.adminCatDel(id);
+		vault.globalsChange(n);		
 	}
-	
-	$scope.isAdminCatEdit = false;
-	
-	$scope.level = {};	
-	$scope.subCatEditID = -1;		
-	$scope.adminCatEditId = -1;
-	
-	$scope.adminCatEdit = function(id) {
-		$scope.adminCatEditId = id;
-		$scope.subCatEditID  = id;
-		$scope.level[id] = 0;
-		$scope.isAdminCatEdit = true;
-		$rootScope.deleteMsg();
-	}
-	
-	$scope.isSubCatActive = function(id) {
-		return $scope.subCatEditID == id;
-	}
-	
-	$scope.subCatEdit = function(id) {
-		$scope.subCatEditID = id;
-	}
-	
-	$scope.adminCatSetParam = function(param, value, id) {
-	
-		vault.adminCatSetParam(param, value, id);
-	}	
-});
-	// HOME
-app.controller("homeCtrl", function ($scope, vault) {
-	
 });
 // AUTO RUN
 app.run(function($rootScope, $location, $routeParams, vault) {
+		
     $rootScope.$watch(function() { 
         return $location.path(); 
     },
-     function(a){
+     function(a, b){
+		 
+		$rootScope.section = a;
 			
 		// INIT
 		$rootScope.goLogin = function() {
-			window.location = hostname + 'login/';
+			$location.path("/login");
 		}
 		
 		$rootScope.goHome = function() {
-			window.location = hostname;			
+			$location.path("/login");
 		}
 		
 		$rootScope.setAuth = function(u) {
@@ -340,11 +326,38 @@ app.run(function($rootScope, $location, $routeParams, vault) {
 		
 		$rootScope.deleteMsg = function() {$rootScope.msg = {};};
 		
-		$rootScope.singOut = function() {vault.signOut()};
+		$rootScope.singOut = function() {
+			if(!confirm('Do you really want to sign out?')){
+				return false;
+			}
+			vault.signOut()
+		};
 		
 		$rootScope.categories = {};
 		
 		$rootScope.globals = {};
+				
+		$rootScope.libType = function(type) {
+			var t = '';
+			
+			switch(type)
+			{			
+				case '1': t = 'Models';
+				break;
+				case '2': t = 'Textures';
+				break;
+				default: t = 'Unknown';
+				break;
+			}
+			
+			return t;
+		}
+	
+		$rootScope.breadcrumbs = [];
+		
+		$rootScope.addCrumb = function(name, url) {
+			$rootScope.breadcrumbs.push({'url' : url, 'name': name });
+		}
 		
 		$rootScope.count = function(o) {
 			var count = 0;
@@ -362,7 +375,7 @@ app.run(function($rootScope, $location, $routeParams, vault) {
 // SERVICES
 
 app.service('vault', function($http, $rootScope, $timeout, $interval, $templateCache) {
-		
+	
 	var showMessage = function(m, t) {
 		$rootScope.msg = {};
 		$rootScope.msg[t] = m;
@@ -419,14 +432,14 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 	// SIMPLIFY POST PROCEDURE
 	var HttpPost = function(query, json) {		
 		return $http({
-			url: hostname + 'vault/handle.php?query=' + query + '&time=' + new Date().getTime(),
+			url: '../vault/handle.php?query=' + query + '&time=' + new Date().getTime(),
 			method: "POST",
 			data: json
 		});
 	}
 	
 	var httpGet = function(query) {		
-		return $http.get(hostname + 'vault/handle.php?query=' + query + '&time=' + new Date().getTime());
+		return $http.get('../vault/handle.php?query=' + query + '&time=' + new Date().getTime());
 	}
 	
 	var signIn = function(u, p) {
@@ -435,9 +448,9 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		$templateCache.removeAll();
 		HttpPost('SIGNIN', json).then(function(r){						
 			var m = r.data.responce;
-					
+						
 			if(m == 'USEROK') {
-				$timeout(function(){							
+				$timeout(function(){
 					$rootScope.goHome();
 				}, 200);
 			}
@@ -456,7 +469,7 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 			responceMessage(r.data);
 						
 			$timeout(function(){
-				window.location = hostname + 'login/';
+				location.reload();
 			}, 200);			
 		},
 		function(r){
@@ -476,7 +489,6 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 			
 			$rootScope.categories = r.data;
 			responceMessage(r.data);
-			console.log(r.data)
 		},
 		function(r){
 			responceMessage(r);
@@ -492,7 +504,7 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		});
 	}
 		
-	var adminCatAdd = function(name, parentid, type) {
+	var catAdd = function(name, parentid, type) {
 		if(parentid == null) parentid = '0';
 		
 		var json = {'parentid': parentid, 'name': name, 'type': type};
@@ -507,7 +519,7 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		});
 	}
 		
-	var adminCatDel = function(id) {				
+	var catDel = function(id) {				
 		var json = {'id': id};
 		
 		HttpPost('CATDEL', json).then(function(r){						
@@ -520,7 +532,7 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		});
 	}
 		
-	var adminCatSetParam = function(param, value, id) {
+	var catSetParam = function(param, value, id) {
 		var json = {'param': param, 'value': value, 'id': id};
 		
 		HttpPost('CATSETPARAM', json).then(function(r){									
@@ -532,7 +544,7 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		});
 	}
 	
-	var adminGlobalsChange = function(path) {
+	var globalsChange = function(path) {
 		if(path == null) path = '';
 				
 		var json = {'path': path};
@@ -547,7 +559,7 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		});
 	}	
 	
-	var adminChangeName = function(name, id) {
+	var catChangeName = function(name, id) {
 		if(name == null) name = '';
 			
 		var json = {'name': name, 'id': id};
@@ -562,7 +574,7 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		});
 	}
 	
-	var adminCatSort = function(id, sort) {		
+	var catSort = function(id, sort) {		
 		var json = {'id': id, 'sort': sort};
 		
 		HttpPost('CATSORT', json).then(function(r){									
@@ -581,13 +593,13 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		signIn: signIn,
 		signOut: signOut,
 		catGet: catGet,
-		adminCatDel: adminCatDel,
-		adminCatAdd: adminCatAdd,
+		catDel: catDel,
+		catAdd: catAdd,
 		getGlobal: getGlobal,
-		adminGlobalsChange: adminGlobalsChange,
-		adminCatSetParam: adminCatSetParam,
-		adminChangeName: adminChangeName,
-		adminCatSort: adminCatSort
+		globalsChange: globalsChange,
+		catSetParam: catSetParam,
+		catChangeName: catChangeName,
+		catSort: catSort
 	};
 });
 

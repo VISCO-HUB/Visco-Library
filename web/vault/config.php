@@ -1,12 +1,15 @@
 <?php
 	// GLOBAL ROOT PATH
 	DEFINE('ROOT', REALPATH('../') . '\\');
-		
+	
+	//SERVER
+	DEFINE('GLOBAL_URL', $_SERVER['HTTP_HOST']);
+	
 	// MYSQL DATA
 	DEFINE('MYSQL_DB', 'assets_library');
 	DEFINE('MYSQL_SERVER', 'localhost');
 	DEFINE('MYSQL_USER', 'assets_library');
-	DEFINE('MYSQL_PWD', '*******');
+	DEFINE('MYSQL_PWD', '******');
 	
 	// LDAP ACTIVE DIRECTORY AUTH
 	DEFINE('AUTH_SERVER', '192.168.0.10');
