@@ -16,6 +16,8 @@ document.addEventListener("contextmenu", function(e){
    e.preventDefault();
 }, false);
 
+var hostname = 'http://' + window.location.hostname + '/';
+
 /* APP */
 
 var app = angular.module('app', ['ngRoute', 'ngSanitize', 'ui.bootstrap', 'angularFileUpload']);
@@ -25,19 +27,31 @@ var app = angular.module('app', ['ngRoute', 'ngSanitize', 'ui.bootstrap', 'angul
 app.config(function($routeProvider) {    
 	
 	$routeProvider
-    .when('/global', {
-        templateUrl : 'templates/global.php',
-		controller: 'globalCtrl'
+    .when('/settings', {
+        templateUrl : 'templates/settings.php',
+		controller: 'settingsCtrl'
     })
     .when('/category', {
         templateUrl : "templates/category.php",
 		controller: 'categoryCtrl'
     })
+	.when('/upload', {
+        templateUrl : "templates/upload.php",
+		controller: 'uploadCtrl'
+    })
+	.when('/dashboard', {
+        templateUrl : "templates/dashboard.php",
+		controller: 'dashboardCtrl'
+    })
+	.when('/users', {
+        templateUrl : "templates/users.php",
+		controller: 'usersCtrl'
+    })
 	.when('/category-edit/:id', {
         templateUrl : "templates/category-edit.php",
 		controller: 'categoryEditCtrl'
     })
-	.otherwise({redirectTo:'/global'});
+	.otherwise({redirectTo:'/dashboard'});
 });
 
 // DIRECTIVES
@@ -67,9 +81,12 @@ app.filter('orderObjectBy', function() {
 // CONTROLLERS
 
 	// UPLOAD
-app.controller('uploadCtrl', ['$scope', 'FileUploader', 'vault', function($scope, FileUploader, vault) {
+app.controller('uploadCtrl', function($scope, FileUploader, vault, $rootScope) {
+	
+	$rootScope.addCrumb('Upload', '#/upload');
+		
 	var uploader = $scope.uploader = new FileUploader({
-		url: 'vault/upload.php'
+		url: hostname + 'vault/upload.php'
 	});
 
 	// FILTERS
@@ -107,7 +124,7 @@ app.controller('uploadCtrl', ['$scope', 'FileUploader', 'vault', function($scope
 					uploader.queue[key].isSuccess = false;
 					uploader.queue[key].isUploaded = false;
 					uploader.queue[key].progress = 0;
-					uploader.queue[key].url = 'vault/upload.php?replace=true';
+					uploader.queue[key].url = hostname + 'vault/upload.php?replace=true';
 				}
 			});										
 		}
@@ -125,8 +142,66 @@ app.controller('uploadCtrl', ['$scope', 'FileUploader', 'vault', function($scope
 	uploader.onErrorItem = function(fileItem, response, status, headers) {
             console.info('onErrorItem', fileItem, response, status, headers);
 	};
- }]);
+ });
+	// DASHBOARD
+ app.controller('dashboardCtrl', function($scope, vault, $rootScope) {
+	$rootScope.addCrumb('Dashboard', '#/dashboard');
+	
+	 CanvasJS.addColorSet("shaders",
+		[//colorSet Array
+			"#337AB7"               
+		]);
 
+	
+	$scope.chart = new CanvasJS.Chart("chartContainer",
+    {
+		axisY: {
+			lineThickness: 0.2,
+			gridThickness: 0.2,
+			tickThickness: 0.2
+		},
+		axisX: {
+			lineThickness: 0.2,
+			gridThickness: 0,
+			tickThickness: 0.2
+		},
+		toolTip: {
+			borderColor: "#FFF"
+		},
+		colorSet: "shaders",
+		title:{
+    
+		},	
+		data: [
+			{        
+				type: "splineArea",
+			
+				dataPoints: [
+					{ x: new Date(2017, 00, 1), y: 1352 },
+					{ x: new Date(2017, 01, 1), y: 1514 },
+					{ x: new Date(2017, 02, 1), y: 1321 },
+					{ x: new Date(2017, 03, 1), y: 1163 },
+					{ x: new Date(2017, 04, 1), y: 950 },
+					{ x: new Date(2017, 05, 1), y: 1201 },
+					{ x: new Date(2017, 06, 1), y: 1186 },
+					{ x: new Date(2017, 07, 1), y: 1281 },
+					{ x: new Date(2017, 08, 1), y: 1438 },
+					{ x: new Date(2017, 09, 1), y: 1305 },
+					{ x: new Date(2017, 10, 1), y: 1480 },
+					{ x: new Date(2017, 11, 1), y: 1291 }        
+				]
+			}            
+		]
+    });
+
+    $scope.chart.render();
+ });
+ 
+ 	// USERS
+ app.controller('usersCtrl', function($scope, vault, $rootScope) {
+	$rootScope.addCrumb('Users', '#/users');
+	
+ });
  	// CATEGORY	
 app.controller("categoryEditCtrl", function ($scope, $rootScope, $routeParams, vault) {
 	vault.getGlobal();
@@ -281,13 +356,15 @@ app.controller("msgCtrl", function ($scope, $rootScope, vault) {
 	
 });
 
-	// GLOBAL
-app.controller("globalCtrl", function ($scope, $rootScope, vault) {
+	// SETTINGS
+app.controller("settingsCtrl", function ($scope, $rootScope, vault) {
 	vault.getGlobal();
 	
-	$rootScope.addCrumb('Global', '');
+	$scope.show = 'tab1';
 	
-	$scope.adminGlobalChangePath = function() {
+	$rootScope.addCrumb('Settings', '');
+	
+	$scope.globalsChange = function() {
 		var n = prompt('Please enter library path!', '');			
 		
 		if(!n || !n.length) {			
@@ -299,6 +376,7 @@ app.controller("globalCtrl", function ($scope, $rootScope, vault) {
 		vault.globalsChange(n);		
 	}
 });
+
 // AUTO RUN
 app.run(function($rootScope, $location, $routeParams, vault) {
 		

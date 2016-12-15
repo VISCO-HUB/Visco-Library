@@ -180,10 +180,10 @@ h1, h2, h3, h4 {
 
 .header .glyphicon {
 	color: #888888;
-	font-size: 20px;
+	font-size: 21px;
 }
 
-.nav > li > a {
+.nav-buttons > li > a {
     padding-top: 27px;
     padding-bottom: 27px;
     color: #888888;	
@@ -249,4 +249,66 @@ h1, h2, h3, h4 {
     top: 39px;
     left: 13px;
 	background-color: #D9534F;
+}
+
+.border-right {
+	border-right: 1px solid #EEEEEE;
+}
+
+.dashboard-card {
+	height: 160px;
+	padding: 10px;
+	color: #FFFFFF;
+	position: relative;
+    box-shadow: 0px 2px 3px rgba(0,0,0,0.2);
+	margin: 10px 0;
+}
+
+.dashboard-card.blue {
+	background: rgba(0,192,239,1.00);
+}
+
+.dashboard-card.green {
+	background: rgba(0,166,90,1.00);
+}
+
+.dashboard-card.red {
+	background: rgba(222,75,57,1.00);
+}
+
+.dashboard-card.yellow {
+	background: rgba(243,156,17,1.00);
+}
+
+.dashboard-card .bottom {
+	background: rgba(0,0,0,0.2);
+    text-align: center;
+    padding: 5px;
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    margin-left: -10px;
+}
+
+.dashboard-card a {
+	color: #FFFFFF;
+}
+
+.dashboard-card .big-font {
+	font-size: 3em;
+	color: #FFF;
+	font-weight: bold;
+    font-family: monospace;
+}
+
+.dashboard-card .icon {
+	color: rgba(0,0,0,0.2);
+	font-size: 7em;
+	position: absolute;
+	top: 10px;
+	right: 10px;
+}
+
+.canvasjs-chart-credit {
+   display: none;
 }
