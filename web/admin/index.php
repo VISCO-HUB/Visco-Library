@@ -23,6 +23,7 @@
 <script type="text/javascript" src="https://code.angularjs.org/1.5.8/angular.min.js"></script>
 <script type="text/javascript" src="https://code.angularjs.org/1.5.8/angular-route.min.js"></script>
 <script type="text/javascript" src="https://code.angularjs.org/1.5.8/angular-sanitize.min.js"></script>
+<script type="text/javascript" src="https://code.angularjs.org/1.5.8/angular-cookies.min.js"></script>
 <script type="text/javascript" src="http://nervgh.github.io/pages/angular-file-upload/dist/angular-file-upload.min.js"></script>
 <script type="text/javascript" src="../js/canvasjs.min.js"></script>
 <script type="text/javascript" src="js/app.js"></script>
@@ -76,7 +77,7 @@
 		<ul class="nav nav-pills nav-stacked">
 			<li ng-class="{active: section=='/dashboard'}"><a href="#/dashboard">Dashboard</a></li>
 			<li ng-class="{active: section=='/category'}"><a href="#/category" >Categories</a></li>
-			<li ng-class="{active: section=='/models'}"><a href="#/models" >Models</a></li>
+			<li ng-class="{active: section=='/models'}"><a href="#/models/1" >Models</a></li>
 			<li ng-class="{active: section=='/upload'}"><a href="#/upload" >Upload</a></li>
 			<li ng-class="{active: section=='/users'}"><a href="#/users" >Users</a></li>
 			<li ng-class="{active: section=='/settings'}"><a href="#/settings" >Settings</a></li>

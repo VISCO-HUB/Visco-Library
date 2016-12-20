@@ -3,7 +3,7 @@
 	DEFINE('ROOT', REALPATH('../') . '\\');
 	
 	//SERVER
-	DEFINE('GLOBAL_URL', $_SERVER['HTTP_HOST']);
+	DEFINE('HOSTNAME', 'http://' . $_SERVER['HTTP_HOST'] . '/');
 	
 	// MYSQL DATA
 	DEFINE('MYSQL_DB', 'assets_library');
@@ -23,4 +23,8 @@
 	DEFINE('IMG_SIZE', 600);
 	DEFINE('IMG_THUMB', 200);
 	DEFINE('IMG_SMALL', 60);
+	
+	// LIB TYPES (SQL TABLES MUST NAMED AS TYPES)
+	DEFINE('LIBTYPES', ARRAY(1 => 'models', 2 => 'textures'));
+
 ?>

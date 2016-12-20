@@ -23,7 +23,7 @@
 			$MYSQLI->CLOSE();	
 		}
 			
-		PUBLIC STATIC FUNCTION SELECT($TABLE, $WHERE = [], $SORT = NULL, $AND = NULL) {		
+		PUBLIC STATIC FUNCTION SELECT($TABLE, $WHERE = [], $SORT = NULL, $AND = NULL, $LIMIT = NULL) {		
 			
 			$MYSQLI = $GLOBALS['MYSQLI'];
 						
@@ -34,17 +34,45 @@
 				
 				$W[] = $KEY . "=" . "'" . $VALUE . "'";
 			}
-			$ATTACH = '';
+			$ATTACHWHERE = '';
 			$BOOL = $AND ? 'AND' : 'OR';
-			IF(COUNT($W)) $ATTACH = " WHERE " . IMPLODE(' ' . $BOOL . ' ', $W);
+			IF(COUNT($W)) $ATTACHWHERE = " WHERE " . IMPLODE(' ' . $BOOL . ' ', $W);
 	
 			$ATTACHSORT = '';
 			IF($SORT) $ATTACHSORT = ' ORDER BY ' . SELF::STRIP($SORT);
 			
-			$QUERY = "SELECT * FROM " . $TABLE . $ATTACH . $ATTACHSORT . ";";			
+			$ATTACHLIMIT = '';
+			IF($LIMIT) $ATTACHLIMIT = ' LIMIT ' . SELF::STRIP($LIMIT['start']) . ", " . SELF::STRIP($LIMIT['end']);
+			
+			$QUERY = "SELECT * FROM " . $TABLE . $ATTACHWHERE . $ATTACHSORT . $ATTACHLIMIT . ";";			
+			
 			$RESULT = $MYSQLI->query($QUERY);
 		
 			RETURN $RESULT;
+		}
+		
+		PUBLIC STATIC FUNCTION CNT($TABLE, $WHERE = [], $AND = NULL) {		
+			
+			$MYSQLI = $GLOBALS['MYSQLI'];
+			
+			$W = [];
+			FOREACH($WHERE AS $KEY => $VALUE) {							
+				$VALUE = SELF::STRIP($VALUE);							
+				$KEY = SELF::STRIP($KEY);
+				
+				$W[] = $KEY . "=" . "'" . $VALUE . "'";
+			}
+			
+			$ATTACHWHERE = '';
+			$BOOL = $AND ? 'AND' : 'OR';
+			IF(COUNT($W)) $ATTACHWHERE = " WHERE " . IMPLODE(' ' . $BOOL . ' ', $W);	
+			
+			$QUERY = "SELECT COUNT(*) AS cnt FROM " . $TABLE . $ATTACHWHERE .";";			
+			
+			$RESULT = $MYSQLI->query($QUERY);
+			$ROW = mysqli_fetch_assoc($RESULT);
+		
+			RETURN $ROW['cnt'];
 		}
 		
 		PUBLIC STATIC FUNCTION TOARRAY($RESULT) {
@@ -203,8 +231,9 @@
 				RETURN '{{setAuth(' . JSON_ENCODE($AUTH['user']) . ')}}';				
 			}
 			ELSE {
-				ECHO '{{goLogin()}}';				
+				HEADER("Location: " . HOSTNAME . 'login/');			
 				EXIT;
+				RETURN FALSE;
 			}
 		}
 		
@@ -219,7 +248,7 @@
 				RETURN '{{setAuth(' . JSON_ENCODE($AUTH['user']) . ')}}';				
 			}
 			ELSE {
-				HEADER("Location: http://" . GLOBAL_URL . '/login/');			
+				HEADER("Location: " . HOSTNAME . 'login/');			
 				EXIT;
 				RETURN FALSE;
 			}
@@ -748,6 +777,112 @@
 			IMAGEDESTROY($IMG_P);
 			
 			RETURN [$T1, $T2, $T3];
+		}
+	}
+	
+	CLASS PRODUCTS {
+		
+		PUBLIC STATIC FUNCTION TYPE($T) {				
+			IF($T > 0 AND $T <= COUNT(LIBTYPES)) RETURN LIBTYPES[$T];
+			RETURN NULL;
+		}
+		
+		PUBLIC STATIC FUNCTION GET($DATA) {			
+			$ERROR = '{"responce": "PRODBAD"}';
+			$WHERE = [];
+
+			
+			IF(!ISSET($DATA->page)) RETURN '[]';
+			IF(!ISSET($DATA->type)) RETURN '[]';
+			IF(!ISSET($DATA->perpage)) RETURN '[]';
+			
+			IF(ISSET($DATA->filter->catid)) {				
+				$WHERE['catid'] = $DATA->filter->catid;
+			}
+			
+			IF(ISSET($DATA->filter->id)) {				
+				$WHERE['id'] = $DATA->filter->id;
+			}
+			
+			$TYPE = SELF::TYPE($DATA->type);
+								
+			IF(!$TYPE) RETURN $ERROR;
+			
+			$CURPAGE = 1;
+						
+			IF($DATA->page > 0) $CURPAGE = $DATA->page;
+						
+			$LIMIT['start'] = ($CURPAGE - 1) * $DATA->perpage;
+			$LIMIT['end'] = $DATA->perpage;
+		
+			$RESULT = DB::SELECT($TYPE, $WHERE, NULL, TRUE, $LIMIT);
+			$PRODUCTS = DB::TOARRAY($RESULT);
+						
+			$ROWS = DB::CNT($TYPE, $WHERE, TRUE);
+						
+			$NUMPAGES = $ROWS;
+			
+			$OUT['currpage'] = $CURPAGE;
+			$OUT['totalitems'] = $NUMPAGES;
+			$OUT['perpage'] = $DATA->perpage;
+			IF(ISSET($WHERE['catid'])) 
+			{	
+				$OUT['filter']['catid'] = $WHERE['catid'];
+				$WHERE2['id'] = $WHERE['catid'];
+				$RESULT2 = DB::SELECT('category', $WHERE2);
+				$C = DB::TOARRAY($RESULT2);
+				$OUT['filter']['cat'] = $C[0];
+			}
+			
+			$OUT['products'] = $PRODUCTS;
+			
+			
+			RETURN JSON_ENCODE($OUT);
+		}
+		
+		PUBLIC STATIC FUNCTION PRODUCTINFO($DATA) {			
+			$ERROR = '{"responce": "PRODBAD"}';
+						
+			IF(!ISSET($DATA->id)) RETURN '[]';
+			IF(!ISSET($DATA->type)) RETURN '[]';
+			
+			$WHERE['id'] = $DATA->id;					
+			$TYPE = SELF::TYPE($DATA->type);
+								
+			IF(!$TYPE) RETURN $ERROR;
+					
+			$RESULT = DB::SELECT($TYPE, $WHERE);
+			$PRODUCT = DB::TOARRAY($RESULT);
+			
+			$OUT['info'] = $PRODUCT[0];
+			
+			IF($OUT['info']->catid) {
+				$WHERE2['id'] = $OUT['info']->catid;				
+				$RESULT2 = DB::SELECT('category', $WHERE2);
+				$C = DB::TOARRAY($RESULT2);
+				$OUT['cat'] = $C[0];
+			}
+						
+			RETURN JSON_ENCODE($OUT);
+		}
+		
+		PUBLIC STATIC FUNCTION PRODSETPARAM($DATA) {			
+			$ERROR = '{"responce": "SETTINGBAD"}';
+			$SUCCESS = '{"responce": "SETTINGOK"}';
+			
+			IF(!ISSET($DATA->param) OR !ISSET($DATA->type) OR !ISSET($DATA->value) OR !ISSET($DATA->id)) RETURN $ERROR;
+			
+			$TYPE = SELF::TYPE($DATA->type);
+
+			IF(!$TYPE) RETURN $ERROR;			
+			
+			$SET[$DATA->param] = $DATA->value;
+			$WHERE['id'] = $DATA->id;
+			
+			$RESULT = DB::UPDATE($TYPE, $SET, $WHERE);
+			
+			IF($RESULT > 0) RETURN $SUCCESS;
+			RETURN $ERROR ;
 		}
 	}
 ?>

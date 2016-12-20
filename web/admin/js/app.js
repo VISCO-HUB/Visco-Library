@@ -1,3 +1,8 @@
+/* GLOBAL VARS */
+
+var hostname = 'http://' + window.location.hostname + '/';
+var previewSizes = {'small': 60, 'medium': 200, 'huge': 600};
+
 /* GLOBAL FUNCTIONS */
 
 Array.prototype.makeUnique = function(){
@@ -16,11 +21,9 @@ document.addEventListener("contextmenu", function(e){
    e.preventDefault();
 }, false);
 
-var hostname = 'http://' + window.location.hostname + '/';
-
 /* APP */
 
-var app = angular.module('app', ['ngRoute', 'ngSanitize', 'ui.bootstrap', 'angularFileUpload']);
+var app = angular.module('app', ['ngRoute', 'ngSanitize', 'ngCookies', 'ui.bootstrap', 'angularFileUpload']);
 
 
 // CONFIG 
@@ -47,6 +50,14 @@ app.config(function($routeProvider) {
         templateUrl : "templates/users.php",
 		controller: 'usersCtrl'
     })
+	.when('/models/:page', {
+        templateUrl : "templates/models.php",
+		controller: 'modelsCtrl',
+    })
+	.when('/models-edit/:id/:page', {
+        templateUrl : "templates/models-edit.php",
+		controller: 'modelsEditCtrl',
+    })
 	.when('/category-edit/:id', {
         templateUrl : "templates/category-edit.php",
 		controller: 'categoryEditCtrl'
@@ -58,6 +69,17 @@ app.config(function($routeProvider) {
 app.directive("alerts", function($rootScope) {
     return {
         templateUrl : 'templates/alert.html'
+    };
+});
+
+app.directive('noClick', function() {
+    return {
+        restrict: 'A',
+        link: function(scope, element) {
+            element.click(function(e) {
+                e.stopPropagation();
+            });
+        }
     };
 });
 
@@ -115,7 +137,11 @@ app.controller('uploadCtrl', function($scope, FileUploader, vault, $rootScope) {
 			}
 		});
 		
-		if(response == 'REPLACEFILE') {
+		if(response.response == 'BADZIP') {
+			vault.showMessage('Bad zip file \"' + response.name + '\"' , 'error');	
+		}
+				
+		if(response.response == 'REPLACEFILE') {
 			vault.showMessage('Some files already exist! Press the button replace for needed files!', 'warning');
 				
 			angular.forEach(uploader.queue, function(item, key) {
@@ -202,6 +228,114 @@ app.controller('uploadCtrl', function($scope, FileUploader, vault, $rootScope) {
 	$rootScope.addCrumb('Users', '#/users');
 	
  });
+ 
+  	// MODELS
+app.controller("modelsEditCtrl", function ($scope, $rootScope, $routeParams, vault) {
+	vault.getGlobal();
+	vault.catGet();
+		
+	$rootScope.section = '/models';
+	$scope.type = 1;
+		
+	var id = $routeParams.id;
+	var page = $routeParams.page;
+		
+	$rootScope.addCrumb('Models', '#/models/' + page);
+	$rootScope.addCrumb('Edit Model', '');
+	
+	$rootScope.deleteMsg();
+	
+	$scope.productGet = function(){			
+		vault.productInfo($scope.type, id);		
+	};
+	
+	$scope.productGet();
+		
+	$scope.catSetParam = function(param, value, id) {	
+		vault.catSetParam(param, value, id);
+	}
+	
+	$scope.prodSetParam = function(param, value) {
+		vault.prodSetParam(param, value, id, $scope.type);
+	}
+	
+	$scope.getPreviews = function(p) {			
+		$scope.previews = vault.getPreviews(p, 'huge'); ;
+	}
+			
+	$scope.getPreviewNames = function(p) {			
+		return p.split(';');
+	}
+	
+	$scope.yesno = function(s) {
+		if(s) {return 'Yes';}
+		return 'No';
+	}
+	
+	$scope.pid = 0;
+	$scope.choosePreview = function(i){$scope.pid = i;}
+});
+	
+ app.controller('modelsCtrl', function($scope, vault, $rootScope, $location, $routeParams, $timeout, $cookieStore) {
+	$rootScope.addCrumb('Models', '#/models');
+	
+	$scope.page = $routeParams.page;
+	$rootScope.section = '/models';
+	
+	$timeout(function(){
+		$scope.currentPage = $scope.page;
+	}, 50);
+	
+	
+	if(!$cookieStore.get('perpage')) {		
+		$cookieStore.put('perpage', 50);	
+	};
+	
+	$rootScope.perpage = $cookieStore.get('perpage');
+	
+	$scope.type = 1;
+			
+	$scope.productsGet = function(page, perpage, type, filter){				
+		vault.productsGet(page, perpage, type, filter);
+	};
+	
+	$scope.changePerPage = function(p) {		
+		$cookieStore.put('perpage', p);
+		$rootScope.perpage = p;		
+		
+		$scope.productsGet($scope.page, $rootScope.perpage, $scope.type, $rootScope.modelFilter);
+	}
+	
+	$scope.getMainPreview = function(p, size) {
+		var a = vault.getPreviews(p, size);
+		return a[0];
+	}
+	
+	$scope.changeFilter = function(f) {
+		if(!$rootScope.modelFilter) {$rootScope.modelFilter = {}};
+		
+		angular.forEach(f, function(value, key) {
+			$rootScope.modelFilter[key] = value;
+		});
+		
+		$scope.productsGet($scope.page, $rootScope.perpage, $scope.type, $rootScope.modelFilter);
+	}
+	
+	
+	$scope.productsGet($scope.page, $rootScope.perpage, $scope.type, $rootScope.modelFilter);
+		
+	vault.catGet();
+	
+	$scope.tm = function(time) {return vault.tm(time)};
+	
+	$scope.changePage = function() {							
+		$location.path('/models/' + $scope.currentPage);		
+	}
+
+	$scope.prodSetParam = function(param, value, id) {
+		vault.prodSetParam(param, value, id, $scope.type);
+	}	
+ });
  	// CATEGORY	
 app.controller("categoryEditCtrl", function ($scope, $rootScope, $routeParams, vault) {
 	vault.getGlobal();
@@ -256,8 +390,6 @@ app.controller("categoryEditCtrl", function ($scope, $rootScope, $routeParams, v
 		if(id == $scope.catId) {return false;}
 		
 		$scope.catDel(id);
-		
-		//subCatEditID=adminCatEditId
 	}
 	
 	$scope.catChangeName = function(id) {				
@@ -412,6 +544,8 @@ app.run(function($rootScope, $location, $routeParams, vault) {
 		};
 		
 		$rootScope.categories = {};
+		$rootScope.products = {};
+		$rootScope.product = {};
 		
 		$rootScope.globals = {};
 				
@@ -502,6 +636,8 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 			break;
 			case 'REPLACEFILE': s.error = 'Some files already exist! Press replace for needed files!';
 			break;
+			case 'PRODBAD': s.error = 'Can\'t get items list!';
+			break;
 		}
 		
 		$rootScope.msg = s;
@@ -572,6 +708,81 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 			responceMessage(r);
 		});
 	}
+	
+	var getPreviews = function(p, size) {
+		var a = p.split(';');
+		var o = [];
+		if(!size) {size = 'small'}
+		
+		s = previewSizes[size];
+		
+		angular.forEach(a, function(item) {
+			o.push(hostname + 'images/' + item + '_' + s + 'x' + s + '.jpg');
+		});
+		
+		return o;
+	}
+	
+	var productsGet = function(page, perpage, type, filter) {
+			
+		var json = {'page': page, 'type': type, 'perpage': perpage, 'filter': filter};
+		
+		HttpPost('PRODGET', json).then(function(r){						
+			console.log(r.data);
+			$rootScope.products = r.data;						
+			if(r.data.products) {$rootScope.product = r.data.products[0]};			
+			responceMessage(r.data);
+		},
+		function(r){
+			responceMessage(r);
+		});
+	}
+	
+	var productInfo = function(type, id) {
+			
+		var json = {'type': type, 'id': id};
+		
+		HttpPost('PRODINFO', json).then(function(r){						
+			console.log(r.data);
+			$rootScope.product = r.data;									
+			if(r.data.info) {
+				$rootScope.product.previews = getPreviews(r.data.info.previews, 'huge');				
+				$rootScope.product.previewNames = r.data.info.previews.split(';');				
+			}
+			
+			if($rootScope.products && r.data.info) {					
+				angular.forEach($rootScope.products.products, function(value, key) {
+					if(value.id == r.data.info.id) {
+						$rootScope.products.products[key] = r.data.info;
+					}
+				});
+			}
+			
+			responceMessage(r.data);
+		},
+		function(r){
+			responceMessage(r);
+		});
+	}
+	
+	var prodSetParam = function(param, value, id, type) {
+		var json = {'param': param, 'value': value, 'id': id, 'type': type};
+		
+		HttpPost('PRODSETPARAM', json).then(function(r){												
+			console.log(r.data)
+			productInfo(type, id);		
+		},
+		function(r){
+			responceMessage(r);
+		});
+	}
+		
+	var tm = function(time) {
+		var d = new Date(time * 1000);
+		var s = d.getDate() + '.' + (d.getMonth()+1) + '.' + d.getFullYear();
+		
+		return s;
+    }
 	
 	var getGlobal = function() {
 		httpGet('GLOBALGET').then(function(r){									
@@ -677,7 +888,12 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		globalsChange: globalsChange,
 		catSetParam: catSetParam,
 		catChangeName: catChangeName,
-		catSort: catSort
+		catSort: catSort,
+		productsGet: productsGet,
+		productInfo: productInfo,
+		prodSetParam: prodSetParam, 
+		getPreviews: getPreviews,
+		tm: tm
 	};
 });
 

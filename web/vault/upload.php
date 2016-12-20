@@ -7,16 +7,17 @@
 	$ISREPLACE = ISSET($_GET['replace']);
 
 	$DATE = DATE('d.m.Y');
-	
-	$ERROR = 'FAILED';
-	$SUCCESS = 'DONE';
-	$REPLASE = 'REPLACEFILE';
-	
+		
 	$MYSQLI = DB::CONNECT();
 	$GLOBS = GLOBS::GET();	
 	
 	$FTMP = $_FILES['file']['tmp_name'];
 	$ONAME = $_FILES['file']['name'];
+	
+	$ERROR = '{"response": "FAILED", "name": "' . $ONAME . '"}';
+	$SUCCESS = '{"response": "DONE", "name": "' . $ONAME . '"}';
+	$REPLASE = '{"response": "REPLACEFILE", "name": "' . $ONAME . '"}';
+	$BADZIP = '{"response": "BADZIP", "name": "' . $ONAME . '"}';
 	
 	$TMP = '\\tmp\\' . $DATE . '\\';
 	FS::CREATEDIR($TMP);
@@ -37,18 +38,14 @@
 	
 	$INI = $EXTRACTTO . '\\info.ini';
 	
-	IF(!IS_FILE($INI)) DIE($ERRROR);
+	IF(!IS_FILE($INI)) DIE($BADZIP);
 	
 	$INI_UTF8 = MB_CONVERT_ENCODING(FILE_GET_CONTENTS($INI), 'UTF-8', 'UCS-2LE');
 	$PARSEDINI = PARSE_INI_STRING($INI_UTF8, TRUE);
 	
 	$INFO = $PARSEDINI['INFO'];	
-	
-	IF($INFO['TYPE'] != 'model' AND $INFO['TYPE'] != 'texture') 
-	{	
-		PRUNE();
-		DIE($ERROR);
-	}
+
+	IF(($INFO['TYPE'] != 'model') AND ($INFO['TYPE'] != 'texture')) DIE($BADZIP);
 	
 	// !!!! MUST ADD CHEK FOR ALL FILES!
 	$ID = $INFO['CATID'];
@@ -60,7 +57,8 @@
 	FS::CREATEDIR($MOVETO);
 		
 	IF(!FS::ISDIREMPTY($MOVETO) AND !$ISREPLACE) DIE($REPLASE);
-			
+	
+		
 	IF($INFO['TYPE'] == 'model') {
 		$WHERE['name'] = $NAME;
 		$WHERE['render'] = $INFO['RENDER'];
@@ -109,12 +107,11 @@
 		{
 			$RESULT = DB::UPDATE('models', $SET, $WHERE, TRUE);
 		}
+		
+		IF($ISREPLACE) FS::CLEAR($MOVETO);
+		FS::MOVE($EXTRACTTO, $MOVETO);
 	}
 		
-
-	IF($ISREPLACE) FS::CLEAR($MOVETO);
-	FS::MOVE($EXTRACTTO, $MOVETO);	
-	
 	DB::CLOSE();
 	
 	DIE($SUCCESS);
