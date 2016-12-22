@@ -272,6 +272,61 @@ app.controller("modelsEditCtrl", function ($scope, $rootScope, $routeParams, vau
 		return 'No';
 	}
 	
+	$scope.productChangeName = function(catid, oldname) {
+		var n = prompt('Please enter new name!', '');			
+		
+		if(!n || !n.length) {			
+			vault.showMessage('Please enter the product name!', 'warning');
+		
+			return false;
+		}
+		
+		vault.productChangeName(n, oldname, id, catid, $scope.type);
+	}
+	
+	$scope.productChangeOverview = function() {
+		var o = prompt('Please enter new overview!', '');			
+		
+		if(!o || !o.length) {			
+			vault.showMessage('Please enter the product overview!', 'warning');
+		
+			return false;
+		}
+		
+		vault.productChangeOverview(id, o, $scope.type);
+	}
+	
+	$scope.removeTag = function(tag) {
+		vault.removeTag(id, tag, $scope.type);
+	}
+	
+	$scope.addTag = function() {
+		var tags = prompt('Please add new tags separated by ","', '');			
+		
+		if(!tags || !tags.length) {			
+			vault.showMessage('Please add tags!', 'warning');
+		
+			return false;
+		}
+		
+		vault.addTag(id, tags, $scope.type)
+	}
+	
+	$scope.setMainPreview = function(name) {
+		vault.setMainPreview(id, name, $scope.type);
+		$scope.pid = 0;
+	}
+	
+	$scope.removePreview = function(name) {
+		if(!confirm('Do you really want to delete preview ' + name + '?')){
+			return false;
+		}
+		
+		vault.removePreview(id, name, $scope.type);
+		$scope.pid = 0;
+	}
+	
+	
 	$scope.pid = 0;
 	$scope.choosePreview = function(i){$scope.pid = i;}
 });
@@ -335,6 +390,14 @@ app.controller("modelsEditCtrl", function ($scope, $rootScope, $routeParams, vau
 	$scope.prodSetParam = function(param, value, id) {
 		vault.prodSetParam(param, value, id, $scope.type);
 	}	
+	
+	$scope.prodDelete = function(id, name) {
+	if(!confirm('Do you really want to delete "' + name + '"?')){
+		return false;
+	}
+	
+		vault.prodDelete(id, $scope.type, $scope.page, $rootScope.perpage, $rootScope.modelFilter);
+	}
  });
  	// CATEGORY	
 app.controller("categoryEditCtrl", function ($scope, $rootScope, $routeParams, vault) {
@@ -638,6 +701,16 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 			break;
 			case 'PRODBAD': s.error = 'Can\'t get items list!';
 			break;
+			case 'PRODNAMEINVALID': s.error = 'Invalid name! Allowed only A-Z, a-z, 0-9, minimum 4 symbols';
+			break;
+			case 'PODNAMEGBAD': s.error = 'Product can\'t be renamed!';
+			break;
+			case 'PRODNOTFOUNT': s.error = 'Product folder not found in file system! Please fix this issue!';
+			break;
+			case 'DELPREVIEWLAST': s.error = 'You can\'t delete main preview!';
+			break;
+			case 'DELPREVIEWOK': s.success = 'Success preview deleted!';
+			break;
 		}
 		
 		$rootScope.msg = s;
@@ -743,7 +816,7 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		var json = {'type': type, 'id': id};
 		
 		HttpPost('PRODINFO', json).then(function(r){						
-			console.log(r.data);
+			
 			$rootScope.product = r.data;									
 			if(r.data.info) {
 				$rootScope.product.previews = getPreviews(r.data.info.previews, 'huge');				
@@ -770,6 +843,97 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		
 		HttpPost('PRODSETPARAM', json).then(function(r){												
 			console.log(r.data)
+			productInfo(type, id);		
+		},
+		function(r){
+			responceMessage(r);
+		});
+	}
+	
+	var productChangeName = function(name, oldname, id, catid, type) {
+		var json = {'name': name, 'id': id, 'type': type, 'catid': catid, 'oldname': oldname};
+		
+		HttpPost('PRODSETNAME', json).then(function(r){												
+			console.log(r.data)
+			responceMessage(r.data);
+			productInfo(type, id);		
+		},
+		function(r){
+			responceMessage(r);
+		});
+	}
+		
+	var productChangeOverview = function(id, overview, type) {		
+		var json = {'id': id, 'type': type, 'overview': overview};
+		
+		HttpPost('PRODSETOVERVIEW', json).then(function(r){												
+
+			responceMessage(r.data);
+			productInfo(type, id);		
+		},
+		function(r){
+			responceMessage(r);
+		});
+	}
+	
+	var removeTag = function(id, tag, type) {
+		var json = {'id': id, 'tag': tag, 'type': type};
+		
+		HttpPost('PRODREMOVETAG', json).then(function(r){												
+			
+			responceMessage(r.data);
+			productInfo(type, id);		
+		},
+		function(r){
+			responceMessage(r);
+		});
+	}
+	
+	var addTag = function(id, tags, type) {
+		var json = {'id': id, 'tags': tags, 'type': type};
+		
+		HttpPost('PRODADDTAGS', json).then(function(r){												
+			
+			responceMessage(r.data);
+			productInfo(type, id);		
+		},
+		function(r){
+			responceMessage(r);
+		});
+	}
+	
+	var prodDelete = function(id, type, page, perpage, filter) {
+		var json = {'id': id, 'type': type};
+		
+		HttpPost('PRODDELETE', json).then(function(r){												
+			console.log(r.data)
+			responceMessage(r.data);
+			productsGet(page, perpage, type, filter)		
+		},
+		function(r){
+			responceMessage(r);
+		});
+	}
+	
+	var setMainPreview = function(id, name, type) {
+		var json = {'id': id, 'name': name, 'type': type};
+		
+		HttpPost('PRODSETMAINPREVIEW', json).then(function(r){												
+			
+			responceMessage(r.data);
+			productInfo(type, id);		
+		},
+		function(r){
+			responceMessage(r);
+		});
+	}
+	
+	var removePreview = function(id, name, type) {
+		var json = {'id': id, 'name': name, 'type': type};
+		
+		HttpPost('PRODDELPREVIEW', json).then(function(r){												
+			console.log(r.data)
+			responceMessage(r.data);
 			productInfo(type, id);		
 		},
 		function(r){
@@ -875,6 +1039,7 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 			responceMessage(r);
 		});
 	}
+	
 			
 	return {
 		showMessage: showMessage,
@@ -892,6 +1057,13 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		productsGet: productsGet,
 		productInfo: productInfo,
 		prodSetParam: prodSetParam, 
+		setMainPreview: setMainPreview,
+		removePreview: removePreview,
+		removeTag: removeTag,
+		prodDelete: prodDelete,
+		addTag: addTag,
+		productChangeName: productChangeName,
+		productChangeOverview: productChangeOverview,
 		getPreviews: getPreviews,
 		tm: tm
 	};

@@ -80,7 +80,7 @@
 		$SET['unwrap'] = $INFO['UNWRAP'];
 		$SET['project'] = $INFO['PROJECT'];
 		$SET['modeller'] = $INFO['MODELLER'];
-		$SET['tags'] = $INFO['TAGS'];
+		$SET['tags'] = TRIM(STR_REPLACE(' ', '', $INFO['TAGS']), ',') . ',';
 		$SET['manufacturer'] = $INFO['MANUFACTURER'];
 		$SET['overview'] = $INFO['OVERVIEW'];
 		$SET['status'] = 0;

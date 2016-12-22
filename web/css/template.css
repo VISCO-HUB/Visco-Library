@@ -9,6 +9,14 @@
 	-ms-user-select: none;
 	user-select: none;
 }
+
+input, textarea {
+	-webkit-user-select: text !important;
+	-moz-user-select: text !important;
+	-ms-user-select: text !important;
+	user-select: text !important;
+}
+
 .table > tbody > tr > td {
 	vertical-align: middle;
 }
@@ -323,4 +331,19 @@ h1, h2, h3, h4 {
 .admin-preview {
 	margin: 0 auto;
 	border: 1px solid #EEEEEE;	
+}
+
+.alert-msg {
+	position: fixed;
+    top: 13px;
+    z-index: 800;
+    left: 0;
+    right: 0;    
+}
+.alert-msg > div {
+	box-shadow: 0px 1px 2px 0px rgba(0, 0, 0, 0.29)
+}
+
+.margin-10-2 {
+	margin: 10px 2px;	
 }

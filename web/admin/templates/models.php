@@ -39,7 +39,7 @@
 			<span ng-show="prod.status==0" class="label label-danger pointer" ng-click="prodSetParam('status', '1', prod.id)">Disabled</span> 
 			<span ng-show="prod.status==1" class="label label-success pointer" ng-click="prodSetParam('status', '0', prod.id)">Enabled</span></td>
 			<td> {{tm(prod.date)}} </td>
-			<td><a href="#/models-edit/{{prod.id}}/{{currentPage}}">Edit</a> &nbsp;&nbsp;|&nbsp;&nbsp; <a href="" ng-click="libDel(cat.id, cat.name)">Delete</a></td>
+			<td><a href="#/models-edit/{{prod.id}}/{{currentPage}}">Edit</a> &nbsp;&nbsp;|&nbsp;&nbsp; <a href="" ng-click="prodDelete(prod.id, prod.name)">Delete</a></td>
 		</tr>
 	</table>
 </div>

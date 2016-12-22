@@ -321,7 +321,7 @@
 			$N = COUNT($D) - 2;
 			IF($N < 3) RETURN FALSE;
 			$D[$N] = $NAME;
-		  		  
+		  		
 			$DIR2 = IMPLODE('\\', $D);
 			
 			RETURN @RENAME($DIR, $DIR2);		  
@@ -853,14 +853,21 @@
 					
 			$RESULT = DB::SELECT($TYPE, $WHERE);
 			$PRODUCT = DB::TOARRAY($RESULT);
+						
+			$GLOBS = GLOBS::PARSE();
 			
 			$OUT['info'] = $PRODUCT[0];
-			
+						
 			IF($OUT['info']->catid) {
 				$WHERE2['id'] = $OUT['info']->catid;				
 				$RESULT2 = DB::SELECT('category', $WHERE2);
 				$C = DB::TOARRAY($RESULT2);
 				$OUT['cat'] = $C[0];
+				
+				$PATH = CAT::BUILDPATH($OUT['info']->catid);
+				
+				$OUT['dir'] = $PATH . CAT::CLEAR($OUT['info']->name) . '\\';
+				$OUT['exist'] = IS_DIR($OUT['dir']);
 			}
 						
 			RETURN JSON_ENCODE($OUT);
@@ -883,6 +890,251 @@
 			
 			IF($RESULT > 0) RETURN $SUCCESS;
 			RETURN $ERROR ;
+		}
+		
+		PUBLIC STATIC FUNCTION PRODSETOVERVIEW($DATA) {			
+			$ERROR = '{"responce": "SETTINGBAD"}';
+			$SUCCESS = '{"responce": "SETTINGOK"}';
+			
+			IF(!ISSET($DATA->overview) OR !ISSET($DATA->type) OR !ISSET($DATA->id)) RETURN $ERROR;
+			
+			$TYPE = SELF::TYPE($DATA->type);
+
+			IF(!$TYPE) RETURN $ERROR;			
+			
+			$SET['overview'] = $DATA->overview;
+			$WHERE['id'] = $DATA->id;
+			
+			$RESULT = DB::UPDATE($TYPE, $SET, $WHERE);
+			
+			IF($RESULT > 0) RETURN $SUCCESS;
+			RETURN $ERROR ;
+		}
+		
+		PUBLIC STATIC FUNCTION PRODREMOVETAG($DATA) {			
+			$ERROR = '{"responce": "REMOVETAGBAD"}';
+			$SUCCESS = '{"responce": "REMOVETAGOK"}';
+						
+			IF(!ISSET($DATA->tag) OR !ISSET($DATA->type) OR !ISSET($DATA->id)) RETURN $ERROR;
+			
+			$TYPE = SELF::TYPE($DATA->type);
+
+			IF(!$TYPE) RETURN $ERROR;			
+			
+			$WHERE['id'] = $DATA->id;
+			$RESULT = DB::SELECT($TYPE, $WHERE);
+			IF(!$RESULT) RETURN $ERROR;
+			$ROWS = DB::TOARRAY($RESULT);
+			IF(!$ROWS[0]) RETURN $ERROR;
+			
+			$TAGS = EXPLODE(',', $ROWS[0]->tags);
+			$TAGS = ARRAY_DIFF($TAGS, [$DATA->tag]);
+			
+			$TAGSROW = IMPLODE(',', $TAGS);
+			
+			$SET['tags'] = $TAGSROW ;
+			$WHERE['id'] = $DATA->id;
+						
+			$RESULT = DB::UPDATE($TYPE, $SET, $WHERE);
+			
+			IF($RESULT > 0) RETURN $SUCCESS;
+			RETURN $ERROR ;
+		}
+		
+		PUBLIC STATIC FUNCTION PRODADDTAGS($DATA) {			
+			$ERROR = '{"responce": "ADDTAGBAD"}';
+			$SUCCESS = '{"responce": "ADDTAGOK"}';
+						
+			IF(!ISSET($DATA->tags) OR !ISSET($DATA->type) OR !ISSET($DATA->id)) RETURN $ERROR;
+			
+			$TYPE = SELF::TYPE($DATA->type);
+
+			IF(!$TYPE) RETURN $ERROR;			
+			
+			$WHERE['id'] = $DATA->id;
+			$RESULT = DB::SELECT($TYPE, $WHERE);
+			IF(!$RESULT) RETURN $ERROR;
+			$ROWS = DB::TOARRAY($RESULT);
+			IF(!$ROWS[0]) RETURN $ERROR;
+			$OLDTAGS = TRIM(STR_REPLACE(' ', '', $ROWS[0]->tags), ','); 	
+			$NEWTAGS = TRIM(STR_REPLACE(' ', '', $DATA->tags), ',');
+			
+			$SET['tags'] = $OLDTAGS . ',' . $NEWTAGS . ',';
+			$WHERE['id'] = $DATA->id;
+						
+			$RESULT = DB::UPDATE($TYPE, $SET, $WHERE);
+			
+			IF($RESULT > 0) RETURN $SUCCESS;
+			RETURN $ERROR ;
+		}
+		
+		PUBLIC STATIC FUNCTION PRODSETMAINPREVIEW($DATA) {			
+			$ERROR = '{"responce": "SETMAINPREVIEWBAD"}';
+			$SUCCESS = '{"responce": "SETMAINPREVIEWOK"}';
+						
+			IF(!ISSET($DATA->name) OR !ISSET($DATA->type) OR !ISSET($DATA->id)) RETURN $ERROR;
+			
+			$TYPE = SELF::TYPE($DATA->type);
+
+			IF(!$TYPE) RETURN $ERROR;			
+			
+			$WHERE['id'] = $DATA->id;
+			$RESULT = DB::SELECT($TYPE, $WHERE);
+						
+			IF(!$RESULT) RETURN $ERROR;
+			$ROWS = DB::TOARRAY($RESULT);
+			IF(!$ROWS[0]) RETURN $ERROR;
+		
+			$PREVIEWS = EXPLODE(';', $ROWS[0]->previews);
+			
+			IF(ARRAY_SEARCH($DATA->name, $PREVIEWS) === FALSE) RETURN $ERROR;
+			$PREVIEWS = ARRAY_DIFF($PREVIEWS, [$DATA->name]);
+			ARRAY_UNSHIFT($PREVIEWS, $DATA->name);
+			
+			
+			
+			$SET['previews'] = IMPLODE(';', $PREVIEWS);
+			$WHERE['id'] = $DATA->id;
+						
+			$RESULT = DB::UPDATE($TYPE, $SET, $WHERE);
+			
+			IF($RESULT > 0) RETURN $SUCCESS;
+			RETURN $ERROR ;
+		}
+		
+		PUBLIC STATIC FUNCTION GETPREVIEWPATH($NAME, $SIZE) {
+			RETURN IMG_PATH . $NAME . '_' . $SIZE . 'x' . $SIZE . '.jpg';
+		}
+		
+		PUBLIC STATIC FUNCTION PRODDELPREVIEW($DATA) {			
+			$ERROR = '{"responce": "DELPREVIEWBAD"}';
+			$SUCCESS = '{"responce": "DELPREVIEWOK"}';
+			$LAST = '{"responce": "DELPREVIEWLAST"}';
+						
+			IF(!ISSET($DATA->name) OR !ISSET($DATA->type) OR !ISSET($DATA->id)) RETURN $ERROR;
+			
+			$TYPE = SELF::TYPE($DATA->type);
+
+			IF(!$TYPE) RETURN $ERROR;			
+			
+			$WHERE['id'] = $DATA->id;
+			$RESULT = DB::SELECT($TYPE, $WHERE);
+						
+			IF(!$RESULT) RETURN $ERROR;
+			$ROWS = DB::TOARRAY($RESULT);
+			IF(!$ROWS[0]) RETURN $ERROR;
+		
+			$PREVIEWS = EXPLODE(';', $ROWS[0]->previews);
+			IF(COUNT($PREVIEWS) < 2) RETURN $LAST;
+						
+			IF(ARRAY_SEARCH($DATA->name, $PREVIEWS) === FALSE) RETURN $ERROR;
+			$PREVIEWS = ARRAY_DIFF($PREVIEWS, [$DATA->name]);
+						
+			$SET['previews'] = IMPLODE(';', $PREVIEWS);
+			$WHERE['id'] = $DATA->id;
+						
+			$RESULT = DB::UPDATE($TYPE, $SET, $WHERE);
+			
+			IF($RESULT > 0) {			
+				FS::DEL(SELF::GETPREVIEWPATH($DATA->name, IMG_SIZE));
+				FS::DEL(SELF::GETPREVIEWPATH($DATA->name, IMG_THUMB));
+				FS::DEL(SELF::GETPREVIEWPATH($DATA->name, IMG_SMALL));
+				
+				RETURN $SUCCESS;
+			}
+						
+			RETURN $ERROR;
+		}
+		
+		PUBLIC STATIC FUNCTION PRODDELETE($DATA) {			
+			$ERROR = '{"responce": "PRODDELBAD"}';
+			$SUCCESS = '{"responce": "PRODDELOK"}';
+			$NOTEXIST = '{"responce": "PRODDIRNOTEXIST"}';
+			
+						
+			IF(!ISSET($DATA->type) OR !ISSET($DATA->id)) RETURN $ERROR;
+			
+			$TYPE = SELF::TYPE($DATA->type);
+
+			IF(!$TYPE) RETURN $ERROR;			
+			
+			$WHERE['id'] = $DATA->id;
+			$RESULT = DB::SELECT($TYPE, $WHERE);
+						
+			IF(!$RESULT) RETURN $ERROR;
+			$ROWS = DB::TOARRAY($RESULT);
+			IF(!$ROWS[0]) RETURN $ERROR;
+		
+			$PREVIEWS = EXPLODE(';', $ROWS[0]->previews);
+						
+			$DEL[] = $DATA->id;
+			
+			
+			$PATH = CAT::BUILDPATH($ROWS[0]->catid);
+			$GLOBS = GLOBS::PARSE();
+			$S = STR_REPLACE($GLOBS->path, '', $PATH);
+			IF(STRLEN($S) < 3) RETURN $ERROR;			
+			
+			$PATH = $PATH . CAT::CLEAR($ROWS[0]->name) . '\\';
+			$DIR = $PATH . $ROWS[0]->render . '\\';
+						
+			FS::CLEAR($DIR);
+			FS::DELDIR($DIR);
+			IF(FS::ISDIREMPTY($PATH)) FS::DELDIR($PATH);
+			
+						
+			FOREACH($PREVIEWS AS $P) {
+				FS::DEL(SELF::GETPREVIEWPATH($P, IMG_SIZE));
+				FS::DEL(SELF::GETPREVIEWPATH($P, IMG_THUMB));
+				FS::DEL(SELF::GETPREVIEWPATH($P, IMG_SMALL));
+			}
+			
+			$RESULT = DB::DEL($TYPE, $DEL, 'id');
+			
+			IF($RESULT > 0) RETURN $SUCCESS; 						
+			RETURN $ERROR;
+		}
+			
+		PUBLIC STATIC FUNCTION PRODSETNAME($DATA) {			
+			$ERROR = '{"responce": "PODNAMEGBAD"}';
+			$SUCCESS = '{"responce": "PODNAMEGOK"}';
+			$INVALID = '{"responce": "PRODNAMEINVALID"}';
+			$PRODNOTFOUND = '{"responce": "PRODNOTFOUNT"}';
+			
+			IF(!ISSET($DATA->type) OR !ISSET($DATA->name) OR !ISSET($DATA->id) OR !ISSET($DATA->catid) OR !ISSET($DATA->oldname)) RETURN $ERROR;
+			
+			IF(PREG_MATCH("/[^A-Za-z0-9\&\$\%\#\(\)\!\_\-\+\s]/", $DATA->name) OR STRLEN($DATA->name) < 4) RETURN $INVALID;
+			
+			$TYPE = SELF::TYPE($DATA->type);
+
+			IF(!$TYPE) RETURN $ERROR;			
+			
+			$SET['name'] = $DATA->name;
+			$WHERE['catid'] = $DATA->id;
+			$WHERE['name'] = $DATA->oldname;
+			$PATH = CAT::BUILDPATH($DATA->catid);
+			$GLOBS = GLOBS::PARSE();
+			
+			$S = STR_REPLACE($GLOBS->path, '', $PATH);
+			IF(STRLEN($S) < 3) RETURN $ERROR;
+			
+			$RESULT1 = DB::SELECT($TYPE, $WHERE);
+			
+			IF(!$RESULT1) RETURN $ERROR;
+			
+			$P = DB::TOARRAY($RESULT1);
+			IF(!$P[0]) RETURN $ERROR;
+						
+			$DIR1 = $PATH . CAT::CLEAR($P[0]->name) . '\\';
+			$DIR2 = $PATH . CAT::CLEAR($DATA->name) . '\\';
+			
+			IF(!IS_DIR($DIR1)) RETURN $PRODNOTFOUND;		
+			IF(!@RENAME($DIR1, $DIR2)) RETURN $ERROR;
+						
+			$RESULT = DB::UPDATE($TYPE, $SET, $WHERE);
+						
+			IF($RESULT > 0) RETURN $SUCCESS;
+			RETURN $ERROR;
 		}
 	}
 ?>
