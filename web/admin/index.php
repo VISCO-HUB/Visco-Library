@@ -42,7 +42,7 @@
 <body>
 <div class="header">
 	<div class="container">
-		<div class="padding-15">
+		<div class="padding-0-15">
 			<div class="navbar-header hidden-xxs"> <a href="#/"><img src="../visco_logo.svg" class="logo"></a> <span class="head-title hidden-xs">Assets Library</span> </div>
 			<div id="navbar3" class="navbar-default">
 				<ul class="nav nav-buttons">
@@ -50,7 +50,7 @@
 					<li class="active"><a href="#/" tooltip-popup-delay="200" uib-tooltip="Messages" tooltip-placement="bottom"><span class="glyphicon glyphicon-envelope"></span><span class="badge badge-admin">5</span></a></li>
 					<li class="dropdown" ng-show="auth.rights > 0 && auth.browser != 'MXS'"> <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false" tooltip-popup-delay="200" uib-tooltip="User" tooltip-placement="bottom"><span class="glyphicon glyphicon-user"></span></a>
 						<ul class="dropdown-menu" role="menu">
-							<li class="dropdown-header">Hi, {{auth.user}}</li>
+							<li class="dropdown-header">Hi, {{auth.name || auth.user}}</li>
 							<li class="divider"></li>
 							<li><a href="" ng-click="">Profile</a></li>
 						</ul>
@@ -78,8 +78,11 @@
 			<li ng-class="{active: section=='/dashboard'}"><a href="#/dashboard">Dashboard</a></li>
 			<li ng-class="{active: section=='/category'}"><a href="#/category" >Categories</a></li>
 			<li ng-class="{active: section=='/models'}"><a href="#/models/1" >Models</a></li>
+			<li ng-class="{active: section=='/textures'}"><a href="#/textures/1" >Textures</a></li>
+			<li ng-class="{active: section=='/tags'}"><a href="#/tags/1" >Tags</a></li>
+			<li ng-class="{active: section=='/comments'}"><a href="#/comments/1" >Comments</a></li>
 			<li ng-class="{active: section=='/upload'}"><a href="#/upload" >Upload</a></li>
-			<li ng-class="{active: section=='/users'}"><a href="#/users" >Users</a></li>
+			<li ng-class="{active: section=='/users'}"><a href="#/users/1" >Users</a></li>
 			<li ng-class="{active: section=='/settings'}"><a href="#/settings" >Settings</a></li>
 		</ul>
 	</div>

@@ -15,7 +15,7 @@
 			<td><a href="#/category-edit/{{cat.id}}">{{cat.name}}</a></td>
 			<td>{{libType(cat.type)}}</td>
 			<td>
-				<span ng-show="cat.status==0" class="label label-danger pointer" ng-click="catSetParam('status', '1', cat.id)">Disabled</span> 
+				<span ng-show="cat.status==0" class="label label-default pointer" ng-click="catSetParam('status', '1', cat.id)">Disabled</span> 
 				<span ng-show="cat.status==1" class="label label-success pointer" ng-click="catSetParam('status', '0', cat.id)">Enabled</span>
 			</td>
 			<td>

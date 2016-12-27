@@ -33,17 +33,22 @@
 </head>
 <body ng-controller="loginCtrl">
 <br>
+<div class="container" alerts></div>
 <div class="container">
 	<div class="signin">
 		<form ng-submit="signIn()">
 			<h2>Sign in</h2>
-			<input type="text" id="name" class="form-control" placeholder="User name" required="" autofocus="" ng-model="userName" ng-class="{warning: badUserName}">
+			<input type="text" id="name" class="form-control" placeholder="User name" required="" autofocus ng-model="userName" ng-class="{warning: badUserName}">
 			<input type="password" id="password" class="form-control" placeholder="Password" required="" ng-model="userPassword" ng-class="{warning: badUserPassword}">
 			<br>
 			<button class="btn btn-lg btn-native btn-block" type="submit">Sign in</button>
 		</form>
 	</div>
-	
+	<?php 
+		IF(ISSET($_GET['norights'])) {
+			ECHO "{{sendMessage('You have no rights to view this content!', 'error')}}"; 
+		}
+	?>
 </div>
 </body>
 </html>

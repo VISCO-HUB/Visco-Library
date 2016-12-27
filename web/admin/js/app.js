@@ -46,13 +46,25 @@ app.config(function($routeProvider) {
         templateUrl : "templates/dashboard.php",
 		controller: 'dashboardCtrl'
     })
-	.when('/users', {
+	.when('/users/:page', {
         templateUrl : "templates/users.php",
 		controller: 'usersCtrl'
     })
 	.when('/models/:page', {
         templateUrl : "templates/models.php",
 		controller: 'modelsCtrl',
+    })
+	.when('/textures/:page', {
+        templateUrl : "templates/textures.php",
+		controller: 'texturesCtrl',
+    })
+	.when('/tags/:page', {
+        templateUrl : "templates/tags.php",
+		controller: 'tagsCtrl',
+    })
+	.when('/comments/:page', {
+        templateUrl : "templates/comments.php",
+		controller: 'commentsCtrl',
     })
 	.when('/models-edit/:id/:page', {
         templateUrl : "templates/models-edit.php",
@@ -223,11 +235,123 @@ app.controller('uploadCtrl', function($scope, FileUploader, vault, $rootScope) {
     $scope.chart.render();
  });
  
- 	// USERS
- app.controller('usersCtrl', function($scope, vault, $rootScope) {
+	//USERS
+app.controller('usersCtrl', function($scope, vault, $rootScope, $location, $routeParams, $timeout, $cookieStore) {
 	$rootScope.addCrumb('Users', '#/users');
 	
- });
+	$scope.page = $routeParams.page;
+	$rootScope.section = '/users';
+	
+	$timeout(function(){
+		$scope.currentPage = $scope.page;
+	}, 50);
+	
+	
+	if(!$cookieStore.get('perpage')) {		
+		$cookieStore.put('perpage', 50);	
+	};
+	
+	$rootScope.perpage = $cookieStore.get('perpage');
+
+	$scope.usersGet = function(page, perpage, filter){				
+		vault.usersGet(page, perpage, filter);
+	};
+	
+	$scope.changePerPage = function(p) {		
+		$cookieStore.put('perpage', p);
+		$rootScope.perpage = p;		
+		
+		$scope.usersGet($scope.page, $rootScope.perpage, $rootScope.usersFilter);
+	}
+	
+	$scope.usersSetParam = function(param, value, id) {
+		if($rootScope.auth.id == id) {
+			alert('You can\'t change parameters for itself!');
+			return false;
+		}
+			
+		vault.usersSetParam(param, value, id);
+	}
+	
+	$scope.usersGetFilter = function() {
+		vault.usersGetFilter();
+	}
+	
+	$scope.changeFilter = function(f) {
+		if(!$rootScope.usersFilter) {$rootScope.usersFilter = {}};
+		
+		angular.forEach(f, function(value, key) {
+			$rootScope.usersFilter[key] = value;
+		});
+		
+		$scope.usersGet($scope.page, $rootScope.perpage, $rootScope.usersFilter);
+	}
+	
+	
+	$scope.usersGetFilter();
+	$scope.usersGet($scope.page, $rootScope.perpage, $rootScope.usersFilter);
+});
+ 
+
+	//TAGS
+app.controller('tagsCtrl', function($scope, vault, $rootScope, $location, $routeParams, $timeout, $cookieStore) {
+	$rootScope.addCrumb('Tags', '#/tags');
+	
+	$scope.page = $routeParams.page;
+	$rootScope.section = '/tags';
+	
+	$timeout(function(){
+		$scope.currentPage = $scope.page;
+	}, 50);
+	
+	
+	if(!$cookieStore.get('perpage')) {		
+		$cookieStore.put('perpage', 50);	
+	};
+	
+	$rootScope.perpage = $cookieStore.get('perpage');
+
+});
+
+	//COMMENTS
+app.controller('commentsCtrl', function($scope, vault, $rootScope, $location, $routeParams, $timeout, $cookieStore) {
+	$rootScope.addCrumb('Comments', '#/comments');
+	
+	$scope.page = $routeParams.page;
+	$rootScope.section = '/comments';
+	
+	$timeout(function(){
+		$scope.currentPage = $scope.page;
+	}, 50);
+	
+	
+	if(!$cookieStore.get('perpage')) {		
+		$cookieStore.put('perpage', 50);	
+	};
+	
+	$rootScope.perpage = $cookieStore.get('perpage');
+
+});
+
+	//TEXTURES
+app.controller('texturesCtrl', function($scope, vault, $rootScope, $location, $routeParams, $timeout, $cookieStore) {
+	$rootScope.addCrumb('Textures', '#/textures');
+	
+	$scope.page = $routeParams.page;
+	$rootScope.section = '/textures';
+	
+	$timeout(function(){
+		$scope.currentPage = $scope.page;
+	}, 50);
+	
+	
+	if(!$cookieStore.get('perpage')) {		
+		$cookieStore.put('perpage', 50);	
+	};
+	
+	$rootScope.perpage = $cookieStore.get('perpage');
+
+});
  
   	// MODELS
 app.controller("modelsEditCtrl", function ($scope, $rootScope, $routeParams, vault) {
@@ -588,7 +712,7 @@ app.run(function($rootScope, $location, $routeParams, vault) {
 		}
 		
 		$rootScope.goHome = function() {
-			$location.path("/login");
+			window.location = hostname + 'login/';
 		}
 		
 		$rootScope.setAuth = function(u) {
@@ -735,7 +859,8 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		$templateCache.removeAll();
 		HttpPost('SIGNIN', json).then(function(r){						
 			var m = r.data.responce;
-						
+			console.log(r.data);
+			
 			if(m == 'USEROK') {
 				$timeout(function(){
 					$rootScope.goHome();
@@ -756,8 +881,8 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 			responceMessage(r.data);
 						
 			$timeout(function(){
-				location.reload();
-			}, 200);			
+				$rootScope.goHome();
+			}, 300);			
 		},
 		function(r){
 			responceMessage(r);
@@ -810,6 +935,69 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 			responceMessage(r);
 		});
 	}
+		
+	var usersGet = function(page, perpage, filter) {
+			
+		var json = {'page': page, 'perpage': perpage, 'filter': filter};
+		
+		HttpPost('USERSGET', json).then(function(r){						
+			console.log(r.data);
+			$rootScope.users = r.data;									
+			responceMessage(r.data);
+		},
+		function(r){
+			responceMessage(r);
+		});
+	}
+	
+	var usersInfo = function(id) {
+			
+		var json = {'id': id};
+		
+		HttpPost('USERISINFO', json).then(function(r){						
+			
+			$rootScope.theUser = r.data;									
+			
+			if($rootScope.users && r.data.info) {					
+				angular.forEach($rootScope.users.users, function(value, key) {
+					if(value.id == r.data.info.id) {
+						$rootScope.users.users[key] = r.data.info;
+					}
+				});
+			}
+			
+			responceMessage(r.data);
+		},
+		function(r){
+			responceMessage(r);
+		});
+	}
+	
+	var usersSetParam = function(param, value, id) {
+		var json = {'param': param, 'value': value, 'id': id};
+		
+		HttpPost('USERSETPARAM', json).then(function(r){												
+			
+			responceMessage(r.data);			
+			usersInfo(id);
+		},
+		function(r){
+			responceMessage(r);
+		});
+	}
+	
+	var usersGetFilter = function(){
+		var json = {};
+		
+		HttpPost('USERGETFILTER', json).then(function(r){												
+			
+			$rootScope.userFilterList = r.data.filter;
+			responceMessage(r.data);						
+		},
+		function(r){
+			responceMessage(r);
+		});
+	}
 	
 	var productInfo = function(type, id) {
 			
@@ -849,6 +1037,7 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 			responceMessage(r);
 		});
 	}
+		
 	
 	var productChangeName = function(name, oldname, id, catid, type) {
 		var json = {'name': name, 'id': id, 'type': type, 'catid': catid, 'oldname': oldname};
@@ -1065,6 +1254,9 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		productChangeName: productChangeName,
 		productChangeOverview: productChangeOverview,
 		getPreviews: getPreviews,
+		usersGet: usersGet,
+		usersSetParam: usersSetParam,
+		usersGetFilter: usersGetFilter,
 		tm: tm
 	};
 });

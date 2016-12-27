@@ -49,7 +49,7 @@ app.config(function($routeProvider) {
 // DIRECTIVES
 app.directive("alerts", function($rootScope) {
     return {
-        templateUrl : 'templates/alert.html'
+        templateUrl : hostname + 'templates/alert.html'
     };
 });
 
@@ -145,6 +145,7 @@ app.controller("loginCtrl", function($scope, $rootScope, vault){
 	$scope.userPassword = '';
 	
 	vault.showMessage('Please enter your credentials!', 'warning');
+	$scope.sendMessage = function(m, t) {vault.showMessage(m, t)}
 	
 	$scope.signIn = function() {
 		$scope.badUserName = $scope.userName == '';
@@ -435,7 +436,7 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		$templateCache.removeAll();
 		HttpPost('SIGNIN', json).then(function(r){						
 			var m = r.data.responce;
-					
+			
 			if(m == 'USEROK') {
 				$timeout(function(){							
 					$rootScope.goHome();
@@ -474,8 +475,7 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		
 		HttpPost('CATGET', json).then(function(r){						
 			
-			$rootScope.categories = r.data;
-			responceMessage(r.data);
+			$rootScope.categories = r.data;			
 			console.log(r.data)
 		},
 		function(r){

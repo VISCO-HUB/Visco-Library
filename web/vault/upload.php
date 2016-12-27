@@ -108,6 +108,16 @@
 			$RESULT = DB::UPDATE('models', $SET, $WHERE, TRUE);
 		}
 		
+		IF($SET['tags']) {
+			$TAGS = EXPLODE(',', $SET['tags']);
+			
+			FOREACH($TAGS AS $TAG) {
+				IF(STRLEN($TAG) > 2) $T[]['name'] = TRIM($TAG);
+			}
+
+			DB::MULTIINSERT('tags', $T);
+		}
+		
 		IF($ISREPLACE) FS::CLEAR($MOVETO);
 		FS::MOVE($EXTRACTTO, $MOVETO);
 	}

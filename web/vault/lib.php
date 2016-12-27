@@ -45,6 +45,16 @@
 			IF($LIMIT) $ATTACHLIMIT = ' LIMIT ' . SELF::STRIP($LIMIT['start']) . ", " . SELF::STRIP($LIMIT['end']);
 			
 			$QUERY = "SELECT * FROM " . $TABLE . $ATTACHWHERE . $ATTACHSORT . $ATTACHLIMIT . ";";			
+		
+			$RESULT = $MYSQLI->query($QUERY);
+		
+			RETURN $RESULT;
+		}
+		
+		PUBLIC STATIC FUNCTION SELECTUNIQUE($COL, $TABLE) {
+			$MYSQLI = $GLOBALS['MYSQLI'];
+			
+			$QUERY = "SELECT DISTINCT " . SELF::STRIP($COL) . " FROM " . $TABLE . ";";
 			
 			$RESULT = $MYSQLI->query($QUERY);
 		
@@ -105,6 +115,32 @@
 			
 			RETURN $MYSQLI->affected_rows;
 		}
+		
+		PUBLIC STATIC FUNCTION MULTIINSERT($TABLE, $DATA)
+		{	
+			$MYSQLI = $GLOBALS['MYSQLI'];
+			$QUERY = '';
+			
+			FOREACH($DATA AS $ITEM)
+			{
+				$COLS = [];
+				$VALUES = [];
+				FOREACH($ITEM AS $KEY => $VALUE)
+				{
+					$VALUE = SELF::STRIP($VALUE);							
+					$KEY = SELF::STRIP($KEY);							
+					
+					$COLS[] = $KEY;						
+					$VALUES[] = $VALUE == null ? 'NULL' : "'" .$VALUE . "'";
+				}
+				
+				$QUERY .= "INSERT IGNORE INTO " . $TABLE . "(" . IMPLODE(',', $COLS) . ") VALUES(" . IMPLODE(',', $VALUES) . ");";				
+			}
+			
+			$RESULT = $MYSQLI->multi_query($QUERY);		
+			
+			RETURN $MYSQLI->affected_rows;
+		}
 
 		// DELETE
 		PUBLIC STATIC FUNCTION DEL($TABLE, $DATA, $PARAM)
@@ -154,6 +190,10 @@
 			
 			RETURN $MYSQLI->affected_rows;
 		}
+		
+		PUBLIC STATIC FUNCTION CONVERT($TEXT) {
+			RETURN TRIM(ICONV(MB_DETECT_ENCODING($TEXT, MB_DETECT_ORDER(), TRUE), "UTF-8", $TEXT));
+		}
 	}
 	
 	///////////////////////////////////////////////////////
@@ -163,6 +203,20 @@
 	CLASS AUTH {
 		PUBLIC STATIC FUNCTION TOKEN($USER, $PW) {
 			RETURN MD5(AUTH_SALT . $USER . $PW . time());
+		}
+		
+		PUBLIC STATIC FUNCTION GETINFO($ENTRIES) {
+			$S = EXPLODE(',', $ENTRIES);
+			 			
+			$OUT['name'] = EXPLODE('=', $S[0])[1];
+			$OUT['grp'] = EXPLODE('=', $S[1])[1];
+			$OUT['office'] = EXPLODE('=', $S[2])[1];
+			
+			$OUT['name'] = DB::CONVERT($OUT['name']);
+			$OUT['grp'] = DB::CONVERT($OUT['grp']);
+			$OUT['office'] = DB::CONVERT($OUT['office']);
+			
+			RETURN $OUT;
 		}
 		
 		PUBLIC STATIC FUNCTION SIGNIN($DATA) {						
@@ -176,19 +230,43 @@
 			$TOKEN = SELF::TOKEN($USER, $DATA->pwd);
 			
 			$LDAP = LDAP_CONNECT(AUTH_SERVER);
-			IF(!@LDAP_BIND($LDAP, $USER, $DATA->pwd)) RETURN $ERROR; 
-						
+			LDAP_SET_OPTION($LDAP, LDAP_OPT_PROTOCOL_VERSION, 3);
+			LDAP_SET_OPTION($LDAP, LDAP_OPT_REFERRALS, 0);
+			
+			IF(!@LDAP_BIND($LDAP, $USER, $DATA->pwd)) RETURN $ERROR; 			
+			
+			$DC = EXPLODE('.', AUTH_DOMAIN);
+			$DN = 'DC=' . $DC[0] . ', DC=' . $DC[1];
+			$FILTER = '(SAMAccountName=' . $DATA->user . ')';
+				
+			$SR = @LDAP_SEARCH($LDAP, $DN, $FILTER, ARRAY('ou'));
+			IF($SR) $ENTRIES = LDAP_GET_ENTRIES($LDAP, $SR);
+	
+			$INFO = [];
+			IF($ENTRIES[0]['dn']) $INFO = SELF::GETINFO($ENTRIES[0]['dn']);
+			
 			$_SESSION['token'] = $TOKEN;
 			
 			$SET = [];
 			$WHERE = [];
-
+						
 			$SET['user'] = $WHERE['user'] = $DATA->user;
 			$SET['token'] = $TOKEN;
-					
-			DB::INSERT('users', $SET);						
-			DB::UPDATE('users', $SET, $WHERE);
 			
+			//RETURN FALSE;
+							
+			IF($INFO['office']) $SET['office'] = $INFO['office'];
+			IF($INFO['name']) $SET['name'] = $INFO['name'];		
+			IF($INFO['grp']) $SET['grp'] = $INFO['grp'];
+			
+			$RESULT = DB::SELECT('users', $WHERE);
+			$ROWS = DB::TOARRAY($RESULT);
+			IF($ROWS[0]){
+				DB::UPDATE('users', $SET, $WHERE);												
+			} ELSE {
+				DB::INSERT('users', $SET);
+			}
+						
 			RETURN $SUCCESS;			
 		}
 		
@@ -248,7 +326,7 @@
 				RETURN '{{setAuth(' . JSON_ENCODE($AUTH['user']) . ')}}';				
 			}
 			ELSE {
-				HEADER("Location: " . HOSTNAME . 'login/');			
+				HEADER("Location: " . HOSTNAME . 'login/?norights');			
 				EXIT;
 				RETURN FALSE;
 			}
@@ -790,16 +868,20 @@
 		PUBLIC STATIC FUNCTION GET($DATA) {			
 			$ERROR = '{"responce": "PRODBAD"}';
 			$WHERE = [];
-
+			$OUT['filter']['cat']['name'] = 'All';
 			
 			IF(!ISSET($DATA->page)) RETURN '[]';
 			IF(!ISSET($DATA->type)) RETURN '[]';
 			IF(!ISSET($DATA->perpage)) RETURN '[]';
 			
 			IF(ISSET($DATA->filter->catid)) {				
-				$WHERE['catid'] = $DATA->filter->catid;
+				$WHERE['catid'] = $DATA->filter->catid;				
 			}
 			
+			IF(ISSET($DATA->filter->pending)) {				
+				$WHERE['pending'] = $DATA->filter->pending;
+			}
+						
 			IF(ISSET($DATA->filter->id)) {				
 				$WHERE['id'] = $DATA->filter->id;
 			}
@@ -833,6 +915,8 @@
 				$C = DB::TOARRAY($RESULT2);
 				$OUT['filter']['cat'] = $C[0];
 			}
+			
+			IF(ISSET($DATA->filter->pending)) $OUT['filter']['cat']['name'] = 'Pending';
 			
 			$OUT['products'] = $PRODUCTS;
 			
@@ -1135,6 +1219,128 @@
 						
 			IF($RESULT > 0) RETURN $SUCCESS;
 			RETURN $ERROR;
+		}
+	}
+	
+	CLASS USERS {
+		
+		PUBLIC STATIC FUNCTION GET($DATA) {			
+			$ERROR = '{"responce": "USERSBAD"}';
+			$WHERE = [];
+				
+			IF(!ISSET($DATA->page)) RETURN '[]';			
+			IF(!ISSET($DATA->perpage)) RETURN '[]';
+						
+			IF(ISSET($DATA->filter->grp) AND $DATA->filter->grp != 'All') {				
+				$WHERE['grp'] = $DATA->filter->grp;
+				$OUT['filter']['grp'] = $DATA->filter->grp;
+			} ELSE {
+				 $OUT['filter']['grp'] = 'All';
+			}
+									
+			IF(ISSET($DATA->filter->office) AND $DATA->filter->office != 'All') {				
+				$WHERE['office'] = $DATA->filter->office;
+				$OUT['filter']['office'] = $DATA->filter->office;
+			} ELSE {
+				 $OUT['filter']['office'] = 'All';
+			}
+			
+			IF(ISSET($DATA->filter->status) AND $DATA->filter->status != 'All') {				
+				$WHERE['status'] = $DATA->filter->status;
+				$OUT['filter']['status'] = $DATA->filter->status;
+			} ELSE {
+				 $OUT['filter']['status'] = 'All';
+			}
+			
+			IF(ISSET($DATA->filter->rights) AND $DATA->filter->rights != 'All') {				
+				$WHERE['rights'] = $DATA->filter->rights;
+				$OUT['filter']['rights'] = $DATA->filter->rights;
+			} ELSE {
+				 $OUT['filter']['rights'] = 'All';
+			}
+			
+			$CURPAGE = 1;
+						
+			IF($DATA->page > 0) $CURPAGE = $DATA->page;
+						
+			$LIMIT['start'] = ($CURPAGE - 1) * $DATA->perpage;
+			$LIMIT['end'] = $DATA->perpage;
+		
+			
+			$RESULT = DB::SELECT('users', $WHERE, NULL, TRUE, $LIMIT);
+			$USERS = DB::TOARRAY($RESULT);
+				
+			$ROWS = DB::CNT('users', $WHERE, TRUE);
+						
+			$NUMPAGES = $ROWS;
+			
+			$OUT['currpage'] = $CURPAGE;
+			$OUT['totalitems'] = $NUMPAGES;
+			$OUT['perpage'] = $DATA->perpage;
+			
+			FOREACH($USERS AS $USER) {
+				$U['id'] = $USER->id;
+				$U['user'] = $USER->user;
+				$U['rights'] = $USER->rights;
+				$U['status'] = $USER->status;
+				$U['grp'] = $USER->grp;
+				$U['name'] = $USER->name;
+				$U['office'] = $USER->office;
+				
+				$OUT['users'][] = $U;
+			}
+						
+			RETURN JSON_ENCODE($OUT);
+		}
+
+		PUBLIC STATIC FUNCTION USERETPARAM($DATA) {							
+			$ERROR = '{"responce": "SETTINGBAD"}';
+			$SUCCESS = '{"responce": "SETTINGOK"}';
+			
+			IF(!ISSET($DATA->param) OR !ISSET($DATA->value) OR !ISSET($DATA->id)) RETURN $ERROR;
+						
+			$SET[$DATA->param] = $DATA->value;
+			$WHERE['id'] = $DATA->id;
+			
+			$RESULT = DB::UPDATE('users', $SET, $WHERE);
+			
+			IF($RESULT > 0) RETURN $SUCCESS;
+			RETURN $ERROR ;
+		}
+		
+		PUBLIC STATIC FUNCTION USERINFO($DATA) {			
+			$ERROR = '{"responce": "USERBAD"}';
+						
+			IF(!ISSET($DATA->id)) RETURN '[]';
+						
+			$WHERE['id'] = $DATA->id;					
+											
+			$RESULT = DB::SELECT('users', $WHERE);
+			$USER = DB::TOARRAY($RESULT);
+					
+			$OUT['info']['id'] = $USER[0]->id;
+			$OUT['info']['user'] = $USER[0]->user;
+			$OUT['info']['status'] = $USER[0]->status;
+			$OUT['info']['rights'] = $USER[0]->rights;
+			$OUT['info']['grp'] = $USER[0]->grp;
+			$OUT['info']['name'] = $USER[0]->name;
+			$OUT['info']['office'] = $USER[0]->office;
+				
+			RETURN JSON_ENCODE($OUT);
+		}
+		
+		PUBLIC STATIC FUNCTION USERGETFILTER() {			
+														
+			$RESULT = DB::SELECTUNIQUE('grp', 'users');
+			$GRP = DB::TOARRAY($RESULT);
+			
+			$RESULT = DB::SELECTUNIQUE('office', 'users');
+			$OFFICE = DB::TOARRAY($RESULT);			
+					
+			$OUT['filter']['grp'] = $GRP;
+			$OUT['filter']['office'] = $OFFICE;
+		
+			RETURN JSON_ENCODE($OUT);
 		}
 	}
 ?>

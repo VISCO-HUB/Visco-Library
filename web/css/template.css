@@ -211,9 +211,14 @@ h1, h2, h3, h4 {
 .navbar-header {
 	margin: 0 !important;
 }
-.padding-15 {
+.padding-0-15 {
 	padding: 0 15px;
 }
+
+.padding-5 {
+	padding: 5px;
+}
+
 .text-gray {
 	color: #888888;
 }
