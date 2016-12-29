@@ -120,7 +120,7 @@ app.controller('uploadCtrl', function($scope, FileUploader, vault, $rootScope) {
 	$rootScope.addCrumb('Upload', '#/upload');
 		
 	var uploader = $scope.uploader = new FileUploader({
-		url: hostname + 'vault/upload.php'
+		url: hostname + 'admin/vault/upload.php'
 	});
 
 	// FILTERS
@@ -162,7 +162,7 @@ app.controller('uploadCtrl', function($scope, FileUploader, vault, $rootScope) {
 					uploader.queue[key].isSuccess = false;
 					uploader.queue[key].isUploaded = false;
 					uploader.queue[key].progress = 0;
-					uploader.queue[key].url = hostname + 'vault/upload.php?replace=true';
+					uploader.queue[key].url = hostname + 'admin/vault/upload.php?replace=true';
 				}
 			});										
 		}
@@ -527,6 +527,7 @@ app.controller("modelsEditCtrl", function ($scope, $rootScope, $routeParams, vau
 app.controller("categoryEditCtrl", function ($scope, $rootScope, $routeParams, vault) {
 	vault.getGlobal();
 	vault.catGet();
+	vault.usersGet('1', '10000', {'rights': '1'});
 		
 	$rootScope.section = '/category';
 		
@@ -554,7 +555,14 @@ app.controller("categoryEditCtrl", function ($scope, $rootScope, $routeParams, v
 		vault.catAdd(n, parentid, type);
 	}
 	
+	$scope.addEditor = function(id, user) {		
+		vault.catAddEditor(id, user);
+	}
 	
+	$scope.removeEditor = function(id, user) {
+		vault.catRemoveEditor(id, user);
+	}
+		
 	$scope.catChangeDesc = function(id) {
 		var n = prompt('Please enter description!', '');			
 		
@@ -843,14 +851,14 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 	// SIMPLIFY POST PROCEDURE
 	var HttpPost = function(query, json) {		
 		return $http({
-			url: '../vault/handle.php?query=' + query + '&time=' + new Date().getTime(),
+			url: hostname + 'admin/vault/handle.php?query=' + query + '&time=' + new Date().getTime(),
 			method: "POST",
 			data: json
 		});
 	}
 	
 	var httpGet = function(query) {		
-		return $http.get('../vault/handle.php?query=' + query + '&time=' + new Date().getTime());
+		return $http.get(hostname + 'admin/vault/handle.php?query=' + query + '&time=' + new Date().getTime());
 	}
 	
 	var signIn = function(u, p) {
@@ -1160,7 +1168,33 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 			responceMessage(r);
 		});
 	}
+	
+	var catAddEditor = function(id, user) {
+		var json = {'id': id, 'user': user};
 		
+		HttpPost('CATADDEDITOR', json).then(function(r){						
+			catGet();
+			console.log(r.data)
+			responceMessage(r.data);
+		},
+		function(r){
+			responceMessage(r);
+		});
+	}
+	
+	var catRemoveEditor = function(id, user) {
+		var json = {'id': id, 'user': user};
+		
+		HttpPost('CATDELDITOR', json).then(function(r){						
+			catGet();
+			console.log(r.data)
+			responceMessage(r.data);
+		},
+		function(r){
+			responceMessage(r);
+		});
+	}
+	
 	var catDel = function(id) {				
 		var json = {'id': id};
 		
@@ -1237,6 +1271,8 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		signOut: signOut,
 		catGet: catGet,
 		catDel: catDel,
+		catAddEditor: catAddEditor,
+		catRemoveEditor: catRemoveEditor,
 		catAdd: catAdd,
 		getGlobal: getGlobal,
 		globalsChange: globalsChange,

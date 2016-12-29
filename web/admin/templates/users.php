@@ -37,13 +37,14 @@
 	</div>
 	<div class="dropdown clr padding-5">By Rights:
 		<div class="btn-group">
-			<button type="button" class="btn btn-default"> <span ng-show="users.filter.rights=='All'">All</span> <span ng-show="users.filter.rights=='0'">User</span> <span ng-show="users.filter.rights=='1'">Admin</span> <span ng-show="users.filter.rights=='2'">Super Admin</span> </button>
+			<button type="button" class="btn btn-default"> <span ng-show="users.filter.rights=='All'">All</span> <span ng-show="users.filter.rights=='0'">User</span> <span ng-show="users.filter.rights=='1'">Moderator</span> <span ng-show="users.filter.rights=='2'">Super Admin</span> </button>
 			<button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span class="caret"></span><span class="sr-only">Toggle Dropdown</span></button>
 			<ul class="dropdown-menu" role="menu" aria-labelledby="dropdownMenu">
 				<li><a href="" ng-click="changeFilter({'rights': 'All'})">All</a></li>
 				<li class="divider"></li>
+				<li> <a tabindex="-1" data-toggle="dropdown" href="" ng-click="changeFilter({'rights': '-1'})">Guest</a></li>
 				<li> <a tabindex="-1" data-toggle="dropdown" href="" ng-click="changeFilter({'rights': '0'})">User</a></li>
-				<li> <a tabindex="-1" data-toggle="dropdown" href="" ng-click="changeFilter({'rights': '1'})">Admin</a></li>
+				<li> <a tabindex="-1" data-toggle="dropdown" href="" ng-click="changeFilter({'rights': '1'})">Moderator</a></li>
 				<li> <a tabindex="-1" data-toggle="dropdown" href="" ng-click="changeFilter({'rights': '2'})">Super Admin</a></li>
 			</ul>
 		</div>
@@ -68,8 +69,14 @@
 			<td>{{user.name}}</td>
 			<td>{{user.grp}}</td>
 			<td>{{user.office}}</td>
-			<td><span ng-show="user.status==0" class="label label-default pointer" ng-click="usersSetParam('status', '1', user.id)">Disabled</span> <span ng-show="user.status==1" class="label label-success pointer" ng-click="usersSetParam('status', '0', user.id)">Enabled</span></td>
-			<td><span ng-show="user.rights==0" class="label label-primary pointer" ng-click="usersSetParam('rights', '1', user.id)">User</span> <span ng-show="user.rights==1" class="label label-warning pointer" ng-click="usersSetParam('rights', '2', user.id)">Admin</span> <span ng-show="user.rights==2" class="label label-danger pointer" ng-click="usersSetParam('rights', '0', user.id)">Super Admin</span></td>
+			<td>
+			<span ng-show="user.status==0" class="label label-default pointer" ng-click="usersSetParam('status', '1', user.id)">Disabled</span> 
+			<span ng-show="user.status==1" class="label label-success pointer" ng-click="usersSetParam('status', '0', user.id)">Enabled</span></td>
+			<td>
+			<span ng-show="user.rights==-1" class="label label-info pointer" ng-click="usersSetParam('rights', '0', user.id)">Guest</span> 
+			<span ng-show="user.rights==0" class="label label-primary pointer" ng-click="usersSetParam('rights', '1', user.id)">User</span> 
+			<span ng-show="user.rights==1" class="label label-warning pointer" ng-click="usersSetParam('rights', '2', user.id)">Moderator</span> 
+			<span ng-show="user.rights==2" class="label label-danger pointer" ng-click="usersSetParam('rights', '-1', user.id)">Super Admin</span></td>
 		</tr>
 	</table>
 </div>

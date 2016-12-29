@@ -7,10 +7,10 @@
 			<th>Library</th>		
 			<th>Type</th>					
 			<th>Status</th>
-			<th>Sort</th>
+			<th ng-show="auth.rights==2">Sort</th>
 			<th width="150px">Actions</th>
 		</tr>
-		<tr ng-repeat="cat in categories | orderObjectBy:'sort'" >
+		<tr ng-repeat="cat in categories | orderObjectBy:'sort'" ng-if="cat.editors.length && cat.editors.split(';').indexOf(auth.user)!=-1 || auth.rights==2">
 			<td>{{$index + 1}}.</td>
 			<td><a href="#/category-edit/{{cat.id}}">{{cat.name}}</a></td>
 			<td>{{libType(cat.type)}}</td>
@@ -18,19 +18,19 @@
 				<span ng-show="cat.status==0" class="label label-default pointer" ng-click="catSetParam('status', '1', cat.id)">Disabled</span> 
 				<span ng-show="cat.status==1" class="label label-success pointer" ng-click="catSetParam('status', '0', cat.id)">Enabled</span>
 			</td>
-			<td>
+			<td ng-show="auth.rights==2">
 				<span class="glyphicon text-gray glyphicon-triangle-bottom pointer" aria-hidden="true" ng-click="changeSort(cat.id, -1)"></span>&nbsp;&nbsp;
 				<span class="glyphicon text-gray glyphicon-triangle-top pointer" aria-hidden="true" ng-click="changeSort(cat.id, 1)"></span>
 			</td>
 			<td>
-				<a href="#/category-edit/{{cat.id}}">Edit</a> &nbsp;&nbsp;|&nbsp;&nbsp;
-				<a href="" ng-click="libDel(cat.id, cat.name)">Delete</a>
+				<a href="#/category-edit/{{cat.id}}">Edit</a><span ng-show="auth.rights==2"> &nbsp;&nbsp;|&nbsp;&nbsp;
+				<a href="" ng-click="libDel(cat.id, cat.name)">Delete</a></span>
 			</td>					
 		</tr>
 	</table>
 </div>
 
-<div class="btn-group dropup" tooltip-placement="right" uib-tooltip="Creates specific library type. After creation you can't change library type.">
+<div class="btn-group dropup" tooltip-placement="right" uib-tooltip="Creates specific library type. After creation you can't change library type." ng-show="auth.rights==2">
 	<button type="button" class="btn btn-primary" data-toggle="dropdown" >Add Library</button>
 	<button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
 	<span class="caret"></span>

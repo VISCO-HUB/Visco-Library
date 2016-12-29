@@ -1,6 +1,6 @@
 <?php
 	// GLOBAL ROOT PATH
-	DEFINE('ROOT', REALPATH('../') . '\\');
+	DEFINE('ROOT', $_SERVER['DOCUMENT_ROOT'] . '\\');
 	
 	//SERVER
 	DEFINE('HOSTNAME', 'http://' . $_SERVER['HTTP_HOST'] . '/');

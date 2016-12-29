@@ -8,7 +8,7 @@
 			<li><a href="" ng-click="changeFilter({'catid': null, 'pending': null})">All</a></li>
 			<li><a href="" ng-click="changeFilter({'catid': null, 'pending': 1})">Pending</a></li>
 			<li class="divider"></li>
-			<li class="dropdown-submenu" ng-repeat="cat in categories" ng-if="cat.type == 1"> <a tabindex="-1" data-toggle="dropdown" href="" no-click>{{cat.name}}</a>
+			<li class="dropdown-submenu" ng-repeat="cat in categories" ng-if="cat.type == 1 && (auth.rights==2 || cat.editors.split(';').indexOf(auth.user))!=-1"> <a tabindex="-1" data-toggle="dropdown" href="" no-click>{{cat.name}}</a>			
 				<ul class="dropdown-menu">
 					<li class="dropdown-submenu" ng-repeat="sub1 in cat.child"> <a href="" no-click>{{sub1.name}}</a>
 						<ul class="dropdown-menu">

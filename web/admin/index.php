@@ -79,11 +79,11 @@
 			<li ng-class="{active: section=='/category'}"><a href="#/category" >Categories</a></li>
 			<li ng-class="{active: section=='/models'}"><a href="#/models/1" >Models</a></li>
 			<li ng-class="{active: section=='/textures'}"><a href="#/textures/1" >Textures</a></li>
-			<li ng-class="{active: section=='/tags'}"><a href="#/tags/1" >Tags</a></li>
-			<li ng-class="{active: section=='/comments'}"><a href="#/comments/1" >Comments</a></li>
+			<li ng-class="{active: section=='/tags'}" ng-show="auth.rights==2"><a href="#/tags/1" >Tags</a></li>
+			<li ng-class="{active: section=='/comments'}" ng-show="auth.rights==2"><a href="#/comments/1" >Comments</a></li>
 			<li ng-class="{active: section=='/upload'}"><a href="#/upload" >Upload</a></li>
-			<li ng-class="{active: section=='/users'}"><a href="#/users/1" >Users</a></li>
-			<li ng-class="{active: section=='/settings'}"><a href="#/settings" >Settings</a></li>
+			<li ng-class="{active: section=='/users'}" ng-show="auth.rights==2"><a href="#/users/1" >Users</a></li>
+			<li ng-class="{active: section=='/settings'}" ng-show="auth.rights==2"><a href="#/settings" >Settings</a></li>
 		</ul>
 	</div>
 	<div class="col-sm-9 col-md-9 col-lg-9">

@@ -11,6 +11,13 @@
     </ul>
 </script>
 
+<script type="text/ng-template" id="editors">
+	<div class="btn-group margin-10-2" ng-if="editor.length > 1">
+		<button type="button" class="btn btn-default btn-xs" disabled>{{editor}}</button>
+		<button type="button" class="btn btn-default btn-xs" ng-click="removeEditor(catId, editor)" aria-haspopup="true" aria-expanded="false"><span class="glyphicon glyphicon-remove" aria-hidden="true"></span></button>	
+	</div>
+</script>
+
 <h1>Edit Library: {{categories[catId].name}}</h1>
 <h2><small>Library Type:</small></h2>
 <input type="text" class="form-control" disabled placeholder="{{libType(categories[catId].type)}}">
@@ -45,4 +52,21 @@
 <button class="btn btn-primary" ng-click="addCat(subCatEditID, categories[catId].type)" ng-class="{disabled: level[subCatEditID] > 1}">Add</button> 
 <button class="btn btn-danger" ng-class="{disabled: subCatEditID == catId}" ng-click="subCatDel(subCatEditID)">Delete</button>
 <button class="btn btn-warning" ng-class="{disabled: subCatEditID == catId}" ng-click="subCatRename(subCatEditID)">Rename</button>
-
+<hr>
+<div ng-show="auth.rights==2">
+	<h2><small>Editors:</small></h2>	
+	<span ng-repeat="editor in categories[catId].editors.split(';') track by $index" ng-include="'editors'">{{editor}}</span> 
+	<br>
+	<br>
+	
+	<div class="btn-group dropup" tooltip-placement="right" uib-tooltip="Add admins who may edit this library.">
+		<button type="button" class="btn btn-primary" data-toggle="dropdown" >Add Editor</button>
+		<button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+		<span class="caret"></span>
+		<span class="sr-only">Toggle Dropdown</span>
+	  </button>
+		<ul class="dropdown-menu" aria-labelledby="dropdownMenu1">
+			<li ng-repeat="user in users.users" ><a href="" ng-click="addEditor(catId, user.user)" >{{user.user}}</a></li>        					
+		</ul>
+	</div>
+</div>
