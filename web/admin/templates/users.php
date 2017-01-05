@@ -37,7 +37,7 @@
 	</div>
 	<div class="dropdown clr padding-5">By Rights:
 		<div class="btn-group">
-			<button type="button" class="btn btn-default"> <span ng-show="users.filter.rights=='All'">All</span> <span ng-show="users.filter.rights=='0'">User</span> <span ng-show="users.filter.rights=='1'">Moderator</span> <span ng-show="users.filter.rights=='2'">Super Admin</span> </button>
+			<button type="button" class="btn btn-default"> <span ng-show="users.filter.rights=='All'">All</span> <span ng-show="users.filter.rights=='-1'">Guest</span> <span ng-show="users.filter.rights=='0'">User</span> <span ng-show="users.filter.rights=='1'">Moderator</span> <span ng-show="users.filter.rights=='2'">Super Admin</span> </button>
 			<button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span class="caret"></span><span class="sr-only">Toggle Dropdown</span></button>
 			<ul class="dropdown-menu" role="menu" aria-labelledby="dropdownMenu">
 				<li><a href="" ng-click="changeFilter({'rights': 'All'})">All</a></li>

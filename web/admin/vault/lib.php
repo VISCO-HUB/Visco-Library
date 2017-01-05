@@ -75,10 +75,20 @@
 			RETURN $RESULT;
 		}
 		
-		PUBLIC STATIC FUNCTION SELECTUNIQUE($COL, $TABLE) {
+		PUBLIC STATIC FUNCTION SELECTUNIQUE($COL, $TABLE, $WHERE = []) {
 			$MYSQLI = $GLOBALS['MYSQLI'];
 			
-			$QUERY = "SELECT DISTINCT " . SELF::STRIP($COL) . " FROM " . $TABLE . ";";
+			$W = [];
+			FOREACH($WHERE AS $KEY => $VALUE) {											
+				$KEY = SELF::STRIP($KEY);
+				$VALUE = SELF::STRIP($VALUE);							
+				
+				$W[] = $KEY . "=" . "'" . $VALUE . "'";
+			}
+			
+			IF(COUNT($W)) $ATTACHWHERE = " WHERE (" . IMPLODE(' AND ', $W) . ")";
+			
+			$QUERY = "SELECT DISTINCT " . SELF::STRIP($COL) . " FROM " . $TABLE . $ATTACHWHERE . ";";
 			
 			$RESULT = $MYSQLI->query($QUERY);
 		
@@ -174,6 +184,40 @@
 				$QUERY .= "INSERT IGNORE INTO " . $TABLE . "(" . IMPLODE(',', $COLS) . ") VALUES(" . IMPLODE(',', $VALUES) . ");";				
 			}
 			
+			$RESULT = $MYSQLI->multi_query($QUERY);		
+			
+			RETURN $MYSQLI->affected_rows;
+		}
+		
+		PUBLIC STATIC FUNCTION MULTIUPDATE($TABLE, $DATA, $WHERE)
+		{	
+			$MYSQLI = $GLOBALS['MYSQLI'];
+			$QUERY = '';
+			$ATTACHWHERE  = '';
+						
+			FOREACH($DATA AS $ITEM)
+			{
+				$I = 0;
+				$COLS = '';
+				$VALUES = '';
+				$ATTACH = [];
+				$ATTACHWHERE = " WHERE id=" . $WHERE[$I];
+				$I++;
+				
+				FOREACH($ITEM AS $KEY => $VALUE)
+				{
+					$VALUE = SELF::STRIP($VALUE);							
+					$KEY = SELF::STRIP($KEY);							
+					
+					$COLS = $KEY;						
+					$VALUES = $VALUE == null ? 'NULL' : $VALUE;
+					
+					$ATTACH[] =  $KEY . "='" . $VALUES . "'";
+				}	
+
+				$QUERY .= "UPDATE " . $TABLE . " SET " . IMPLODE(',', $ATTACH) . $ATTACHWHERE . ";";				
+			}
+			ECHO $QUERY ;
 			$RESULT = $MYSQLI->multi_query($QUERY);		
 			
 			RETURN $MYSQLI->affected_rows;
@@ -581,6 +625,59 @@
 			RETURN $ERROR;
 		}
 		
+		PUBLIC STATIC FUNCTION CATADDGRP($DATA) {
+			$ERROR = '{"responce": "CATGRPBAD"}';
+			$SUCCESS = '{"responce": "CATGRPOK"}';
+			$EXIST = '{"responce": "CATGRPEXIST"}';
+		
+			IF(!ISSET($DATA->id) OR !ISSET($DATA->grp)) RETURN $ERROR;
+			
+			$WHERE['id'] = $DATA->id;
+			$RESULT = DB::SELECT('category', $WHERE);
+			IF(!$RESULT) RETURN $ERROR;
+			$ROWS = DB::TOARRAY($RESULT);
+			IF(!$ROWS[0]) RETURN $ERROR;			
+				
+			$GRP = EXPLODE(';',  STR_REPLACE(' ', '', $ROWS[0]->premissions));
+			FOREACH($GRP AS $KEY => $VAL) IF(!STRLEN($VAL)) UNSET($GRP[$KEY]);
+			
+			IF(IN_ARRAY($DATA->grp, $GRP)) RETURN $EXIST;
+			
+			$GRP[] = $DATA->grp;
+						
+			$SET['premissions'] = IMPLODE(';', $GRP);
+			$RESULT = DB::UPDATE('category', $SET, $WHERE);		
+			IF($RESULT > 0) RETURN $SUCCESS;
+			RETURN $ERROR;
+		}
+		
+		PUBLIC STATIC FUNCTION CATDELGRP($DATA) {
+			$ERROR = '{"responce": "CATGRPDELBAD"}';
+			$SUCCESS = '{"responce": "CATGRPDELOK"}';
+					
+			IF(!ISSET($DATA->id) OR !ISSET($DATA->grp)) RETURN $ERROR;
+			
+			$WHERE['id'] = $DATA->id;
+			$RESULT = DB::SELECT('category', $WHERE);
+			IF(!$RESULT) RETURN $ERROR;
+			$ROWS = DB::TOARRAY($RESULT);
+			IF(!$ROWS[0]) RETURN $ERROR;			
+				
+			$E = STR_REPLACE(' ', '', $ROWS[0]->premissions);
+						
+			$GRP = EXPLODE(';',  $E);
+			
+			$GRP = ARRAY_DIFF($GRP, [$DATA->grp]);
+				
+			FOREACH($GRP AS $KEY => $VAL) IF(!STRLEN($VAL)) UNSET($GRP[$KEY]);
+				
+			$SET['premissions'] = IMPLODE(';', $GRP) . ';';
+			$RESULT = DB::UPDATE('category', $SET, $WHERE);
+		
+			IF($RESULT > 0) RETURN $SUCCESS;
+			RETURN $ERROR;
+		}
+		
 		PUBLIC STATIC FUNCTION GET($DATA) {			
 			IF(!ISSET($DATA->parentid)) RETURN '[]';
 		
@@ -645,6 +742,7 @@
 					$I['type'] = $CATEGORY->type;
 					$I['sort'] = $CATEGORY->sort;
 					$I['editors'] = $CATEGORY->editors;
+					$I['premissions'] = $CATEGORY->premissions;
 										
 					FOREACH($CATEGORIES AS $SUBCAT) {
 						IF($SUBCAT->parent == $CATEGORY->id)
@@ -1043,13 +1141,17 @@
 			$RESULT = DB::SELECT($TYPE, $WHERE, NULL, TRUE, $LIMIT, $ACCESS);
 			$PRODUCTS = DB::TOARRAY($RESULT);
 						
-			$ROWS = DB::CNT($TYPE, $WHERE, TRUE, $ACCESS);
-						
+			$ROWS = DB::CNT($TYPE, $WHERE, TRUE, $ACCESS);						
 			$NUMPAGES = $ROWS;
+			
+			$ROWS = DB::CNT($TYPE, ['pending' => 1], TRUE, $ACCESS);						
+			$PENDING = $ROWS;
 			
 			$OUT['currpage'] = $CURPAGE;
 			$OUT['totalitems'] = $NUMPAGES;
 			$OUT['perpage'] = $DATA->perpage;
+			$OUT['pending'] = $PENDING;
+			
 			IF(ISSET($WHERE['catid'])) 
 			{	
 				$OUT['filter']['catid'] = $WHERE['catid'];
@@ -1216,9 +1318,7 @@
 			IF(ARRAY_SEARCH($DATA->name, $PREVIEWS) === FALSE) RETURN $ERROR;
 			$PREVIEWS = ARRAY_DIFF($PREVIEWS, [$DATA->name]);
 			ARRAY_UNSHIFT($PREVIEWS, $DATA->name);
-			
-			
-			
+						
 			$SET['previews'] = IMPLODE(';', $PREVIEWS);
 			$WHERE['id'] = $DATA->id;
 						
@@ -1363,7 +1463,7 @@
 			RETURN $ERROR;
 		}
 	}
-	
+		
 	CLASS USERS {
 		
 		PUBLIC STATIC FUNCTION GET($DATA) {			
@@ -1477,12 +1577,119 @@
 			$GRP = DB::TOARRAY($RESULT);
 			
 			$RESULT = DB::SELECTUNIQUE('office', 'users');
-			$OFFICE = DB::TOARRAY($RESULT);			
+			$OFFICE = DB::TOARRAY($RESULT);
+
+			$RESULT = DB::SELECTUNIQUE('user', 'users', ['rights' => 1]);
+			$MODERATORS = DB::TOARRAY($RESULT);			
 					
 			$OUT['filter']['grp'] = $GRP;
 			$OUT['filter']['office'] = $OFFICE;
+			$OUT['filter']['moderators'] = $MODERATORS;
 		
 			RETURN JSON_ENCODE($OUT);
+		}				
+	}
+	
+	CLASS TAGS { 
+		PUBLIC STATIC FUNCTION GET($DATA) {
+			$RESULT = DB::SELECT('tags');
+			$ROWS = DB::TOARRAY($RESULT);
+									
+			IF(!ISSET($DATA->page)) RETURN '[]';
+			IF(!ISSET($DATA->perpage)) RETURN '[]';
+						
+			$CURPAGE = 1;
+						
+			IF($DATA->page > 0) $CURPAGE = $DATA->page;
+						
+			$LIMIT['start'] = ($CURPAGE - 1) * $DATA->perpage;
+			$LIMIT['end'] = $DATA->perpage;
+		
+			$RESULT = DB::SELECT('tags', [], NULL, NULL, $LIMIT);
+			$TAGS = DB::TOARRAY($RESULT);
+						
+			$ROWS = DB::CNT('tags', []);						
+			$NUMPAGES = $ROWS;
+			
+			$OUT['currpage'] = $CURPAGE;
+			$OUT['totalitems'] = $NUMPAGES;
+			$OUT['perpage'] = $DATA->perpage;					
+			$OUT['tags'] = $TAGS;		
+			
+			RETURN JSON_ENCODE($OUT);
+		}
+		
+		PUBLIC STATIC FUNCTION DEL($DATA) {			
+			$ERROR = '{"responce": "TAGSDELBAD"}';
+			$SUCCESS = '{"responce": "TAGSDELOK"}';
+			
+			IF(!ISSET($DATA->tag)) RETURN $ERROR;
+			
+			$DEL[] = $DATA->tag;
+			DB::DEL('tags', $DEL, 'name');
+			
+			FOREACH(LIBTYPES AS $TYPE) {			
+				$RESULT = DB::SELECTLIKE($TYPE, 'tags', $DATA->tag);
+				$PRODUCTS = DB::TOARRAY($RESULT);
+				
+				$SET = [];
+				$WHERE = [];
+				
+				FOREACH($PRODUCTS AS $PROD) {				
+					$TAGS = EXPLODE(',', $PROD->tags);
+					$TAGS = ARRAY_DIFF($TAGS, [$DATA->tag]);
+					$TAGSROW = IMPLODE(',', $TAGS);
+					
+					$SET['tags'] = $TAGSROW;
+					$WHERE['id'] = $PROD->id;
+					
+					DB::UPDATE($TYPE, $SET, $WHERE);
+				}
+			}		
+			
+			RETURN $SUCCESS;
+		}
+		
+		PUBLIC STATIC FUNCTION CHANGE($DATA) {			
+			$ERROR = '{"responce": "TAGSDELBAD"}';
+			$SUCCESS = '{"responce": "TAGSDELOK"}';
+			$WRONG = '{"responce": "TAGSWRONGFORMAT"}';
+			$EXIST = '{"responce": "TAGSEXIST"}';
+			
+			IF(!ISSET($DATA->tag)) RETURN $ERROR;
+			IF(!ISSET($DATA->newtag)) RETURN $ERROR;
+			IF(STRLEN($DATA->newtag) < 2) RETURN $WRONG;
+						
+			$SET['name'] = TRIM($DATA->newtag);						
+			$CNT = DB::INSERT('tags', $SET);
+			IF($CNT == 0) RETURN $EXIST;
+							
+			$DEL[] = $DATA->tag;
+			DB::DEL('tags', $DEL, 'name');
+						
+			FOREACH(LIBTYPES AS $TYPE) {			
+				$RESULT = DB::SELECTLIKE($TYPE, 'tags', $DATA->tag);
+				$PRODUCTS = DB::TOARRAY($RESULT);
+				
+				$SET = [];
+				$WHERE = [];
+				
+				FOREACH($PRODUCTS AS $PROD) {				
+					$TAGS = EXPLODE(',', $PROD->tags);
+					$TAGS = ARRAY_DIFF($TAGS, [$DATA->tag]);
+					$TAGS = ARRAY_FILTER($TAGS);
+					$TAGS = ARRAY_DIFF($TAGS, ['', ' ', NULL]);
+					$TAGS[] = $DATA->newtag;
+					$TAGSROW = IMPLODE(',', $TAGS);
+					
+					$SET['tags'] = $TAGSROW;
+					$WHERE['id'] = $PROD->id;
+					
+					DB::UPDATE($TYPE, $SET, $WHERE);
+				}
+			}		
+			
+			RETURN $SUCCESS;
 		}
 	}
 ?>

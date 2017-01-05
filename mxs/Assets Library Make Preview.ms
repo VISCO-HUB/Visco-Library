@@ -169,7 +169,11 @@ fn setRenderQuality =
 			renderSystem.denoise_blendAmount = 0.5
 	
 			renderSystem.colorMap_simpleExposure = 1.0
-			renderSystem.colorMap_highlightCompression = 2.0						
+			renderSystem.colorMap_highlightCompression = 2.0	
+			renderSystem.bg_overrideRefract = on
+			renderSystem.bg_colorRefract = white
+			renderSystem.bg_overrideDirect = on
+			renderSystem.bg_colorDirect = white
 		)
 		#Vray:
 		(						
@@ -179,6 +183,16 @@ fn setRenderQuality =
 			renderSystem.dmc_earlyTermination_minSamples  = 32
 			renderSystem.dmc_earlyTermination_amount = 0.85
 			renderSystem.dmc_earlyTermination_threshold = 0.005
+			renderSystem.environment_refract_on = on
+			renderSystem.environment_refract_color = white
+			renderSystem.system_region_x = 24
+			renderSystem.system_region_y = 24
+			renderSystem.colorMapping_affectBackground = on
+			renderSystem.colorMapping_type = 6
+			renderSystem.colorMapping_darkMult = 1.0
+			renderSystem.colorMapping_brightMult = 1.0
+			renderSystem.environment_gi_on = true
+			renderSystem.environment_gi_color = black
 					
 			case q of 
 			(
@@ -244,10 +258,9 @@ rollout _rStep0  "Basic Setup"
 		label lblQualityMedium "Preview" align: #center
 		label lblQualityHigh "Final" align: #right
 	)
-	
+		
 	button btnSetupScene "Setup Scene" height: 30 width: 215
-
-	
+		
 	fn disableUI d =
 	(
 		for i in _rStep0.controls do i.enabled = d					
@@ -260,7 +273,7 @@ rollout _rStep0  "Basic Setup"
 	)
 	
 	on _rStep0	open do
-	(	
+	(						
 		callbacks.removeScripts id:#renderChange
 		callbacks.removeScripts id:#postNew
 		callbacks.removeScripts id:#postReset
@@ -574,6 +587,7 @@ rollout _rStep1  "HDRI"
 				)
 				
 				cbxUseReflect.checked = renderSystem.environment_rr_on								
+				dome.affect_reflections = not cbxUseReflect.checked
 			)
 		)			
 	)
@@ -651,7 +665,10 @@ rollout _rStep1  "HDRI"
 					rotateHDR (dome.texmap) a
 
 					a = useSettings "LIGHT_HDR_MULT" "string" "r"	
-					setMult dome.texmap a					
+					setMult dome.texmap a	
+
+					a = useSettings "REFLECT_HDR_ON" "bool_not" "r"						
+					dome.affect_reflections = not a
 				)
 				
 				if(doesFileExist reflectHDRPath) do
@@ -662,6 +679,7 @@ rollout _rStep1  "HDRI"
 					
 					reflectHDR = BitmapTex()
 					reflectHDR.filename = reflectHDRPath
+					reflectHDR.coords.mappingtype = 1
 					renderSystem.environment_rr_map = reflectHDR
 					
 					a = useSettings "REFLECT_HDR_ANGLE" "float" "r"						
@@ -753,6 +771,9 @@ rollout _rStep1  "HDRI"
 	on cbxUseReflect changed s do
 	(
 		useSettings "REFLECT_HDR_ON" s "w"
+		
+		dome = getDome()
+		if(dome != undefined) do dome.affect_reflections = not s
 		
 		useReflect()
 		enableReflections()
@@ -971,7 +992,7 @@ rollout _rStep2  "Highlights"
 				#mousePoint:
 				(	
 					trackRay ir placeObj		
-					tmrInteractive.active = true						
+					--tmrInteractive.active = true						
 					return #continue
 				)
 				#mouseMove:
@@ -1325,7 +1346,7 @@ rollout _rStep3  "Render / Post Process"
 	
 	fn getVFB c: 0 = 
 	(	
-		f = @"c:\temp\fast-preview\"
+		f = @"c:\temp\make-preview\"
 		makeDir f
 		
 		r = getRender()
@@ -1334,26 +1355,28 @@ rollout _rStep3  "Render / Post Process"
 		case r of 
 		(
 			#Corona: b = CoronaRenderer.CoronaFp.getVfbContent c true true
-			#VRay: b = vrayVFBGetChannelBitmap c
+			#VRay: b = vrayVFBGetChannelBitmap c 
 		)
-		b.width = 800
-		b.height = 800			
+		b = vrayVFBGetChannelBitmap 1
+		
+		nb = bitmap 800 800 color: white 
+		copy b nb
 		
 		t = timeStamp()
-		b.filename = f + t as string  + ".jpg"
+		nb.filename = f + t as string  + ".jpg"
 		
-		save b gamma: 2.2
-		close b
+		save nb gamma: 2.2
+		close nb
 		
 		bt = Bitmaptexture()	
-		bt.bitmap = b
+		bt.bitmap = nb
 			
 		return  bt
 	)
 	
 	fn clearCache =
 	(
-		f = @"c:\temp\fast-preview\"
+		f = @"c:\temp\make-preview\"
 		d = getFiles (f + "*")
 		for i in d do deleteFile i
 	)
@@ -1425,8 +1448,7 @@ rollout _rStep3  "Render / Post Process"
 	(
 		vfbAlpha = getVFB c:2
 		main = getVFB c:1
-			
-		
+					
 		-- Beauty / None
 		--outputMap = compositeTextureMap()
 		l = 1

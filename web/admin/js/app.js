@@ -310,7 +310,53 @@ app.controller('tagsCtrl', function($scope, vault, $rootScope, $location, $route
 	};
 	
 	$rootScope.perpage = $cookieStore.get('perpage');
-
+	
+	$scope.tagsGet = function(page, perpage, filter) {
+		vault.tagsGet(page, perpage, filter);
+	}
+	
+	$scope.changePerPage = function(p) {		
+		$cookieStore.put('perpage', p);
+		$rootScope.perpage = p;		
+		
+		$scope.tagsGet($scope.page, $rootScope.perpage, $rootScope.tagsFilter);
+	}
+	
+	$scope.tagDelete = function(t) {
+		if(!confirm('Do you really want to delete tag: \"' + t + '\"?\n\nWARNING!\nThis action will delete this tag from all models and textures!\nYou will remove these tag permanently!')){
+			return false;
+		}
+		
+		vault.tagDelete(t, $scope.page, $rootScope.perpage, $rootScope.tagsFilter);
+	}
+	
+	$scope.tagChange = function(tag) {
+		if(!confirm('Do you really want to replace tag: \"' + tag + '\"?\n\nWARNING!\nThis action will replace this tag from all models and textures!\nYou will change these tag permanently!')){
+			return false;
+		}
+		
+		var newtag = prompt('Please enter new tag!', '');			
+		
+		if(!newtag || !newtag.length) {			
+			vault.showMessage('Please enter the tag!', 'warning');
+		
+			return false;
+		}
+		
+		if(newtag.match(/[^a-z0-9]/)) {
+			vault.showMessage('Tag has wrong format!', 'warning');
+			
+			return false;
+		}
+		
+		vault.tagChange(tag, newtag, $scope.page, $rootScope.perpage, $rootScope.tagsFilter);
+	}
+	
+	$scope.tagsGet($scope.page, $rootScope.perpage, $rootScope.tagsFilter);
+	
+	$scope.changePage = function() {							
+		$location.path('/tags/' + $scope.currentPage);		
+	}
 });
 
 	//COMMENTS
@@ -526,8 +572,8 @@ app.controller("modelsEditCtrl", function ($scope, $rootScope, $routeParams, vau
  	// CATEGORY	
 app.controller("categoryEditCtrl", function ($scope, $rootScope, $routeParams, vault) {
 	vault.getGlobal();
-	vault.catGet();
-	vault.usersGet('1', '10000', {'rights': '1'});
+	vault.catGet();	
+	vault.usersGetFilter();
 		
 	$rootScope.section = '/category';
 		
@@ -557,6 +603,14 @@ app.controller("categoryEditCtrl", function ($scope, $rootScope, $routeParams, v
 	
 	$scope.addEditor = function(id, user) {		
 		vault.catAddEditor(id, user);
+	}
+	
+	$scope.addPermission = function(id, grp) {		
+		vault.catAddPermission(id, grp);
+	}
+	
+	$scope.removePermission = function(id, grp) {		
+		vault.catRemovePermission(id, grp);
 	}
 	
 	$scope.removeEditor = function(id, user) {
@@ -625,7 +679,7 @@ app.controller("categoryEditCtrl", function ($scope, $rootScope, $routeParams, v
 	$scope.catSetParam = function(param, value, id) {
 	
 		vault.catSetParam(param, value, id);
-	}
+	}		
 });
 	// CATEGORY EDIT
 app.controller("categoryCtrl", function ($scope, $rootScope, vault) {
@@ -843,6 +897,10 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 			break;
 			case 'DELPREVIEWOK': s.success = 'Success preview deleted!';
 			break;
+			case 'TAGSEXIST': s.error = 'The same tag already exist! Enter another tag name!';
+			break;
+			case 'TAGSWRONGFORMAT': s.warning = 'Tag has wrong format!';
+			break;
 		}
 		
 		$rootScope.msg = s;
@@ -936,7 +994,53 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		HttpPost('PRODGET', json).then(function(r){						
 			console.log(r.data);
 			$rootScope.products = r.data;						
-			if(r.data.products) {$rootScope.product = r.data.products[0]};			
+			if(r.data.products) {
+				console.log(r.data.products) 
+				if(r.data.pending > 0 && $rootScope.auth.rights == 2) {showMessage('Please check pending models!', 'warning')}
+				$rootScope.product = r.data.products[0]
+			};			
+			responceMessage(r.data);
+		},
+		function(r){
+			responceMessage(r);
+		});
+	}
+	
+	var tagsGet = function(page, perpage, filter) {
+			
+		var json = {'page': page, 'perpage': perpage, 'filter': filter};
+		
+		HttpPost('TAGSGET', json).then(function(r){						
+			console.log(r.data);			
+			$rootScope.tagsList = r.data;									
+			responceMessage(r.data);
+		},
+		function(r){
+			responceMessage(r);
+		});
+	}
+	
+	var tagDelete = function(t, page, perpage, filter) {
+		var json = {'tag': t};
+		
+		HttpPost('TAGSDEL', json).then(function(r){						
+			console.log(r.data);
+			
+			tagsGet(page, perpage, filter);
+			responceMessage(r.data);
+		},
+		function(r){
+			responceMessage(r);
+		});
+	}
+	
+	var tagChange = function(oldtag, newtag, page, perpage, filter) {
+		var json = {'tag': oldtag, 'newtag': newtag};
+		
+		HttpPost('TAGSCHANGE', json).then(function(r){						
+			console.log(r.data);
+			
+			tagsGet(page, perpage, filter);
 			responceMessage(r.data);
 		},
 		function(r){
@@ -1195,6 +1299,32 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		});
 	}
 	
+	var catRemovePermission = function(id, grp) {
+		var json = {'id': id, 'grp': grp};
+		
+		HttpPost('CATDELGRP', json).then(function(r){						
+			catGet();
+			console.log(r.data)
+			responceMessage(r.data);
+		},
+		function(r){
+			responceMessage(r);
+		});
+	}
+	
+	var catAddPermission = function(id, grp) {
+		var json = {'id': id, 'grp': grp};
+		
+		HttpPost('CATADDGRP', json).then(function(r){						
+			catGet();
+			console.log(r.data)
+			responceMessage(r.data);
+		},
+		function(r){
+			responceMessage(r);
+		});
+	}
+	
 	var catDel = function(id) {				
 		var json = {'id': id};
 		
@@ -1274,11 +1404,16 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		catAddEditor: catAddEditor,
 		catRemoveEditor: catRemoveEditor,
 		catAdd: catAdd,
+		catRemovePermission: catRemovePermission,
+		catAddPermission: catAddPermission,
 		getGlobal: getGlobal,
 		globalsChange: globalsChange,
 		catSetParam: catSetParam,
 		catChangeName: catChangeName,
 		catSort: catSort,
+		tagsGet: tagsGet,
+		tagDelete: tagDelete,
+		tagChange: tagChange,
 		productsGet: productsGet,
 		productInfo: productInfo,
 		prodSetParam: prodSetParam, 

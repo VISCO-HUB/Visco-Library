@@ -19,7 +19,6 @@ global Keys = dotNetClass "System.Windows.Forms.Keys"
 global szGoodChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890&$%#()!_-+ " 
 global BitmapTypes = #(Bitmaptexture, CoronaBitmap)
 
-global isLoadedStep1 = false
 global catID = -1
 global category1 = #(#("0", " "))
 global category2 = #(#("0", " "))
@@ -382,7 +381,7 @@ fn httpUpload file =
 	return false
 )
 
- httpUpload @"D:\PROJECTS\ASSETS LIBRARY\CD 155\aaa.zip"
+ --httpUpload @"D:\PROJECTS\ASSETS LIBRARY\CD 155\aaa.zip"
 
 
 fn findTag t =
@@ -421,371 +420,7 @@ fn saveAllProp =
 	saveProp "edtOverview" sOverview
 )
 
-rollout _STEP1 "STEP 1: Model Info" 
-(	
-
-	group "Category"
-	(
-		label lbl6 "Library:" align: #left across: 2 
-		dotNetControl lblWarn3 "System.Windows.Forms.Label" text: "*" offset: [-84, 0] 		
-		dropdownlist ddlLib "" 
-		
-		label lbl7 "Category:" align: #left across: 2 
-		dotNetControl lblWarn4 "System.Windows.Forms.Label" text: "*" offset: [-72, 0] 
-		dropdownlist ddlCat ""
-		
-		label lbl8 "Sub Category:" align: #left across: 2 
-		dotNetControl lblWarn5 "System.Windows.Forms.Label" text: "*" offset: [-51, 0] 
-		dropdownlist ddlSubCat ""
-	)
-	
-	group "Model Info"
-	(
-		label lbl1 "Model Name:" align: #left across: 2  	
-		dotNetControl lblWarn1 "System.Windows.Forms.Label" text: "*" offset: [-59, 0] 	
-		dotNetControl edtModelName "System.Windows.Forms.TextBox" height: 25
-		label lbl2 "Manufacturer:" align: #left		
-		dotNetControl edtManufacturer "System.Windows.Forms.TextBox" height: 25
-		label lbl3 "Modeller:" align: #left		
-		dotNetControl edtModeller "System.Windows.Forms.TextBox" height: 25
-		label lbl4 "Project:" align: #left		
-		dotNetControl edtProject "System.Windows.Forms.TextBox" height: 25
-		label lbl5 "Tags:" align: #left across: 2 	
-		dotNetControl lblWarn2 "System.Windows.Forms.Label" text: "*" offset: [-94, 0]
-		dotNetControl edtTags "System.Windows.Forms.TextBox" height: 25
-		
-		button btnTag1 "" across: 4 visible: false width: 60 border: false
-		button btnTag2 ""  visible: false width: 60 border: false
-		button btnTag3 "" visible: false width: 60 border: false
-		button btnTag4 "" visible: false width: 60 border: false
-	)
-	
-	group "Additional Info"
-	(
-		checkbox cbxUnwrap "Unwrap"
-		checkbox cbxRigged "Rigged"
-		checkbox cbxAnimated "Animated"
-		checkbox cbxBakedTextures "Baked Textures"
-		checkbox cbxLods "Lods"
-		
-	)
-	
-	timer tmr1 "Tmr1" active: false interval: 300
-	progressBar hr "" height: 3 offset:[0,15]
-	button btnNext "Next >>" align: #right  enabled: true 
-	
-	global bgErrorColor = getColor 255 229 153
-	global fgErrorColor = getColor 215 144 0
-	
-	fn initDotNet = 
-	(
-		edtModeller.AutoCompleteMode = edtModeller.AutoCompleteMode.SuggestAppend
-		edtModeller.AutoCompleteSource = edtModeller.AutoCompleteSource.CustomSource
-		
-		edtModelName.AutoCompleteMode = edtModelName.AutoCompleteMode.SuggestAppend
-		edtModelName.AutoCompleteSource = edtModelName.AutoCompleteSource.CustomSource
-		
-		edtManufacturer.AutoCompleteMode = edtManufacturer.AutoCompleteMode.SuggestAppend
-		edtManufacturer.AutoCompleteSource = edtManufacturer.AutoCompleteSource.CustomSource		
-		
-		edtProject.AutoCompleteMode = edtProject.AutoCompleteMode.SuggestAppend
-		edtProject.AutoCompleteSource = edtProject.AutoCompleteSource.CustomSource	
-		
-	
-		warnLabels = #(lblWarn1, lblWarn2, lblWarn3, lblWarn4, lblWarn5)
-		bg = getBgColor()
-		txt = getTextColor()
-				
-		for i in warnLabels do 
-		(
-			i.backColor = bg
-			i.foreColor = i.foreColor.red
-		)
-	)
-	
-	
-	fn trim t = trimLeft (trimRight t " ") " "
-	
-	fn setTagText t = 
-	(
-		c = for i in _STEP1.controls where isProperty i "name" and matchPattern i.name pattern: "btnTag*" collect i
-		for i in c do i.visible = false
-		
-		for i in 1 to t.count where i <= 4 do
-		(
-			c[i].caption = t[i] 
-			c[i].visible = true
-		)
-	)
-	
-	fn addTag a b =
-	(
-		t = b.text			
-		t = filterString t ","
-		t = for i in t collect trim i
-		if(findItem t a.caption == 0) then
-		(
-			n = ""
-			for i in 1 to t.count - 1 do n += t[i] + ", "
-			n = trimLeft n ", "
-			n += a.caption + ", "		
-			b.text = n
-			b.SelectionStart = (b.text.count)
-		)
-		else
-		(
-			messageBox "Tag already exist!" title: "Warning!"
-		)
-		
-		setFocus b
-	)
-	
-	on btnNext pressed do 
-	( 						
-		sModelName = edtModelName.text		
-		sManufacturer = edtManufacturer.text
-		sModeller = edtModeller.text
-		sProject = edtProject.text
-		sTags = edtTags.text
-
-		bRigged = cbxRigged.checked
-		bAnimated = cbxAnimated.checked
-		bBakedTextures = cbxBakedTextures.checked
-		bLods = cbxLods.checked
-		bUnwrap = cbxUnwrap.checked
-			
-		iCat1 = ddlLib.selection
-		iCat2 = ddlCat.selection
-		iCat3 = ddlSubCat.selection
-
-		if(catID == -1) do return messageBox "Please select the category!" title: "Warning!"		
-		if(sModelName.count == 0) do return messageBox "Please enter correct Model Name!" title: "Warning!"		
-		if(sTags.count == 0) do return messageBox "Please enter few tags!" title: "Warning!"
-				
-		if(not isValidText sModelName title: "Model Name") do return false 
-		if(not isValidText sManufacturer title: "Manufacturer") do return false 
-		if(not isSelected()) do return false
-			
-		saveAllProp()
-		
-		goStep 2	
-	)
-	
-	on edtTags TextChanged s a do
-	(		
-		t = findTag edtTags.text		
-		if(t.count == 0) do return false
-		setTagText t	
-	)
-	
-	on edtTags KeyUp s e do
-	(
-		if(e.KeyCode == Keys.Enter) do (			
-			if(btnTag1.visible == true) do addTag btnTag1 edtTags	
-		)
-	)
-	
-	on edtModelName LostFocus s a do isValidText (edtModelName.text) title: "Model Name"
-	on edtManufacturer LostFocus s a do isValidText (edtManufacturer.text) title: "Manufacturer"
-		
-	fn getList s = 
-	(
-		l = filterString s ";"
-		items = #(#(-1, ""))
-		for i in l do append items (filterString i "|")
-		
-		return items
-	)
-	
-	fn getCat id =
-	(
-		--catID = -1
-		url = _URL + "vault/mxs/mxsGetCat.php?pid=" + id as string + "&time=" + timeStamp() as string
-		r = httpGet url
-		
-		return getList r
-	)
-	
-	fn getTagsList =
-	(
-		url = _URL + "vault/mxs/mxsGetTags.php?time=" + timeStamp() as string
-		r = httpGet url			
-		return filterString r ";"
-	)
-
-	fn getModellerList =
-	(
-		url = _URL + "vault/mxs/mxsGetUsers.php?time=" + timeStamp() as string
-		r = httpGet url			
-		return filterString r ";"
-	)
-	
-	fn getModels =
-	(
-		url = _URL + "vault/mxs/mxsGetModels.php?time=" + timeStamp() as string
-		r = httpGet url			
-		return filterString r ";"
-	)
-	
-	fn getProjects =
-	(
-		url = _URL + "vault/mxs/mxsGetProjects.php?time=" + timeStamp() as string
-		r = httpGet url			
-		return filterString r ";"
-	)
-	
-	on _STEP1 open do
-	(	
-		initDotNet()
-
-		edtModelName.text = getProp "edtModelName"
-		edtManufacturer.text = getProp "edtManufacturer" 
-		edtModeller.text =  getProp "edtModeller"
-		edtProject.text =  getProp "edtProject"
-		edtTags.text = getProp "edtTags"
-
-		cbxRigged.checked = getProp "cbxRigged" type: #bool
-		cbxAnimated.checked = getProp "cbxAnimated" type: #bool
-		cbxBakedTextures.checked = getProp "cbxBakedTextures" type: #bool
-		cbxLods.checked = getProp "cbxLods" type: #bool
-		cbxUnwrap.checked	= getProp "cbxUnwrap" type: #bool
-		
-		category1 = explodeCat (getProp "category1")
-		category2 = explodeCat (getProp "category2")
-		category3 = explodeCat (getProp "category3")
-		
-		ddlLib.items = for i in category1 collect i[2]
-		ddlCat.items = for i in category2 collect i[2]
-		ddlSubCat.items = for i in category3 collect i[2]
-		
-		ddlLib.selection = getProp "ddlLib" type: #int
-		ddlCat.selection = getProp "ddlCat" type: #int
-		ddlSubCat.selection = getProp "ddlSubCat" type: #int
-		
-		catID = (getProp "catID" type: #negative) as integer
-		
-		tmr1.active = true	
-	
-		zipper = zip()
-	)
-		
-	on _STEP1 close do
-	(
-	
-	)
-	
-	on tmr1 tick do
-	(
-		if(not isLoadedStep1) do		
-		(
-			category1 = getCat 0
-					
-			ddlLib.items = for i in category1 collect i[2]
-				
-			tags = getTagsList()			
-			modellers = getModellerList()
-			
-			edtModeller.AutoCompleteCustomSource.AddRange modellers
-			
-			projects = getProjects()
-			edtProject.AutoCompleteCustomSource.AddRange projects
-			
-			for i in getModels() do 
-			(	
-				t = filterString i "|"
-				if(t.count > 1) do
-				(
-					append models t[1]
-					append manufacturers t[2]
-				)
-			)
-
-			edtModelName.AutoCompleteCustomSource.AddRange models
-			edtManufacturer.AutoCompleteCustomSource.AddRange manufacturers
-			
-			isLoadedStep1 = true
-		)
-		
-		tmr1.active = false
-	)
-	
-	on ddlLib selected v do
-	(
-		ddlCat.items = #()
-		ddlSubCat.items = #()
-		category2 = getCat (category1[v][1])	
-				
-		ddlCat.items = for i in category2 collect i[2]
-	)
-	
-	on ddlCat selected v do
-	(
-		ddlSubCat.items = #()
-		category3 = getCat (category2[v][1])	
-				
-		ddlSubCat.items = for i in category3 collect i[2]
-	)
-
-	
-	on ddlSubCat selected v do
-	(
-		catID = category3[v][1]
-	)
-	
-	on btnTag1 pressed do addTag btnTag1 edtTags
-	on btnTag2 pressed do addTag btnTag2 edtTags
-	on btnTag3 pressed do addTag btnTag3 edtTags
-	on btnTag4 pressed do addTag btnTag4 edtTags
-	
-)
-
-rollout _STEP2 "STEP 2: Model Overview" 
-(
-	group "Overview"
-	(
-		dotNetControl edtOverview "System.Windows.Forms.TextBox"  height: 250
-	)
-		
-	on _STEP2 open do
-	(
-		edtOverview.MultiLine = true
-		edtOverview.scrollbars = (dotnetclass "System.Windows.Forms.ScrollBars").vertical		
-		edtOverview.acceptsReturn = true
-		edtOverview.acceptsTab = true
-		edtOverview.wordWrap = true
-		
-		edtOverview.text = getProp "edtOverview"
-	)
-	
-	on edtOverview keyPress s a do
-	(
-		if(a.keyChar == "\r") do 
-		(
-			edtOverview.text += "\r\n"
-			edtOverview.SelectionStart = (edtOverview.text.count)
-		)
-	)
-	
-	progressBar hr "" height: 3 offset:[0,15]
-	button btnPrev "<< Back" align: #left  across: 2
-	button btnNext "Next >>" align: #right  enabled: true	
-	on btnPrev pressed do 
-	(	
-		sOverview = edtOverview.text
-		goStep 1		
-	)
-	on btnNext pressed do 
-	(
-		if(not isSelected()) do return false
-					
-		sOverview = edtOverview.text			
-		saveProp "edtOverview" sOverview
-			
-		goStep 3		
-	)
-)
-
-rollout _STEP3 "STEP 3: Model Transform" 
+rollout _STEP1 "STEP 1: Model Transform" 
 (
 	group "1. Geometry Fix"
 	(
@@ -895,11 +530,11 @@ rollout _STEP3 "STEP 3: Model Transform"
 	on btnGroup pressed do
 	(
 		if(not isSelected()) do return false
-		if(sModelName.count < 1) do return messageBox "Please do STEP 1" title: "Warning!"
+	--	if(sModelName.count < 1) do return messageBox "Please do STEP 1" title: "Warning!"
 			
 		ungroupRecursive selection
 			
-		group selection name: sModelName select:true
+		group selection name: "Container" select:true
 	)
 
 	on btnUngroup pressed do
@@ -943,14 +578,377 @@ rollout _STEP3 "STEP 3: Model Transform"
 	)
 	
 	progressBar hr "" height: 3 offset:[0,15]
-	button btnPrev "<< Back" align: #left  across: 2
 	button btnNext "Next >>" align: #right  enabled: true	
-	on btnPrev pressed do goStep 2		
 	on btnNext pressed do 
 	(
 		if(not isSelected()) do return false	
 			
-		goStep 4		
+		goStep 2
+	)
+)
+
+rollout _STEP2 "STEP 2: Model Info" 
+(	
+
+	group "Category"
+	(
+		label lbl6 "Library:" align: #left across: 2 
+		dotNetControl lblWarn3 "System.Windows.Forms.Label" text: "*" offset: [-84, 0] 		
+		dropdownlist ddlLib "" 
+		
+		label lbl7 "Category:" align: #left across: 2 
+		dotNetControl lblWarn4 "System.Windows.Forms.Label" text: "*" offset: [-72, 0] 
+		dropdownlist ddlCat ""
+		
+		label lbl8 "Sub Category:" align: #left across: 2 
+		dotNetControl lblWarn5 "System.Windows.Forms.Label" text: "*" offset: [-51, 0] 
+		dropdownlist ddlSubCat ""
+	)
+	
+	group "Model Info"
+	(
+		label lbl1 "Model Name:" align: #left across: 2  	
+		dotNetControl lblWarn1 "System.Windows.Forms.Label" text: "*" offset: [-59, 0] 
+		dotNetControl edtModelName "System.Windows.Forms.TextBox" height: 25 tabstop: true
+		label lbl2 "Manufacturer:" align: #left		
+		dotNetControl edtManufacturer "System.Windows.Forms.TextBox" height: 25 tabstop: true
+		label lbl3 "Modeller:" align: #left		
+		dotNetControl edtModeller "System.Windows.Forms.TextBox" height: 25 tabstop: true
+		label lbl4 "Project:" align: #left		
+		dotNetControl edtProject "System.Windows.Forms.TextBox" height: 25 tabstop: true
+		label lbl5 "Tags:" align: #left across: 2 	
+		dotNetControl lblWarn2 "System.Windows.Forms.Label" text: "*" offset: [-94, 0]
+		dotNetControl edtTags "System.Windows.Forms.TextBox" height: 25 tabstop: true
+		
+		button btnTag1 "" across: 4 visible: false width: 60 border: false
+		button btnTag2 ""  visible: false width: 60 border: false
+		button btnTag3 "" visible: false width: 60 border: false
+		button btnTag4 "" visible: false width: 60 border: false
+	)
+	
+	group "Additional Info"
+	(
+		checkbox cbxUnwrap "Unwrap"
+		checkbox cbxRigged "Rigged"
+		checkbox cbxAnimated "Animated"
+		checkbox cbxBakedTextures "Baked Textures"
+		checkbox cbxLods "Lods"
+		
+	)
+	
+	timer tmr1 "Tmr1" active: false interval: 300
+	progressBar hr "" height: 3 offset:[0,15]
+	button btnPrev "<< Back" align: #left  across: 2
+	button btnNext "Next >>" align: #right  enabled: true 
+	
+	global bgErrorColor = getColor 255 229 153
+	global fgErrorColor = getColor 215 144 0
+	
+	fn switchControl e d = if(e.KeyCode == e.KeyCode.Enter or e.KeyCode == e.KeyCode.Tab)  do try(setFocus d)catch()
+		
+	on edtModelName KeyUp s e do switchControl e edtManufacturer
+	on edtManufacturer KeyUp s e do switchControl e edtModeller
+	on edtModeller KeyUp s e do switchControl e edtProject
+	on edtProject KeyUp s e do switchControl e edtTags
+		
+	fn initDotNet = 
+	(			
+		edtModeller.AutoCompleteMode = edtModeller.AutoCompleteMode.SuggestAppend
+		edtModeller.AutoCompleteSource = edtModeller.AutoCompleteSource.CustomSource
+		
+		edtModelName.AutoCompleteMode = edtModelName.AutoCompleteMode.SuggestAppend
+		edtModelName.AutoCompleteSource = edtModelName.AutoCompleteSource.CustomSource
+		
+		edtManufacturer.AutoCompleteMode = edtManufacturer.AutoCompleteMode.SuggestAppend
+		edtManufacturer.AutoCompleteSource = edtManufacturer.AutoCompleteSource.CustomSource		
+		
+		edtProject.AutoCompleteMode = edtProject.AutoCompleteMode.SuggestAppend
+		edtProject.AutoCompleteSource = edtProject.AutoCompleteSource.CustomSource	
+		
+	
+		warnLabels = #(lblWarn1, lblWarn2, lblWarn3, lblWarn4, lblWarn5)
+		bg = getBgColor()
+		txt = getTextColor()
+				
+		for i in warnLabels do 
+		(
+			i.backColor = bg
+			i.foreColor = i.foreColor.red
+		)
+	)
+	
+	
+	fn trim t = trimLeft (trimRight t " ") " "
+	
+	fn setTagText t = 
+	(
+		c = for i in _STEP2.controls where isProperty i "name" and matchPattern i.name pattern: "btnTag*" collect i
+		for i in c do i.visible = false
+		
+		for i in 1 to t.count where i <= 4 do
+		(
+			c[i].caption = t[i] 
+			c[i].visible = true
+		)
+	)
+	
+	fn addTag a b =
+	(
+		t = b.text			
+		t = filterString t ","
+		t = for i in t collect trim i
+		if(findItem t a.caption == 0) then
+		(
+			n = ""
+			for i in 1 to t.count - 1 do n += t[i] + ", "
+			n = trimLeft n ", "
+			n += a.caption + ", "		
+			b.text = n
+			b.SelectionStart = (b.text.count)
+		)
+		else
+		(
+			messageBox "Tag already exist!" title: "Warning!"
+		)
+		
+		setFocus b
+	)
+	
+	on btnNext pressed do 
+	( 						
+		sModelName = edtModelName.text		
+		sManufacturer = edtManufacturer.text
+		sModeller = edtModeller.text
+		sProject = edtProject.text
+		sTags = edtTags.text
+
+		bRigged = cbxRigged.checked
+		bAnimated = cbxAnimated.checked
+		bBakedTextures = cbxBakedTextures.checked
+		bLods = cbxLods.checked
+		bUnwrap = cbxUnwrap.checked
+			
+		iCat1 = ddlLib.selection
+		iCat2 = ddlCat.selection
+		iCat3 = ddlSubCat.selection
+
+		if(catID == -1) do return messageBox "Please select the category!" title: "Warning!"		
+		if(sModelName.count == 0) do return messageBox "Please enter correct Model Name!" title: "Warning!"		
+		if(sTags.count == 0) do return messageBox "Please enter few tags!" title: "Warning!"
+				
+		if(not isValidText sModelName title: "Model Name") do return false 
+		if(not isValidText sManufacturer title: "Manufacturer") do return false 
+		if(not isSelected()) do return false
+			
+		saveAllProp()
+		
+		goStep 3	
+	)
+	
+	on btnPrev pressed do
+	(
+		goStep 1
+	)
+	
+	on edtTags TextChanged s a do
+	(		
+		t = findTag edtTags.text		
+		if(t.count == 0) do return false
+		setTagText t	
+	)
+	
+	on edtTags KeyUp s e do
+	(
+		if(e.KeyCode == Keys.Enter) do (			
+			if(btnTag1.visible == true) do addTag btnTag1 edtTags	
+		)
+	)
+	
+	on edtModelName LostFocus s a do isValidText (edtModelName.text) title: "Model Name"
+	on edtManufacturer LostFocus s a do isValidText (edtManufacturer.text) title: "Manufacturer"
+		
+	fn getList s = 
+	(
+		l = filterString s ";"
+		items = #(#(-1, ""))
+		for i in l do append items (filterString i "|")
+		
+		return items
+	)
+	
+	fn getCat id =
+	(
+		--catID = -1
+		url = _URL + "vault/mxs/mxsGetCat.php?pid=" + id as string + "&time=" + timeStamp() as string
+		r = httpGet url
+		
+		return getList r
+	)
+	
+	fn getTagsList =
+	(
+		url = _URL + "vault/mxs/mxsGetTags.php?time=" + timeStamp() as string
+		r = httpGet url			
+		return filterString r ";"
+	)
+
+	fn getModellerList =
+	(
+		url = _URL + "vault/mxs/mxsGetUsers.php?time=" + timeStamp() as string
+		r = httpGet url			
+		return filterString r ";"
+	)
+	
+	fn getModels =
+	(
+		url = _URL + "vault/mxs/mxsGetModels.php?time=" + timeStamp() as string
+		r = httpGet url			
+		return filterString r ";"
+	)
+	
+	on _STEP2 open do
+	(	
+		initDotNet()
+
+		edtModelName.text = getProp "edtModelName"
+		edtManufacturer.text = getProp "edtManufacturer" 
+		edtModeller.text =  getProp "edtModeller"
+		edtProject.text =  getProp "edtProject"
+		edtTags.text = getProp "edtTags"
+
+		cbxRigged.checked = getProp "cbxRigged" type: #bool
+		cbxAnimated.checked = getProp "cbxAnimated" type: #bool
+		cbxBakedTextures.checked = getProp "cbxBakedTextures" type: #bool
+		cbxLods.checked = getProp "cbxLods" type: #bool
+		cbxUnwrap.checked	= getProp "cbxUnwrap" type: #bool
+		
+		category1 = explodeCat (getProp "category1")
+		category2 = explodeCat (getProp "category2")
+		category3 = explodeCat (getProp "category3")
+		
+		ddlLib.items = for i in category1 collect i[2]
+		ddlCat.items = for i in category2 collect i[2]
+		ddlSubCat.items = for i in category3 collect i[2]
+		
+		ddlLib.selection = getProp "ddlLib" type: #int
+		ddlCat.selection = getProp "ddlCat" type: #int
+		ddlSubCat.selection = getProp "ddlSubCat" type: #int
+		
+		catID = (getProp "catID" type: #negative) as integer
+		
+		tmr1.active = true	
+	
+		zipper = zip()
+	)
+		
+	on _STEP2 close do
+	(
+	
+	)
+	
+	on tmr1 tick do
+	(	
+		category1 = getCat 0
+				
+		ddlLib.items = for i in category1 collect i[2]
+			
+		tags = getTagsList()			
+		modellers = getModellerList()
+		
+		edtModeller.AutoCompleteCustomSource.AddRange modellers
+		
+		for i in getModels() do 
+		(	
+			t = filterString i "|"
+			if(t.count > 1) do
+			(
+				appendIfUnique models t[1]
+				appendIfUnique manufacturers t[2]
+				appendIfUnique projects t[3]
+			)
+		)
+		
+		
+		edtProject.AutoCompleteCustomSource.AddRange projects
+		edtModelName.AutoCompleteCustomSource.AddRange models
+		edtManufacturer.AutoCompleteCustomSource.AddRange manufacturers
+					
+		tmr1.active = false
+	)
+	
+	on ddlLib selected v do
+	(
+		ddlCat.items = #()
+		ddlSubCat.items = #()
+		category2 = getCat (category1[v][1])	
+				
+		ddlCat.items = for i in category2 collect i[2]
+	)
+	
+	on ddlCat selected v do
+	(
+		ddlSubCat.items = #()
+		category3 = getCat (category2[v][1])	
+				
+		ddlSubCat.items = for i in category3 collect i[2]
+	)
+
+	
+	on ddlSubCat selected v do
+	(
+		catID = category3[v][1]
+	)
+	
+	on btnTag1 pressed do addTag btnTag1 edtTags
+	on btnTag2 pressed do addTag btnTag2 edtTags
+	on btnTag3 pressed do addTag btnTag3 edtTags
+	on btnTag4 pressed do addTag btnTag4 edtTags
+	
+)
+
+rollout _STEP3 "STEP 3: Model Overview" 
+(
+	group "Overview"
+	(
+		dotNetControl edtOverview "System.Windows.Forms.TextBox"  height: 250
+	)
+		
+	on _STEP3 open do
+	(
+		edtOverview.MultiLine = true
+		edtOverview.scrollbars = (dotnetclass "System.Windows.Forms.ScrollBars").vertical		
+		edtOverview.acceptsReturn = true
+		edtOverview.acceptsTab = true
+		edtOverview.wordWrap = true
+		
+		edtOverview.text = getProp "edtOverview"
+	)
+	
+	on edtOverview keyPress s a do
+	(
+		if(a.keyChar == "\r") do 
+		(
+			edtOverview.text += "\r\n"
+			edtOverview.SelectionStart = (edtOverview.text.count)
+		)
+	)
+	
+	progressBar hr "" height: 3 offset:[0,15]
+	button btnPrev "<< Back" align: #left  across: 2
+	button btnNext "Next >>" align: #right  enabled: true	
+	on btnPrev pressed do 
+	(	
+		sOverview = edtOverview.text
+		goStep 2		
+	)
+	on btnNext pressed do 
+	(
+		if(not isSelected()) do return false
+					
+		sOverview = edtOverview.text			
+		saveProp "edtOverview" sOverview
+			
+		goStep 4	
 	)
 )
 
@@ -1023,7 +1021,7 @@ rollout _STEP4 "STEP 4: Preview"
 			
 		if(f == undefined or not doesFileExist f) do return false
 		
-		b = openBitMap f
+		b = openBitMap f		
 		setClipboardBitmap  b
 		clipboard = dotNetClass "System.Windows.Forms.Clipboard"
 		img = clipboard.GetImage()
@@ -1468,6 +1466,7 @@ rollout _STEP5 "STEP 5: Pack Model"
 	
 	on btnPackModel pressed do
 	(
+		if(not isSelected()) do return false
 		fileToLoad = maxFilePath + maxFileName
 		if(fileToLoad.count < 1) do return messageBox "Please save scene!" title: "Warning!"
 		if(sModelName.count < 1) do return messageBox "Please specify Model Name in STEP 1!" title: "Warning!"
@@ -1510,17 +1509,30 @@ rollout _STEP5 "STEP 5: Pack Model"
 		-- Copy IES
 		copyIES szAssets szName	
 			
+		-- Save render
 		currentRender = renderers.current
+	
+		-- Save units
+		SystemType = units.SystemType
+		SystemScale = units.SystemScale 
+		DisplayType = units.DisplayType		
 			
 		-- Add Versions
-		
+				
 		saveNodes selection (szDir + "_tmp.max") quiet:true
 		resetMaxFile #noPrompt
+		try(
+			units.SystemType = SystemType
+			units.SystemScale = SystemScale
+			units.DisplayType	= DisplayType
+		)catch()
+		
+		
 		mergeMAXFile (szDir + "_tmp.max") #select #mergedups #renameMtlDups #noRedraw quiet:true			
 		deleteFile (szDir + "_tmp.max")
 			
 		try(renderers.current = currentRender)catch()
-			
+					
 		select objects
 			
 		renameObjects szName

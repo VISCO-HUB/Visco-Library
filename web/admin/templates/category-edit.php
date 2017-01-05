@@ -18,6 +18,13 @@
 	</div>
 </script>
 
+<script type="text/ng-template" id="permissions">
+	<div class="btn-group margin-10-2" ng-if="permission.length > 1">
+		<button type="button" class="btn btn-default btn-xs" disabled>{{permission}}</button>
+		<button type="button" class="btn btn-default btn-xs" ng-click="removePermission(catId, permission)" aria-haspopup="true" aria-expanded="false"><span class="glyphicon glyphicon-remove" aria-hidden="true"></span></button>	
+	</div>
+</script>
+
 <h1>Edit Library: {{categories[catId].name}}</h1>
 <h2><small>Library Type:</small></h2>
 <input type="text" class="form-control" disabled placeholder="{{libType(categories[catId].type)}}">
@@ -52,21 +59,41 @@
 <button class="btn btn-primary" ng-click="addCat(subCatEditID, categories[catId].type)" ng-class="{disabled: level[subCatEditID] > 1}">Add</button> 
 <button class="btn btn-danger" ng-class="{disabled: subCatEditID == catId}" ng-click="subCatDel(subCatEditID)">Delete</button>
 <button class="btn btn-warning" ng-class="{disabled: subCatEditID == catId}" ng-click="subCatRename(subCatEditID)">Rename</button>
-<hr>
 <div ng-show="auth.rights==2">
+	<hr>
 	<h2><small>Editors:</small></h2>	
 	<span ng-repeat="editor in categories[catId].editors.split(';') track by $index" ng-include="'editors'">{{editor}}</span> 
 	<br>
 	<br>
 	
-	<div class="btn-group dropup" tooltip-placement="right" uib-tooltip="Add admins who may edit this library.">
-		<button type="button" class="btn btn-primary" data-toggle="dropdown" >Add Editor</button>
+	<div class="btn-group dropup" tooltip-placement="right" uib-tooltip="Add moderators who may edit this library.">
+		<button type="button" class="btn btn-primary" data-toggle="dropdown" >Add Moderator</button>
 		<button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
 		<span class="caret"></span>
 		<span class="sr-only">Toggle Dropdown</span>
 	  </button>
 		<ul class="dropdown-menu" aria-labelledby="dropdownMenu1">
-			<li ng-repeat="user in users.users" ><a href="" ng-click="addEditor(catId, user.user)" >{{user.user}}</a></li>        					
+			<li ng-repeat="user in userFilterList.moderators" ><a href="" ng-click="addEditor(catId, user.user)" >{{user.user}}</a></li>        					
+		</ul>
+	</div>
+</div>
+<div ng-show="auth.rights==2">
+	<hr>
+	<h2><small>Permissions:</small></h2>	
+	<mark class="text-muted">Note: If not specified any group, access to the category will have all users!</mark><br><br>
+	<span ng-init="permission='All'" ng-include="'permissions'" ng-show="categories[catId].premissions.length < 2">All</span> 
+	<span ng-repeat="permission in categories[catId].premissions.split(';') track by $index" ng-include="'permissions'">{{permission}}</span> 
+	<br>
+	<br>
+	
+	<div class="btn-group dropup" tooltip-placement="right" uib-tooltip="Add the groups that will have access.">
+		<button type="button" class="btn btn-primary" data-toggle="dropdown" >Add Group</button>
+		<button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+		<span class="caret"></span>
+		<span class="sr-only">Toggle Dropdown</span>
+	  </button>
+		<ul class="dropdown-menu" aria-labelledby="dropdownMenu1">
+			<li ng-repeat="grp in userFilterList.grp" ><a href="" ng-click="addPermission(catId, grp.grp)" >{{grp.grp}}</a></li>        					
 		</ul>
 	</div>
 </div>

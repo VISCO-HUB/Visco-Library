@@ -228,6 +228,11 @@ h1, h2, h3, h4 {
 	left: 13px;
 	background-color: #D9534F;
 }
+
+.badge-menu {
+	margin-left: 15px !important;
+}
+
 .border-right {
 	border-right: 1px solid #EEEEEE;
 }

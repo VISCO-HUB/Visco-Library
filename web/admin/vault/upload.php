@@ -117,7 +117,7 @@
 
 			DB::MULTIINSERT('tags', $T);
 		}
-		
+				
 		IF($ISREPLACE) FS::CLEAR($MOVETO);
 		FS::MOVE($EXTRACTTO, $MOVETO);
 	}
