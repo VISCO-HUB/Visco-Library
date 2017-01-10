@@ -1,3 +1,10 @@
+/*
+	VISCO ASSETS CMS
+	By Vasily Lukyanenko
+	2017
+
+*/
+
 /* GLOBAL FUNCTIONS */
 
 Array.prototype.makeUnique = function(){
@@ -20,7 +27,7 @@ var hostname = 'http://' + window.location.hostname + '/';
 
 /* APP */
 
-var app = angular.module('app', ['ngRoute', 'ngSanitize', 'ui.bootstrap', 'angularFileUpload']);
+var app = angular.module('app', ['ngRoute', 'ngSanitize', 'ui.bootstrap']);
 
 
 // CONFIG 
@@ -31,15 +38,7 @@ app.config(function($routeProvider) {
         templateUrl : 'templates/home.php',
 		controller: 'homeCtrl'
     })
-    .when('/admin', {
-        templateUrl : "templates/admin.php",
-		controller: 'adminCtrl'
-    })
-	.when('/login', {
-        templateUrl : "templates/login.php",
-		controller: 'loginCtrl'
-    })
-	.when('/about/', {
+  	.when('/about/', {
         templateUrl : "templates/about.html",
 		controller: 'aboutCtrl'
     }) 	
@@ -47,7 +46,7 @@ app.config(function($routeProvider) {
 });
 
 // DIRECTIVES
-app.directive("alerts", function($rootScope) {
+app.directive("alerts", function($rootScope) {	 
     return {
         templateUrl : hostname + 'templates/alert.html'
     };
@@ -75,66 +74,24 @@ app.filter('orderObjectBy', function() {
 app.controller("aboutCtrl", function($scope){
 	
 });
-	// UPLOAD
-app.controller('uploadCtrl', ['$scope', 'FileUploader', 'vault', function($scope, FileUploader, vault) {
-	var uploader = $scope.uploader = new FileUploader({
-		url: 'vault/upload.php'
-	});
 
-	// FILTERS
-
-	uploader.filters.push({
-		name: 'customFilter',
-		fn: function(item /*{File|FileLikeObject}*/, options) {
-				return this.queue.length < 10;
-			}
-		},
-		{
-            name: 'zipFilter',
-            fn: function(item /*{File|FileLikeObject}*/, options) {
-                var type = '|' + item.type.slice(item.type.lastIndexOf('/') + 1) + '|';
-                return '|x-zip-compressed|'.indexOf(type) !== -1;
-            }
-		}
-	);
-	
-	uploader.onSuccessItem = function(fileItem, response, status, headers) {
-		vault.deleteMessage();
-		console.log(response);
-		angular.forEach(uploader.queue, function(item, key) {
-			if(fileItem.file.name == item.file.name) {					
-				uploader.queue[key].isReplace = false;
-			}
-		});
-		
-		if(response == 'REPLACEFILE') {
-			vault.showMessage('Some files already exist! Press the button replace for needed files!', 'warning');
-				
-			angular.forEach(uploader.queue, function(item, key) {
-				  if(fileItem.file.name == item.file.name) {					
-					uploader.queue[key].isReplace = true;
-					uploader.queue[key].isSuccess = false;
-					uploader.queue[key].isUploaded = false;
-					uploader.queue[key].progress = 0;
-					uploader.queue[key].url = 'vault/upload.php?replace=true';
-				}
-			});										
-		}
-    };
-	
-	$scope.replaceUpload = function(item) {		
-		
-		if(!confirm('Do you really want to update file: \"' + item.file.name + '\"?')){
-			return false;
-		}
-		
-		item.upload();
+	// MAIN MENU
+app.controller("menuCtrl", function($scope, $rootScope, vault){
+	$scope.getCat = function() {
+		vault.getCat();
 	}
 	
-	uploader.onErrorItem = function(fileItem, response, status, headers) {
-            console.info('onErrorItem', fileItem, response, status, headers);
-	};
- }]);
+	$scope.type = 1;
+	$scope.getCat();
+	
+	$scope.changeTab = function(t) {$scope.type = t;}	
+});
+
+	// MSG
+app.controller("msgCtrl", function ($scope, $rootScope, vault) {
+	$rootScope.msg = {};
+});
+
 
 	// LOGIN
 app.controller("loginCtrl", function($scope, $rootScope, vault){
@@ -163,160 +120,11 @@ app.controller("loginCtrl", function($scope, $rootScope, vault){
 	}
 });
 
-	// ADMIN
-app.controller("adminCtrl", function($scope, $rootScope, vault){
-	$scope.section = 'models';
-
-	vault.getGlobal();
-	vault.catGet();
-	
-	$scope.addLibrary = function(type) {
-		var n = prompt('Please enter the name!', '');			
-		
-		if(!n || !n.length) {			
-			vault.showMessage('Please enter the name (A-z, numbers, spaces)!', 'warning');
-		
-			return false;
-		}
-		
-		vault.adminCatAdd(n, 0, type);
-	}
-	
-	$scope.adminAddCat = function(parentid, type) {		
-		if($scope.level[parentid] > 1) {return false;}
-		
-		var n = prompt('Please enter the name!', '');			
-		
-		if(!n || !n.length) {			
-			vault.showMessage('Please enter the name (A-Z, numbers, spaces)!', 'warning');
-		
-			return false;
-		}
-		
-		vault.adminCatAdd(n, parentid, type);
-	}
-	
-	$scope.adminGlobalChangePath = function() {
-		var n = prompt('Please enter library path!', '');			
-		
-		if(!n || !n.length) {			
-			vault.showMessage('Please enter library path!', 'warning');
-		
-			return false;
-		}
-		
-		vault.adminGlobalsChange(n);		
-	}
-	
-	$scope.libType = function(type) {
-		var t = '';
-		
-		switch(type)
-		{			
-			case '1': t = 'Models';
-			break;
-			case '2': t = 'Textures';
-			break;
-			default: t = 'Unknown';
-			break;
-		}
-		
-		return t;
-	}
-	
-	$scope.adminChangeDesc = function(id) {
-		var n = prompt('Please enter description!', '');			
-		
-		if(!n || !n.length) {			
-			vault.showMessage('Please enter library path!', 'warning');
-		
-			return false;
-		}
-		
-		$scope.adminCatSetParam('description', n, id);
-	}
-	
-	$scope.adminSubCatRename = function(id) {
-		if(id == $scope.adminCatEditId) {return false;}
-		
-		$scope.adminChangeName(id);
-	}
-	
-	$scope.adminSubCatDel = function(id) {
-		if(id == $scope.adminCatEditId) {return false;}
-		
-		$scope.adminCatDel(id);
-		
-		//subCatEditID=adminCatEditId
-	}
-	
-	$scope.adminChangeName = function(id) {				
-		var n = prompt('Please enter the name!', '');			
-		
-		if(!n || !n.length) {			
-			vault.showMessage('Please enter the name!', 'warning');
-		
-			return false;
-		}
-		
-		vault.adminChangeName(n, id);		
-	}	
-	
-	$scope.libDel = function(id, name) {				
-		if(!name) {name = '';}
-		if(!confirm('Do you really want to delete category ' + name + '?')){
-			return false;
-		}
-		
-		vault.adminCatDel(id);
-	}
-	
-	$scope.changeSort = function(id, sort) {
-		vault.adminCatSort(id, sort);
-	}
-	
-	$scope.adminCatDel = function(id, name) {
-		if(id == $scope.adminCatEditId) {return false;}
-		
-		if(!name) {name = '';}
-		if(!confirm('Do you really want to delete category ' + name + '?')){
-			return false;
-		}
-		
-		vault.adminCatDel(id);
-	}
-	
-	$scope.isAdminCatEdit = false;
-	
-	$scope.level = {};	
-	$scope.subCatEditID = -1;		
-	$scope.adminCatEditId = -1;
-	
-	$scope.adminCatEdit = function(id) {
-		$scope.adminCatEditId = id;
-		$scope.subCatEditID  = id;
-		$scope.level[id] = 0;
-		$scope.isAdminCatEdit = true;
-		$rootScope.deleteMsg();
-	}
-	
-	$scope.isSubCatActive = function(id) {
-		return $scope.subCatEditID == id;
-	}
-	
-	$scope.subCatEdit = function(id) {
-		$scope.subCatEditID = id;
-	}
-	
-	$scope.adminCatSetParam = function(param, value, id) {
-	
-		vault.adminCatSetParam(param, value, id);
-	}	
-});
 	// HOME
 app.controller("homeCtrl", function ($scope, vault) {
 	
 });
+
 // AUTO RUN
 app.run(function($rootScope, $location, $routeParams, vault) {
     $rootScope.$watch(function() { 
@@ -341,10 +149,13 @@ app.run(function($rootScope, $location, $routeParams, vault) {
 		
 		$rootScope.deleteMsg = function() {$rootScope.msg = {};};
 		
-		$rootScope.singOut = function() {vault.signOut()};
-		
-		$rootScope.categories = {};
-		
+		$rootScope.singOut = function() {
+			if(!confirm('Do you really want to sign out?')){
+				return false;
+			}
+			vault.signOut()
+		};
+				
 		$rootScope.globals = {};
 		
 		$rootScope.count = function(o) {
@@ -357,6 +168,8 @@ app.run(function($rootScope, $location, $routeParams, vault) {
 			}
 			return count;
 		}
+		
+		vault.getCat();
     });
 });
 
@@ -380,37 +193,17 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		var s = {};
 		switch(r.responce)
 		{			
-			case 'RENOK': s.success = 'Category renamed success!';
-			break;
-			case 'RENBAD': s.error = 'Category can\'t be renamed!';
-			break;
-			case 'CATDELBAD': s.warning = 'Category can\'t be removed!';
-			break;
-			case 'CATDELOK': s.success = 'Category deleted success!';
-			break;
-			case 'CATDELWARN': s.warning = 'Sorry! This category contains the files, remove them first!';
-			break;
 			case 'USERBAD': s.warning = 'Please enter correct credentials!';
 			break;
 			case 'USEROK': s.success = 'Logged success!';
 			break;
 			case 'SIGNEDOUT': s.success = 'You are signed out!';
 			break;
-			case 'CATOK': s.success = 'Success category added!';
-			break;
-			case 'CATBAD': s.error = 'Error when creating category!';
-			break;
-			case 'SETTINGOK': s.success = 'Success setting changed!';
-			break;
-			case 'SETTINGBAD': s.error = 'Setting not changed!';
-			break;
 			case 'ERROR': s.error = 'MySQL Error!';
 			break;
 			case 'RESTRICTED': s.error = 'This user is not allowed!';
 			break;
 			case 'NORIGHTS': s.error = 'You have no rights for make changes!';
-			break;
-			case 'REPLACEFILE': s.error = 'Some files already exist! Press replace for needed files!';
 			break;
 		}
 		
@@ -464,25 +257,7 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 			responceMessage(r);
 		});
 	}
-	
-	// ADMIN
-	
-	
-	var catGet = function(parentid) {
-		if(parentid == null) {parentid = 0;}
-		
-		var json = {'parentid': parentid};
-		
-		HttpPost('CATGET', json).then(function(r){						
 			
-			$rootScope.categories = r.data;			
-			console.log(r.data)
-		},
-		function(r){
-			responceMessage(r);
-		});
-	}
-	
 	var getGlobal = function() {
 		httpGet('GLOBALGET').then(function(r){									
 			$rootScope.globals = r.data;
@@ -491,103 +266,23 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 			responceMessage(r);
 		});
 	}
-		
-	var adminCatAdd = function(name, parentid, type) {
-		if(parentid == null) parentid = '0';
-		
-		var json = {'parentid': parentid, 'name': name, 'type': type};
-		
-		HttpPost('CATADD', json).then(function(r){						
-			catGet();
-			console.log(r.data)
-			responceMessage(r.data);
-		},
-		function(r){
-			responceMessage(r);
-		});
-	}
-		
-	var adminCatDel = function(id) {				
-		var json = {'id': id};
-		
-		HttpPost('CATDEL', json).then(function(r){						
-			catGet();
-			console.log(r.data)
-			responceMessage(r.data);
-		},
-		function(r){
-			responceMessage(r);
-		});
-	}
-		
-	var adminCatSetParam = function(param, value, id) {
-		var json = {'param': param, 'value': value, 'id': id};
-		
-		HttpPost('CATSETPARAM', json).then(function(r){									
-			console.log(r.data)
-			catGet();		
-		},
-		function(r){
-			responceMessage(r);
-		});
-	}
 	
-	var adminGlobalsChange = function(path) {
-		if(path == null) path = '';
+	var getCat = function() {
+		httpGet('CATGET').then(function(r){									
+			$rootScope.categories = r.data;
+		},
+		function(r){
+			responceMessage(r);
+		});
+	}
 				
-		var json = {'path': path};
-		
-		HttpPost('GLOBALCHANGE', json).then(function(r){									
-			getGlobal();
-				
-			responceMessage(r.data);			
-		},
-		function(r){
-			responceMessage(r);
-		});
-	}	
-	
-	var adminChangeName = function(name, id) {
-		if(name == null) name = '';
-			
-		var json = {'name': name, 'id': id};
-		
-		HttpPost('CATRENAME', json).then(function(r){									
-			catGet();
-			console.log(r.data)	
-			responceMessage(r.data);			
-		},
-		function(r){
-			responceMessage(r);
-		});
-	}
-	
-	var adminCatSort = function(id, sort) {		
-		var json = {'id': id, 'sort': sort};
-		
-		HttpPost('CATSORT', json).then(function(r){									
-			catGet();
-			console.log(r.data)	
-			responceMessage(r.data);			
-		},
-		function(r){
-			responceMessage(r);
-		});
-	}
-			
 	return {
 		showMessage: showMessage,
 		deleteMessage: deleteMessage,
 		signIn: signIn,
-		signOut: signOut,
-		catGet: catGet,
-		adminCatDel: adminCatDel,
-		adminCatAdd: adminCatAdd,
+		signOut: signOut,				
 		getGlobal: getGlobal,
-		adminGlobalsChange: adminGlobalsChange,
-		adminCatSetParam: adminCatSetParam,
-		adminChangeName: adminChangeName,
-		adminCatSort: adminCatSort
+		getCat: getCat
 	};
 });
 

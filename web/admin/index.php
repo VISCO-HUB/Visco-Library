@@ -63,7 +63,7 @@
 </div>
 <div class="breadcrumbs">
 	<div class="container">
-		<div class="padding-15">
+		<div class="padding-0-15">
 			<ol class="breadcrumb">
 				<li class="breadcrumb-item"><a href="#/">Home</a></li>
 				<li class="breadcrumb-item" ng-repeat="crumb in breadcrumbs" ng-class="{active: !$last}"> <a ng-if="!$last" ng-href="{{crumb.url}}">{{crumb.name}}</a> <span ng-if="$last">{{crumb.name}}</span> </li>
@@ -76,7 +76,7 @@
 	<div class="col-sm-3 col-md-3 col-lg-3"> <br>
 		<ul class="nav nav-pills nav-stacked">
 			<li ng-class="{active: section=='/dashboard'}"><a href="#/dashboard">Dashboard</a></li>
-			<li ng-class="{active: section=='/category'}"><a href="#/category" >Categories</a></li>
+			<li ng-class="{active: section=='/category'}"><a href="#/category" >Libraries</a></li>
 			<li ng-class="{active: section=='/models'}"><a href="#/models/1" >Models</a></li>
 			<li ng-class="{active: section=='/textures'}"><a href="#/textures/1" >Textures</a></li>
 			<li ng-class="{active: section=='/tags'}" ng-show="auth.rights==2"><a href="#/tags/1" >Tags</a></li>

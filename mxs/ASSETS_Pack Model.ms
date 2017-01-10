@@ -1,3 +1,38 @@
+/*  
+[INFO] 
+
+NAME = Pack Model
+VERSION = 1.0.1
+AUTHOR = Vasily Lukyanenko
+DEV = VISCO
+HELP = 
+
+[INSTALL]
+
+MACRO=PackModel
+CAT=VISCO
+TEXT=Pack Model
+ICON=#("PhysX_Main", 30)
+
+[1.0.0]
+
+* First release =
+
+[1.0.1]
+
++ Added: Corona support=
+
+[ABOUT]
+
+This script helps to prepare model to upload=
+for Assets Library=
+
+[TEST]
+
+[SCRIPT]
+*/	
+
+
 /* GLOBAL SETTINGS */
 
 global _URL = "http://svg-web-003/"
@@ -13,7 +48,7 @@ global _STEP2
 global _STEP3
 global _STEP4
 global _STEP5
-global rAbout
+global _rAbout
 
 global Keys = dotNetClass "System.Windows.Forms.Keys"
 global szGoodChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890&$%#()!_-+ " 
@@ -185,14 +220,14 @@ fn getTextColor =
 
 fn goStep step =
 (
-	k = #(_STEP1, _STEP2, _STEP3, _STEP4, _STEP5, rAbout) 
+	k = #(_STEP1, _STEP2, _STEP3, _STEP4, _STEP5, _rAbout) 
 	for i in k do 
 	(
 		removeRollout i rAssetsLibraryModelPack
 	)
 	
 	addRollout k[step] rAssetsLibraryModelPack border: true
-	addRollout rAbout rAssetsLibraryModelPack border: true rolledUp: true
+	addRollout _rAbout rAssetsLibraryModelPack border: true rolledUp: true
 )
 
 fn implode a tag: ";" = 
@@ -1569,14 +1604,23 @@ rollout _STEP5 "STEP 5: Pack Model"
 )
 
 
-rollout rAbout "About" 
+rollout _rAbout "About" 
 (
-	label lbl1 "Assets Library Pack Model" offset: [0, 30]
-	label lbl2 "v1.0.1"
-	label lb3 "Vasily Lukyanenko"
-	label lb4 "VISCO" offset: [0, 20]
-	label lbl5 "" offset: [0, 15]
+	label lblName "" 
+	label lblVer "" 
 	
+	label lblAuthor "" height: 30
+	label lblCopy ""  height: 30
+	
+	on _rAbout open do
+	(		
+		i = getScriptInfo (getThisScriptFilename())
+			
+		lblName.caption = i[1]
+		lblAuthor.caption = i[2]
+		lblVer.caption = i[3]
+		lblCopy.caption = i[6]
+	)
 )
 
 goStep 1

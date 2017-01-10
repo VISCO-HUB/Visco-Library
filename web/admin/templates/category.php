@@ -1,4 +1,4 @@
-<h1>Categories</h1>
+<h1>Libraries</h1>
 <hr>
 <div class="table-responsive">
 	<table class="table table-hover">

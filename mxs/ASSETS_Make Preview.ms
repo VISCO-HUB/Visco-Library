@@ -2,8 +2,8 @@
 [INFO] 
 
 NAME = Make Preview
-VERSION = 1.0.2
-AUTHOR = MastaMan
+VERSION = 1.0.3
+AUTHOR = Vasily Lukyanenko
 DEV = VISCO
 HELP = 
 
@@ -12,7 +12,7 @@ HELP =
 MACRO=MakePreview
 CAT=VISCO
 TEXT=Make Preview
-ICON=#("PhysX_Main", 25)
+ICON=#("PhysX_Main", 3)
 
 [1.0.0]
 
@@ -21,6 +21,11 @@ ICON=#("PhysX_Main", 25)
 [1.0.2]
 
 + Added: VRay support=
+- BugFix: Script not work when reload scene=
+
+[1.0.3]
+
++ Added: Display wire in Editor=
 
 [ABOUT]
 
@@ -241,10 +246,10 @@ fn setRenderQuality =
 )
 
 fn renderChange =
-(
-	renderSystem = renderers.current 
+(	
 	_rStep0.qualitySet()	
 	setRenderQuality()
+	_rStep1.firstLoad()
 )
 
 rollout _rStep0  "Basic Setup"
@@ -400,11 +405,19 @@ rollout _rStep1  "HDRI"
 				append renderElements (VRayReflection())
 				append renderElements (VRayRefraction())
 				
+				-- AO	
 				cm = VrayExtraTex() 				
 				cm.texture = VRayDirt()
 				cm.texture.radius = _rStep0.spnAOSize.value
 				
 				append renderElements cm
+					
+				-- Wire	
+				cm2 = VrayExtraTex() 				
+				cm2.texture = VrayEdgesTex()
+				cm2.texture.pixelWidth = 0.2
+				
+				append renderElements cm2
 			)
 		)
 		
@@ -748,6 +761,25 @@ rollout _rStep1  "HDRI"
 		setRenderQuality()			
 	)
 	
+	fn firstLoad = 
+	(
+		r = getRender()
+		
+		if(r == #unknown) do 
+		(
+			closeRolloutFloater fFastRender
+			return messageBox "Please assign Corona or V-Ray Renderer!" title: "Warning!"
+		)
+						
+		renderSystem = renderers.current 
+		
+		loadHDR()
+		enableReflections()
+		
+		s = useSettings "AO_SIZE" "int" "r"
+		if(s != 0) do _rStep0.spnAOSize.value = s
+	)
+	
 	on btnLightHDR pressed do
 	(
 		f = getOpenFileName  caption: "Select Light HDR" types: "*.hdr|*.hdr|*.exr|*.exr"
@@ -781,21 +813,7 @@ rollout _rStep1  "HDRI"
 	
 	on _rStep1	open do
 	(			
-		r = getRender()
-		
-		if(r == #unknown) do 
-		(
-			closeRolloutFloater fFastRender
-			return messageBox "Please assign Corona or V-Ray Renderer!" title: "Warning!"
-		)
-						
-		renderSystem = renderers.current 
-		
-		loadHDR()
-		enableReflections()
-		
-		s = useSettings "AO_SIZE" "int" "r"
-		if(s != 0) do _rStep0.spnAOSize.value = s
+		firstLoad()
 	)
 		
 	on sldLightHDR changed a do
@@ -1219,9 +1237,17 @@ fn postProcess =
 			close r
 		)
 		
+		fn showWire show: 1 =
+		(
+			i = outputMap.mapList.count			
+			outputMap.opacity[i] = if(show == 1) then 0 else 50
+			rPostProcess.showRender now: true
+		)
+		
 		on rPostProcess open do
 		(				
 			showRender()
+			showWire()
 		)
 		
 		on tmrShowRender tick do
@@ -1248,7 +1274,7 @@ fn postProcess =
 	ex += "checkbox cbxShowAll \"Hide/Show Effects\" checked: true\n\n"
 	
 		
-	for i in 1 to outputMap.mapList.count  where outputMap.mapList[i] != undefined do 
+	for i in 1 to outputMap.mapList.count - 1 where outputMap.mapList[i] != undefined do 
 	(	
 		n = outputMap.mapList[i].name
 		b = outputMap.blendMode[i]
@@ -1298,23 +1324,24 @@ fn postProcess =
 	ex += "on cbxShowAll changed s do \n"
 	ex += "(\n"
 	
-	for i in 1 to outputMap.mapList.count  where outputMap.mapList[i] != undefined  do 
-	(	
-		n = outputMap.mapList[i].name
-		b = outputMap.blendMode[i]
-		o = outputMap.opacity[i] as string 
-		s = i as string
-		
-		if(i != 1) do 
-		(
-			ex += "if(s == false) then outputMap.opacity[" + s + "] = 0 else outputMap.opacity[" + s + "] = spn" + s + ".value \n"
-			ex += "cbx" + s + ".checked = s \n"			
+		for i in 1 to outputMap.mapList.count  where outputMap.mapList[i] != undefined  do 
+		(	
+			n = outputMap.mapList[i].name
+			b = outputMap.blendMode[i]
+			o = outputMap.opacity[i] as string 
+			s = i as string
+			
+			if(i != 1) do 
+			(
+				ex += "if(s == false) then outputMap.opacity[" + s + "] = 0 else outputMap.opacity[" + s + "] = spn" + s + ".value \n"
+				ex += "cbx" + s + ".checked = s \n"			
+			)
 		)
-	)
 
 	ex += "rPostProcess.showRender now: true\n"
 	ex += ")\n"
-	
+	ex += "radiobuttons rdoWire \"\" labels:#(\"Render\", \"Wire\") offset: [0, 15]\n"
+	ex += " on rdoWire changed z do rPostProcess.showWire show: z\n"
 	ex += "button btnSave \"Save Image\" offset: [0, 15]\n"
 	ex += " on btnSave pressed do rPostProcess.saveImage()"
 	ex += ")\n"
@@ -1357,8 +1384,7 @@ rollout _rStep3  "Render / Post Process"
 			#Corona: b = CoronaRenderer.CoronaFp.getVfbContent c true true
 			#VRay: b = vrayVFBGetChannelBitmap c 
 		)
-		b = vrayVFBGetChannelBitmap 1
-		
+				
 		nb = bitmap 800 800 color: white 
 		copy b nb
 		
@@ -1496,6 +1522,15 @@ rollout _rStep3  "Render / Post Process"
 		outputMap.opacity[l] = 25
 		outputMap.mask[l] = vfbAlpha
 		outputMap.mapList[l].name = "AO"
+		
+		-- Wire / Screen
+		l = 6	
+		outputMap.mapList[l] = getVFB c: 7
+		outputMap.mapList[l].coords.blur = 0.01
+		outputMap.blendMode[l] = 9
+		outputMap.opacity[l] = 100
+		outputMap.mask[l] = vfbAlpha
+		outputMap.mapList[l].name = "Wire"
 	)
 	
 	fn setupPostProcess =
@@ -1511,62 +1546,7 @@ rollout _rStep3  "Render / Post Process"
 		(
 			#Corona: postProcessCorona()
 			#VRay: postProcessVRay()
-		)
-		
-		/*
-		-- CA / Lighten
-		l = 7
-		outputMap.mapList[l] = ColorCorrection()
-		outputMap.mapList[l].map = copy main
-		outputMap.mapList[l].map.coords.U_Offset = 0.0015		
-		outputMap.mapList[l].lightnessMode = 1
-		outputMap.mapList[l].enableR = on		
-		outputMap.mapList[l].enableG = on		
-		outputMap.mapList[l].enableB = on		
-		outputMap.mapList[l].gainG = 0		
-		outputMap.mapList[l].gainB = 0		
-		outputMap.blendMode[l] = 8
-		outputMap.opacity[l] = 40
-		
-		l = 8
-		outputMap.mapList[l] = ColorCorrection()
-		outputMap.mapList[l].map = copy main
-		outputMap.mapList[l].map.coords.U_Offset = -0.0015			
-		outputMap.mapList[l].lightnessMode = 1
-		outputMap.mapList[l].enableR = on		
-		outputMap.mapList[l].enableG = on		
-		outputMap.mapList[l].enableB = on		
-		outputMap.mapList[l].gainR = 0			
-		outputMap.blendMode[l] = 8
-		outputMap.opacity[l] = 40
-		*/
-
-		--outRender = renderMap outputMap size:[640,640] filter: true scale: 1.0
-		--display outRender
-						
-		/*rollout rFinalResult  "Post Process" 
-		(
-			bitmap btmOutRender width: 640 height: 640 offset: [0, 35]
-			timer tmrUpdateOutRender "" interval: 3000 
-			
-			on rFinalResult open do
-			(
-				
-			)
-			
-			on rFinalResult close do
-			(
-				tmrUpdateOutRender.active = false
-			)
-				
-			
-			on tmrUpdateOutRender tick do
-			(			
-				
-			)			
-		)
-		
-		createDialog rFinalResult 640 (640 + 35)*/
+		)				
 	)
 	
 	global isRendering = true

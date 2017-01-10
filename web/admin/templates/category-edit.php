@@ -37,7 +37,6 @@
 <h2><small>Name:</small></h2>
 <div class="form-group">
 	<input type="text" class="form-control" disabled placeholder="{{categories[catId].name}}"><br>		
-	<mark class="text-muted">Note: Folder will rename automatically!</mark><br><br>
 	<button type="submit" class="btn btn-primary" ng-click="catChangeName(catId)">Change</button>
 </div>
 <hr>
@@ -47,7 +46,7 @@
 	<button type="submit" class="btn btn-primary" ng-click="catChangeDesc(catId)">Change</button>
 </div>
 <hr>
-<h2><small>Hierarchy:</small></h2>			
+<h2><small>Categories:</small></h2>			
 <div class="col-sm-12 col-md-12col-lg-12">		
 	<div class="admin-cat-hierarchy col-sm-6 col-md-6 col-lg-6">
 		<a href="" ng-click="subCatEdit(catId)" ng-class="{active: isSubCatActive(categories[catId].id)}">{{categories[catId].name}} <i>({{count(categories[catId].child)}})</i></a>
