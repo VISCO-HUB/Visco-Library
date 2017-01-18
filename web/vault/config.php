@@ -9,7 +9,7 @@
 	DEFINE('MYSQL_DB', 'assets_library');
 	DEFINE('MYSQL_SERVER', 'localhost');
 	DEFINE('MYSQL_USER', 'assets_library');
-	DEFINE('MYSQL_PWD', '******');
+	DEFINE('MYSQL_PWD', '!Genius!');
 	
 	// LDAP ACTIVE DIRECTORY AUTH
 	DEFINE('AUTH_SERVER', '192.168.0.10');
@@ -20,7 +20,7 @@
 	DEFINE('IMG_PATH',  ROOT . 'images\\');
 	DEFINE('IMG_PADDING', 30);
 	
-	DEFINE('IMG_SIZE', 600);
+	DEFINE('IMG_HUGE', 600);
 	DEFINE('IMG_THUMB', 200);
 	DEFINE('IMG_SMALL', 60);
 	

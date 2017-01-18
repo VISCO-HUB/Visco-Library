@@ -18,7 +18,8 @@
 	<script type="text/javascript" src="https://code.angularjs.org/1.5.8/angular.min.js"></script>	
     <script type="text/javascript" src="https://code.angularjs.org/1.5.8/angular-route.min.js"></script>
     <script type="text/javascript" src="https://code.angularjs.org/1.5.8/angular-sanitize.min.js"></script>    
-   	<script type="text/javascript" src="http://nervgh.github.io/pages/angular-file-upload/dist/angular-file-upload.min.js"></script>
+   	<script type="text/javascript" src="https://code.angularjs.org/1.5.8/angular-animate.min.js"></script>
+   	<script type="text/javascript" src="https://code.angularjs.org/1.5.8/angular-cookies.min.js"></script>
 	<script type="text/javascript" src="../js/app.js"></script>   
     <script type="text/javascript" src="../js/bootstrap.min.js"></script>
 	<script type="text/javascript" src="../js/ui-bootstrap-tpls-2.1.3.min.js"></script>

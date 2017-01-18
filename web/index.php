@@ -24,6 +24,7 @@
 <script type="text/javascript" src="https://code.angularjs.org/1.5.8/angular-route.min.js"></script>
 <script type="text/javascript" src="https://code.angularjs.org/1.5.8/angular-sanitize.min.js"></script>
 <script type="text/javascript" src="https://code.angularjs.org/1.5.8/angular-cookies.min.js"></script>
+<script type="text/javascript" src="https://code.angularjs.org/1.5.8/angular-animate.min.js"></script>
 <script type="text/javascript" src="js/app.js"></script>
 <script type="text/javascript" src="js/bootstrap.min.js"></script>
 <script type="text/javascript" src="js/ui-bootstrap-tpls-2.1.3.min.js"></script>
@@ -37,33 +38,6 @@
 	<![endif]-->
 </head>
 
-<script type="text/ng-template" id="treeList">
-	<a href="" ng-click="subcat.show=!subcat.show">{{subcat.name}}</a> 
-		
-    <ul ng-if="subcat.child" ng-show="subcat.show">
-        <li ng-repeat="subcat in subcat.child" ng-include="'treeList'" ng-if="subcat.status==1">           
-        </li>
-    </ul>
-</script>
-
-<script type="text/ng-template" id="sideMenu">
-	<ul class="nav nav-tabs">
-	  <li class="size-17" ng-class="{active: type==1}"><a href="" ng-click="changeTab(1)">Models</a></li>
-	  <li class="size-17" ng-class="{active: type==2}"><a href="" ng-click="changeTab(2)">Textures</a></li>
-	</ul>
-	<ul class="side-menu">
-		<li ng-repeat="cat in categories" ng-if="type==cat.type && cat.status==1">
-			<a href="" ng-class="{active: isSubCatActive(categories[catId].id)}" ng-click="cat.show=!cat.show">{{cat.name}}</a>
-			<span class="glyphicon glyphicon-info-sign pointer size-15 padding-left-5" aria-hidden="true" tooltip-popup-delay="200" uib-tooltip="Moderators: {{cat.editors.replace(';', ', ')}}"></span>			
-			<span class="glyphicon glyphicon-chevron-down size-20 float-right pointer" aria-hidden="true" ng-show="!cat.show" ng-click="cat.show=!cat.show"></span>
-			<span class="glyphicon glyphicon-chevron-up size-20 float-right pointer" aria-hidden="true" ng-show="cat.show" ng-click="cat.show=!cat.show"></span>
-			<ul ng-show="cat.show">
-				<li ng-repeat="subcat in cat.child" ng-include="'treeList'" ng-class="subcat.show ? 'no' : 'yes'" ng-if="subcat.status==1"> </li>
-			</ul>  				
-		</li>
-	</ul>
-</script>
-
 <body>
 <div class="header">
 	<div class="container">
@@ -71,18 +45,18 @@
 			<div class="navbar-header hidden-xxs"> <a href="#/"><img src="visco_logo.svg" class="logo"></a> <span class="head-title hidden-xs">Assets Library</span> </div>
 			<div id="navbar3" class="navbar-default float-left-xxs">
 				<ul class="nav nav-buttons margin-left-minus-15-xxs">					
-					<li class="hidden-xxs" ng-show="auth.rights > 0"><a href="#/" tooltip-popup-delay="200" uib-tooltip="Home" tooltip-placement="bottom"><span class="glyphicon glyphicon-home"></span></a></li>					
-					<li class="visible-xs-inline"><a href="#/" tooltip-popup-delay="200" uib-tooltip="Menu" tooltip-placement="bottom"><span class="glyphicon glyphicon-menu-hamburger"></span></a></li>					
-					<li class=""><a href="#/" tooltip-popup-delay="200" uib-tooltip="Favorites" tooltip-placement="bottom"><span class="glyphicon glyphicon-heart"></span></a></li>					
-					<li class="dropdown" ng-show="auth.rights > 0 && auth.browser != 'MXS'"> <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false" tooltip-popup-delay="200" uib-tooltip="User" tooltip-placement="bottom"><span class="glyphicon glyphicon-user"></span></a>
+					<li ng-show="auth.rights > 0" class="hidden-xs"><a href="#/"><span class="glyphicon glyphicon-home"></span></a></li>					
+					<li class="visible-xs-inline"><a href="" ng-click="toggleOverlayMenu()" ><span class="glyphicon glyphicon-menu-hamburger"></span></a></li>					
+					<li class=""><a href="#/"><span class="glyphicon glyphicon-heart"></span></a></li>					
+					<li class="dropdown" ng-show="auth.rights > 0 && auth.browser != 'MXS'"> <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false"><span class="glyphicon glyphicon-user"></span></a>
 						<ul class="dropdown-menu" role="menu">
 							<li class="dropdown-header">Hi, {{auth.name || auth.user}}</li>
 							<li class="divider"></li>
 							<li><a href="" ng-click="">Profile</a></li>
 						</ul>
 					</li>
-					<li class="" ng-show="auth.rights > 0"><a href="/admin/" tooltip-popup-delay="200" uib-tooltip="AdminPanel" tooltip-placement="bottom"><span class="glyphicon glyphicon-cog"></span></a></li>
-					<li class=""><a href="" ng-click="singOut()" tooltip-popup-delay="200" uib-tooltip="SignOut" tooltip-placement="bottom"><span class="glyphicon glyphicon-log-out"></span></a></li>
+					<li class="" ng-show="auth.rights > 0"><a href="/admin/" ><span class="glyphicon glyphicon-cog"></span></a></li>
+					<li class=""><a href="" ng-click="singOut()"><span class="glyphicon glyphicon-log-out"></span></a></li>
 				</ul>
 			</div>
 		</div>
@@ -99,11 +73,18 @@
 	</div>
 </div>
 <div class="container" alerts></div>
+<div class="side-menu-popup col-xs-12 col-sm-6 col-md-4 col-lg-4" ng-show="showOverlayMenu">
+	<div class="close"><span class="glyphicon glyphicon-remove" aria-hidden="true" ng-click="toggleOverlayMenu()"></span></div>
+	<div menu></div>
+</div>
+<div class="overlay pointer" ng-show="showOverlayMenu" ng-click="toggleOverlayMenu()">
+</div>
 
 <div class="container">
-	<div class="col-sm-4 col-md-4 col-lg-4" ng-controller="menuCtrl" ng-include="'sideMenu'">		
+	<div class="col-sm-4 col-md-4 col-lg-4 col-xlg-2" ng-controller="menuCtrl"  ng-class="isHome ? 'hidden visible-xs' : 'col-sm-4 col-md-4 col-lg-4 hidden-xs col-xlg-2'">		
+		<div menu></div>
 	</div>
-	<div class="col-sm-8 col-md-8 col-lg-8">
+	<div class="" ng-class="isHome ? 'col-sm-12 col-md-12 col-lg-12' : 'col-sm-8 col-md-8 col-lg-8 col-xs-12 col-xlg-10'">
 		<div ng-view></div>
 	</div>
 </div>

@@ -27,7 +27,7 @@ var hostname = 'http://' + window.location.hostname + '/';
 
 /* APP */
 
-var app = angular.module('app', ['ngRoute', 'ngSanitize', 'ui.bootstrap']);
+var app = angular.module('app', ['ngRoute', 'ngSanitize', 'ui.bootstrap', 'ngAnimate', 'ngCookies']);
 
 
 // CONFIG 
@@ -37,6 +37,10 @@ app.config(function($routeProvider) {
     .when('/home', {
         templateUrl : 'templates/home.php',
 		controller: 'homeCtrl'
+    })
+	 .when('/cat/:catid/:page', {
+        templateUrl : 'templates/cat.php',
+		controller: 'catCtrl'
     })
   	.when('/about/', {
         templateUrl : "templates/about.html",
@@ -49,6 +53,18 @@ app.config(function($routeProvider) {
 app.directive("alerts", function($rootScope) {	 
     return {
         templateUrl : hostname + 'templates/alert.html'
+    };
+});
+
+app.directive("search", function($rootScope) {	 
+    return {
+        templateUrl : hostname + 'templates/search.html'
+    };
+});
+
+app.directive("menu", function($rootScope) {	 
+    return {
+        templateUrl : hostname + 'templates/menu.html'
     };
 });
 
@@ -81,10 +97,20 @@ app.controller("menuCtrl", function($scope, $rootScope, vault){
 		vault.getCat();
 	}
 	
-	$scope.type = 1;
+	$rootScope.libType = 1;
 	$scope.getCat();
 	
 	$scope.changeTab = function(t) {$scope.type = t;}	
+
+	$scope.showHideMenu = function(id, show) {
+		if(angular.isUndefined($rootScope.menuItemActive)) {$rootScope.menuItemActive = [];}
+		if(angular.isUndefined($rootScope.menuItemShow)) {$rootScope.menuItemShow = [];}
+		
+		$rootScope.menuItemShow[id] = !$rootScope.menuItemShow[id];		
+		
+		if($rootScope.menuItemActive[id]) {$rootScope.menuItemShow[id] = show;}	
+		$rootScope.menuItemActive[id] = false;
+	}
 });
 
 	// MSG
@@ -92,6 +118,9 @@ app.controller("msgCtrl", function ($scope, $rootScope, vault) {
 	$rootScope.msg = {};
 });
 
+app.controller("searchCtrl", function ($scope, $rootScope, vault) {
+	$rootScope.msg = {};
+});
 
 	// LOGIN
 app.controller("loginCtrl", function($scope, $rootScope, vault){
@@ -121,55 +150,157 @@ app.controller("loginCtrl", function($scope, $rootScope, vault){
 });
 
 	// HOME
-app.controller("homeCtrl", function ($scope, vault) {
+app.controller("homeCtrl", function ($scope, $rootScope, vault, $interval) {
+	$rootScope.isHome = true;
+	$scope.getHomeProd = function(type, id){
+		vault.getHomeProd(type);
+	}
 	
+	$scope.activeImage = {}
+	$scope.activeIndex = {}
+	
+	vault.getHomeProd($rootScope.libType);
+	
+	$scope.rnd = function(min, max) {
+		return Math.floor(Math.random() * (max - min) ) + min;
+	}
+	
+	
+	$scope.$watchCollection('homePreviews', function () {
+		var v = $rootScope.homePreviews;
+		if(!v) {return false;}
+		
+		angular.forEach(v, function (value, key) {					
+			angular.forEach(value, function (value2, key2) {				
+				if(value2.name != undefined) {				
+					if(!$scope.activeIndex[value2.id]){$scope.activeImage[value2.id] = value2.previews[0];}
+					
+					$interval(function(){
+						if($scope.activeIndex[value2.id] > value2.previews.length-1 || !$scope.activeIndex[value2.id]){$scope.activeIndex[value2.id] = 0}
+						
+						var i = $scope.activeIndex[value2.id];
+						$scope.activeImage[value2.id] = value2.previews[i];			
+						$scope.activeIndex[value2.id]++;
+					},  $scope.rnd(3800, 6500));
+				}
+			});
+		});
+	});
+	
+
+});
+
+app.controller("catCtrl", function ($scope, vault, $rootScope, $location, $routeParams, $timeout, $cookieStore) {
+	$rootScope.isHome = false;
+	
+	$scope.page = $routeParams.page;
+	$scope.catid = $routeParams.catid;
+			
+	$scope.getProducts = function(page, perpage, id, filter){				
+		vault.getProducts(page, perpage, id, filter);
+	};
+	
+	
+	$timeout(function(){
+		$scope.currentPage = $scope.page;
+	}, 50);
+	
+	
+	if(!$cookieStore.get('perpage')) {		
+		$cookieStore.put('perpage', 50);	
+	};
+	
+	$rootScope.perpage = $cookieStore.get('perpage');
+	
+	$scope.getProducts($scope.page, $rootScope.perpage, $scope.catid, $rootScope.catFilter);
 });
 
 // AUTO RUN
 app.run(function($rootScope, $location, $routeParams, vault) {
-    $rootScope.$watch(function() { 
+   
+   $rootScope.menuItemActive = [];
+   
+   $rootScope.goLogin = function() {
+		window.location = hostname + 'login/';
+	}
+	
+	$rootScope.goHome = function() {
+		window.location = hostname;			
+	}
+	
+	$rootScope.setAuth = function(u) {
+		$rootScope.auth = u;
+	}
+
+	$rootScope.deleteMsg = function() {$rootScope.msg = {};};
+	
+	$rootScope.singOut = function() {
+		if(!confirm('Do you really want to sign out?')){
+			return false;
+		}
+		vault.signOut()
+	};
+	
+	$rootScope.count = function(o) {
+		var count = 0;
+		
+		if(!o) {return 0;}
+		for(var prop in o) {
+			if(o.hasOwnProperty(prop))
+				count = count + 1;
+		}
+		return count;
+	}
+	
+	$rootScope.toggleOverlayMenu = function(){
+		$rootScope.showOverlayMenu = !$rootScope.showOverlayMenu;
+	}
+	
+	$rootScope.isActiveMenu = function(id) {
+		if($rootScope.activeMenuId && $rootScope.activeMenuId.indexOf(id) != -1) {
+			return true;
+		}
+		return false;
+	}
+	
+	$rootScope.setActiveMenu = function() {
+		angular.forEach($rootScope.categories, function(item, key){				
+			var a = $rootScope.isActiveMenu(item.id);				
+			$rootScope.menuItemActive[item.id] = a;
+			angular.forEach(item.child, function(item2, key2){
+				var b = $rootScope.isActiveMenu(item2.id);
+				$rootScope.menuItemActive[item2.id] = b;
+				
+				angular.forEach(item2.child, function(item3, key3){
+					var c = $rootScope.isActiveMenu(item3.id);
+					$rootScope.menuItemActive[item3.id] = c;
+				});
+			});
+		});			
+	}
+	
+	$rootScope.addCrumb = function(name, url) {
+		$rootScope.breadcrumbs.push({'url' : url, 'name': name });
+	}
+	
+   $rootScope.$watch(function() { 
         return $location.path(); 
     },
      function(a){
 			
 		// INIT
-		$rootScope.goLogin = function() {
-			window.location = hostname + 'login/';
-		}
-		
-		$rootScope.goHome = function() {
-			window.location = hostname;			
-		}
-		
-		$rootScope.setAuth = function(u) {
-			$rootScope.auth = u;
-		}
-		
-		$rootScope.msg = {};
-		
-		$rootScope.deleteMsg = function() {$rootScope.msg = {};};
-		
-		$rootScope.singOut = function() {
-			if(!confirm('Do you really want to sign out?')){
-				return false;
-			}
-			vault.signOut()
-		};
 				
+		$rootScope.msg = {};
+						
 		$rootScope.globals = {};
-		
-		$rootScope.count = function(o) {
-			var count = 0;
+				
+		$rootScope.showOverlayMenu = false;
 			
-			if(!o) {return 0;}
-			for(var prop in o) {
-				if(o.hasOwnProperty(prop))
-					count = count + 1;
-			}
-			return count;
-		}
-		
-		vault.getCat();
+		if(!$rootScope.categories) {vault.getCat();}
+				
+		$rootScope.breadcrumbs = [];
+		$rootScope.menuItem = [];				
+		$rootScope.activeMenuId = [];
     });
 });
 
@@ -275,14 +406,56 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 			responceMessage(r);
 		});
 	}
-				
+	
+	var getHomeProd = function(type) {
+		var json = {'type': type};
+		
+		HttpPost('HOMEGET', json).then(function(r){						
+			console.log(r.data);
+			$rootScope.homePreviews = r.data;
+						
+			responceMessage(r.data);
+		},
+		function(r){
+			responceMessage(r);
+		});	
+	}
+	
+	var getProducts = function(page, perpage, id, filter) {
+			
+		var json = {'page': page, 'perpage': perpage, 'filter': filter, 'id': id};
+		
+		HttpPost('PRODGET', json).then(function(r){						
+			console.log(r.data)
+			$rootScope.products = r.data;									
+						
+			$rootScope.activeMenuId = [];
+						
+			if(r.data.pathway) {
+				angular.forEach(r.data.pathway, function(item) {
+					$rootScope.addCrumb(item.name, ('#/cat/' + item.id + '/1'));
+					$rootScope.activeMenuId.push(item.id);
+				});				
+			}
+			
+			$rootScope.setActiveMenu();
+			
+			responceMessage(r.data);
+		},
+		function(r){
+			responceMessage(r);
+		});
+	}
+	
 	return {
 		showMessage: showMessage,
 		deleteMessage: deleteMessage,
 		signIn: signIn,
 		signOut: signOut,				
 		getGlobal: getGlobal,
-		getCat: getCat
+		getCat: getCat,
+		getHomeProd: getHomeProd,
+		getProducts: getProducts
 	};
 });
 

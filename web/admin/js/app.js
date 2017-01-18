@@ -582,7 +582,7 @@ app.controller("categoryEditCtrl", function ($scope, $rootScope, $routeParams, v
 	$scope.subCatEditID = id;
 	$scope.level = {};
 	
-	$rootScope.addCrumb('Categories', '#/category');
+	$rootScope.addCrumb('Libraries', '#/category');
 	$rootScope.addCrumb('Edit Library', '');
 	
 	$rootScope.deleteMsg();
@@ -686,7 +686,7 @@ app.controller("categoryCtrl", function ($scope, $rootScope, vault) {
 	vault.getGlobal();
 	vault.catGet();
 	
-	$rootScope.addCrumb('Categories', '#/category');
+	$rootScope.addCrumb('Libraries', '#/category');
 	
 	$scope.addLibrary = function(type) {
 		var n = prompt('Please enter the name!', '');			

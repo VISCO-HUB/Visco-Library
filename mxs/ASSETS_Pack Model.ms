@@ -2,7 +2,7 @@
 [INFO] 
 
 NAME = Pack Model
-VERSION = 1.0.1
+VERSION = 1.0.2
 AUTHOR = Vasily Lukyanenko
 DEV = VISCO
 HELP = 
@@ -21,6 +21,10 @@ ICON=#("PhysX_Main", 30)
 [1.0.1]
 
 + Added: Corona support=
+
+[1.0.2]
+
++ Added: Custom attribut 1=
 
 [ABOUT]
 
@@ -66,6 +70,7 @@ global manufacturers = #()
 global sPreviewPath = #()
 global bMainPreview = #()
 global sOverview = ""
+global sCustom1 = ""
 global zipper
 	
 global sModelName = ""
@@ -160,6 +165,26 @@ struct zip
 		if(exitcode == 0) do return true 
 		return false
 	)
+)
+
+fn getScriptInfo s releaseInfo: "" =
+(		
+	if(releaseInfo != "") do
+	(
+		r = getINISetting s releaseInfo
+		return r
+	)
+	
+	v = getINISetting s "INFO" "VERSION"
+	a = getINISetting s "INFO" "AUTHOR"
+	n = getINISetting s "INFO" "NAME"
+	o = getINISetting s "ABOUT"
+	c = getINISetting s "INFO" "DEV"
+	h = getINISetting s "INFO" "HELP"
+	
+	r = for i in (getINISetting s) where i != "ABOUT" and i != "SCRIPT" and i != "COPY" collect i
+	
+	return #(n, a, v, o, r, c, h)
 )
 
 /* MAIN FUNCTIONS */
@@ -451,8 +476,7 @@ fn saveAllProp =
 		
 	saveProp "category1" (implodeCat category1)
 	saveProp "category2" (implodeCat category2)
-	saveProp "category3" (implodeCat category3)
-	saveProp "edtOverview" sOverview
+	saveProp "category3" (implodeCat category3)	
 )
 
 rollout _STEP1 "STEP 1: Model Transform" 
@@ -947,7 +971,12 @@ rollout _STEP3 "STEP 3: Model Overview"
 	(
 		dotNetControl edtOverview "System.Windows.Forms.TextBox"  height: 250
 	)
-		
+	group "Custom Attributes"
+	(
+		label lbl1 "Custom 1:" align: #left				
+		dotNetControl edtCustom1 "System.Windows.Forms.TextBox" height: 25 tabstop: true
+		label lbl2 "Ex.: Collection, Unique ID,  Alternative Name..." align: #left
+	)
 	on _STEP3 open do
 	(
 		edtOverview.MultiLine = true
@@ -957,6 +986,7 @@ rollout _STEP3 "STEP 3: Model Overview"
 		edtOverview.wordWrap = true
 		
 		edtOverview.text = getProp "edtOverview"
+		edtCustom1.text = getProp "edtCustom1"
 	)
 	
 	on edtOverview keyPress s a do
@@ -974,6 +1004,7 @@ rollout _STEP3 "STEP 3: Model Overview"
 	on btnPrev pressed do 
 	(	
 		sOverview = edtOverview.text
+		sCustom1 = edtCustom1.text
 		goStep 2		
 	)
 	on btnNext pressed do 
@@ -981,7 +1012,10 @@ rollout _STEP3 "STEP 3: Model Overview"
 		if(not isSelected()) do return false
 					
 		sOverview = edtOverview.text			
+		sCustom1 = edtCustom1.text			
+		
 		saveProp "edtOverview" sOverview
+		saveProp "edtCustom1" sCustom1
 			
 		goStep 4	
 	)
@@ -1196,6 +1230,10 @@ rollout _STEP5 "STEP 5: Pack Model"
 		
 		dotNetControl lbl16 "System.Windows.Forms.Label" text: "Lods:" across: 2 
 		dotNetControl _lblLods "System.Windows.Forms.Label" text: "" 
+		
+		dotNetControl lbl17 "System.Windows.Forms.Label" text: "Custom 1:" across: 2 offset: [0, 20]
+		dotNetControl _lblCustom1 "System.Windows.Forms.Label" text: "" offset: [0, 20]
+
 	)
 	
 	button btnPackModel "Pack Model" width: 244 height: 45
@@ -1261,6 +1299,7 @@ rollout _STEP5 "STEP 5: Pack Model"
 		_lblUnwrap.text = getYesNo bUnwrap
 		_lblLods.text = getYesNo bLods
 		_lblFormat.text = (getMaxVersion())[1]
+		_lblCustom1.text = getNA sCustom1
 	)
 		
 	fn checkTexturesError =
@@ -1429,7 +1468,7 @@ rollout _STEP5 "STEP 5: Pack Model"
 		for i in objects do layer0.addNode i
 	)
 	
-	fn copyIES szAssets szName = 
+	fn copyIESfiles szAssets szName = 
 	(	
 		global iIesCnt = 1
 		
@@ -1481,11 +1520,12 @@ rollout _STEP5 "STEP 5: Pack Model"
 		setIniSetting f "INFO" "UNITS" u
 		setIniSetting f "INFO" "DIMENSION" d
 		setIniSetting f "INFO" "PROJECT" (getNA sProject)
+		setIniSetting f "INFO" "CUSTOM1" sCustom1
 		setIniSetting f "INFO" "RIGGED" (getYesNo bRigged)
 		setIniSetting f "INFO" "LODS" (getYesNo bLods)
-		setIniSetting f "INFO" "MODELLER" sModeller
+		setIniSetting f "INFO" "MODELLER" (getNA sModeller)
 		setIniSetting f "INFO" "TAGS" sTags
-		setIniSetting f "INFO" "MANUFACTURER" sManufacturer
+		setIniSetting f "INFO" "MANUFACTURER" (getNA sManufacturer)
 		setIniSetting f "INFO" "OVERVIEW" o
 		setIniSetting f "INFO" "UNWRAP" (getYesNo bUnwrap)
 		setIniSetting f "INFO" "PREVIEW" (getYesNo (sPreviewPath.count > 0))
@@ -1542,7 +1582,7 @@ rollout _STEP5 "STEP 5: Pack Model"
 			
 			
 		-- Copy IES
-		copyIES szAssets szName	
+		copyIESfiles szAssets szName	
 			
 		-- Save render
 		currentRender = renderers.current

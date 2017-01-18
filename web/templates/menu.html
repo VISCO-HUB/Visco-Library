@@ -1,0 +1,28 @@
+
+<script type="text/ng-template" id="treeList">
+	<a href="" ng-class="menuItemShow[subcat.id]  ? 'no' : 'yes'" ng-click="showHideMenu(subcat.id, false)" ng-show="!hideSub">&nbsp;</a>
+	<a href="#/cat/{{subcat.id}}/1" ng-class="{active: menuItemActive[subcat.id] || subcat.id == catid}">{{subcat.name}}</a> 
+		
+    <ul ng-if="subcat.child" ng-show="menuItemShow[subcat.id] || menuItemActive[subcat.id]">
+        <li ng-repeat="subcat in subcat.child" ng-include="'treeList'" ng-if="subcat.status==1" ng-init="hideSub=true">           
+        </li>
+    </ul>
+</script>
+
+<div ng-controller="menuCtrl">
+<ul class="nav nav-tabs">
+	  <li class="size-17" ng-class="{active: libType==1}"><a href="" ng-click="changeTab(1)">Models</a></li>
+	  <li class="size-17" ng-class="{active: libType==2}"><a href="" ng-click="changeTab(2)">Textures</a></li>	  
+	</ul>
+	<ul class="side-menu">
+		<li ng-repeat="cat in categories" ng-if="libType==cat.type && cat.status==1">
+			<a ng-href="#/cat/{{cat.id}}/1" ng-class="{active: menuItemActive[cat.id]}" class="pointer">{{cat.name}}</a>
+				<span class="glyphicon glyphicon-info-sign size-15 padding-left-5 text-muted" aria-hidden="true" tooltip-popup-delay="200" uib-tooltip="Moderators: {{cat.editors.replace(';', ', ')}}"></span>		
+				<span class="glyphicon glyphicon-chevron-down size-20 float-right text-muted pointer" aria-hidden="true" ng-show="!menuItemShow[cat.id] && !menuItemActive[cat.id]" ng-click="showHideMenu(cat.id, false)"></span>
+				<span class="glyphicon glyphicon-chevron-up size-20 float-right text-muted pointer" aria-hidden="true" ng-show="menuItemShow[cat.id] || menuItemActive[cat.id]" ng-click="showHideMenu(cat.id, false)"></span>	
+			<ul ng-show="menuItemShow[cat.id] || menuItemActive[cat.id]">
+				<li ng-repeat="subcat in cat.child" ng-include="'treeList'" ng-if="subcat.status==1"> </li>
+			</ul>  				
+		</li>
+	</ul>
+</div>

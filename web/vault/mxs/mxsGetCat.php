@@ -12,7 +12,7 @@
 	$WHERE['parent'] = $PID;	
 	$WHERE['status'] = 1;	
 	$WHERE['type'] = 1;	
-	$RESULT = DB::SELECT('category', $WHERE, 'sort', TRUE);
+	$RESULT = DB::SELECT('category', [], $WHERE, 'sort');
 	$CATEGORIES = DB::TOARRAY($RESULT);
 	FOREACH($CATEGORIES AS $CAT) {		
 		ECHO $CAT->id;

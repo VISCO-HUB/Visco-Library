@@ -9,14 +9,14 @@
 			<th width="160px">Actions</th>
 		</tr>
 		<tr ng-repeat="tag in tagsList.tags" >
-			<td>{{$index + 1}}.</td>
+			<td>{{($index + 1) + (tagsList.perpage * (currentPage - 1))}}.</td>
 			<td>{{tag.name}}</td>
 			<td><a href="" ng-click="tagChange(tag.name)">Change</a> &nbsp;&nbsp;|&nbsp;&nbsp; <a href="" ng-click="tagDelete(tag.name)">Delete</a></td>		
 		</tr>
 	</table>
 </div>	
 <div class="row text-center">
-	<ul uib-pagination total-items="products.totalitems" ng-model="currentPage" max-size="5" class="pagination-sm" items-per-page="products.perpage" boundary-links="true" force-ellipses="true" ng-click="changePage()">
+	<ul uib-pagination total-items="tagsList.totalitems" ng-model="currentPage" max-size="5" class="pagination-sm" items-per-page="tagsList.perpage" boundary-links="true" force-ellipses="true" ng-click="changePage()">
 	</ul>
 </div>
 <hr>

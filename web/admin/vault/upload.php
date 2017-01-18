@@ -83,7 +83,9 @@
 		$SET['tags'] = TRIM(STR_REPLACE(' ', '', $INFO['TAGS']), ',') . ',';
 		$SET['manufacturer'] = $INFO['MANUFACTURER'];
 		$SET['overview'] = $INFO['OVERVIEW'];
+		$SET['custom1'] = $INFO['CUSTOM1'];
 		$SET['status'] = 0;
+		$SET['pending'] = 1;
 		$SET['date'] = TIME();
 		
 		$IMG_CNT = 0;

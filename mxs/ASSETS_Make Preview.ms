@@ -398,6 +398,14 @@ rollout _rStep1  "HDRI"
 				cm.texmap.maxDistance = _rStep0.spnAOSize.value
 				
 				append renderElements cm
+					
+				cm2 = CTexmap()	
+				cm2.texmap = CoronaWire()	
+				cm2.texmap.baseColor = black
+				cm2.texmap.edgeColor = white
+				cm2.texmap.edgeWidthPixels = 0.2
+				
+				append renderElements cm2
 			)
 			#VRay:
 			(
@@ -1468,6 +1476,15 @@ rollout _rStep3  "Render / Post Process"
 		outputMap.opacity[l] = 25
 		outputMap.mask[l] = vfbAlpha
 		outputMap.mapList[l].name = "AO"
+		
+		-- Wire / Screen
+		l = 7
+		outputMap.mapList[l] = getVFB c: l
+		outputMap.mapList[l].coords.blur = 0.01
+		outputMap.blendMode[l] =9
+		outputMap.opacity[l] = 100
+		outputMap.mask[l] = vfbAlpha
+		outputMap.mapList[l].name = "Wire"
 	)
 
 	fn postProcessVRay =
