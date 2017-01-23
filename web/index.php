@@ -39,6 +39,7 @@
 </head>
 
 <body>
+<div preview></div>
 <div class="header">
 	<div class="container">
 		<div class="padding-0-15">
@@ -81,15 +82,17 @@
 </div>
 
 <div class="container">
-	<div class="col-sm-4 col-md-4 col-lg-4 col-xlg-2" ng-controller="menuCtrl"  ng-class="isHome ? 'hidden visible-xs' : 'col-sm-4 col-md-4 col-lg-4 hidden-xs col-xlg-2'">		
+	<div class="col-sm-4 col-md-4 col-lg-4 col-xlg-2" ng-controller="menuCtrl"  ng-class="isHome ? 'hidden visible-xs' : 'col-sm-4 col-md-4 col-lg-4 hidden-xs col-xlg-3 col-xxlg-2'">		
 		<div menu></div>
 	</div>
-	<div class="" ng-class="isHome ? 'col-sm-12 col-md-12 col-lg-12' : 'col-sm-8 col-md-8 col-lg-8 col-xs-12 col-xlg-10'">
+	<div class="" ng-class="isHome ? 'col-sm-12 col-md-12 col-lg-12' : 'col-sm-8 col-md-8 col-lg-8 col-xs-12 col-xlg-9 col-xxlg-10'">
 		<div ng-view></div>
 	</div>
 </div>
 <br>
-<?php ECHO $USER; ?>
+<div class="hide">
+	<?php ECHO $USER; ?>
+</div>
 </body>
 </html>
 

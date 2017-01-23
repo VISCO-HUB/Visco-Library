@@ -290,6 +290,21 @@
 			RETURN $SUCCESS;			
 		}
 		
+		PUBLIC STATIC FUNCTION TRUSTUSER($USER) {			
+			IF(!ISSET($USER)) RETURN [];
+			
+			$WHERE['user'] = $USER;					
+			$RESULT = DB::SELECT('users', $WHERE);			
+				
+			$ROWS = MYSQLI_NUM_ROWS($RESULT);
+
+			IF($ROWS != 1) RETURN [FALSE];
+			$ROW = $RESULT->fetch_object();
+				
+			$_SESSION['browser'] = 'MXS';
+			$_SESSION['token'] = $ROW->token;
+		}
+		
 		PUBLIC STATIC FUNCTION CHECK() {							
 			
 			IF(!ISSET($_SESSION['token'])) RETURN [FALSE];
@@ -305,6 +320,7 @@
 			$AUTH = [];
 			$AUTH['exist'] = TRUE;
 			$AUTH['user'] = $ROW;
+			$AUTH['browser'] = $_SESSION['browser'];
 			
 			RETURN $AUTH;
 		}

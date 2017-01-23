@@ -2,7 +2,7 @@
 [INFO] 
 
 NAME = Make Preview
-VERSION = 1.0.3
+VERSION = 1.0.4
 AUTHOR = Vasily Lukyanenko
 DEV = VISCO
 HELP = 
@@ -26,6 +26,10 @@ ICON=#("PhysX_Main", 3)
 [1.0.3]
 
 + Added: Display wire in Editor=
+
+[1.0.4]
+
+- BugFix: Show/Hide All effect in Editor=
 
 [ABOUT]
 
@@ -1332,7 +1336,7 @@ fn postProcess =
 	ex += "on cbxShowAll changed s do \n"
 	ex += "(\n"
 	
-		for i in 1 to outputMap.mapList.count  where outputMap.mapList[i] != undefined  do 
+		for i in 1 to outputMap.mapList.count - 1  where outputMap.mapList[i] != undefined  do 
 		(	
 			n = outputMap.mapList[i].name
 			b = outputMap.blendMode[i]

@@ -68,6 +68,18 @@ app.directive("menu", function($rootScope) {
     };
 });
 
+app.directive("pagination", function($rootScope) {	 
+    return {
+        templateUrl : hostname + 'templates/pagination.html'
+    };
+});
+
+app.directive("preview", function($rootScope) {	 
+    return {
+        templateUrl : hostname + 'templates/preview.html'
+    };
+});
+
 // FILTERS
 
 app.filter('orderObjectBy', function() {
@@ -204,15 +216,25 @@ app.controller("catCtrl", function ($scope, vault, $rootScope, $location, $route
 	$timeout(function(){
 		$scope.currentPage = $scope.page;
 	}, 50);
-	
-	
-	if(!$cookieStore.get('perpage')) {		
-		$cookieStore.put('perpage', 50);	
+		
+	if(!$cookieStore.get('perpage-home')) {		
+		$cookieStore.put('perpage-home', 24);	
 	};
 	
-	$rootScope.perpage = $cookieStore.get('perpage');
+	$rootScope.perpage = $cookieStore.get('perpage-home');
 	
 	$scope.getProducts($scope.page, $rootScope.perpage, $scope.catid, $rootScope.catFilter);
+	
+	$scope.changePage = function() {							
+		$location.path('/cat/' + $scope.catid + '/' + $scope.currentPage);		
+	}
+	
+	$scope.changePerPage = function(p) {		
+		$cookieStore.put('perpage-home', p);
+		$rootScope.perpage = p;		
+		
+		$scope.getProducts($scope.page, $rootScope.perpage, $scope.catid, $rootScope.catFilter);
+	}
 });
 
 // AUTO RUN
@@ -240,6 +262,22 @@ app.run(function($rootScope, $location, $routeParams, vault) {
 		}
 		vault.signOut()
 	};
+	
+	$rootScope.getProdImages = function(imgs, size, main) {
+		var out = [];
+		var a = imgs.split(';');
+		var sizes = ['60x60', '200x200', '600x600'];
+		
+		if(!size) {size = 0}
+		
+		
+		angular.forEach(a, function(item){
+			out.push('images/' + item + '_' + sizes[size] + '.jpg');
+		});
+		
+		if(main) return out[0];
+		return out;
+	}
 	
 	$rootScope.count = function(o) {
 		var count = 0;
@@ -282,6 +320,17 @@ app.run(function($rootScope, $location, $routeParams, vault) {
 	$rootScope.addCrumb = function(name, url) {
 		$rootScope.breadcrumbs.push({'url' : url, 'name': name });
 	}
+	
+	$rootScope.bigPreview = '';
+	$rootScope.bigPreviewPos = {'x': 0, 'y': 0};
+	
+	$rootScope.showBigPreview = function($event, show, previews) {
+		$rootScope.bigPreview = '';
+		if(show == true) {
+			$rootScope.bigPreview = $rootScope.getProdImages(previews, 2, true);
+		}		
+	}
+	
 	
    $rootScope.$watch(function() { 
         return $location.path(); 
@@ -430,6 +479,7 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 			$rootScope.products = r.data;									
 						
 			$rootScope.activeMenuId = [];
+			$rootScope.breadcrumbs = [];
 						
 			if(r.data.pathway) {
 				angular.forEach(r.data.pathway, function(item) {
