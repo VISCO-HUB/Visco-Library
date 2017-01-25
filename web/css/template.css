@@ -57,6 +57,17 @@ a:focus {
     border-color: #548A2E;
 }
 
+.btn-primary.disabled:hover, .btn-primary[disabled]:hover, fieldset[disabled] .btn-primary:hover, .btn-primary.disabled:focus, .btn-primary[disabled]:focus, fieldset[disabled] .btn-primary:focus, .btn-primary.disabled.focus, .btn-primary[disabled].focus, fieldset[disabled] .btn-primary.focus {
+    background-color: #6A6A6A;
+    border-color: #5C5C5C;
+}
+
+.btn-primary:active:hover, .btn-primary.active:hover, .open > .dropdown-toggle.btn-primary:hover, .btn-primary:active:focus, .btn-primary.active:focus, .open > .dropdown-toggle.btn-primary:focus, .btn-primary:active.focus, .btn-primary.active.focus, .open > .dropdown-toggle.btn-primary.focus {
+    color: #fff;
+    background-color: #497728;
+    border-color: #31511B;
+}
+
 .padding-left-5 {
 	padding-left: 5px;
 }
@@ -571,6 +582,10 @@ a:focus {
 	padding: 0px;
 }
 
+.margin-0 {
+	margin: 0 !important;
+}
+
 .text-gray {
 	color: #888888;
 }
@@ -925,6 +940,16 @@ a:focus {
     bottom: 0;
     right: 0;
     background-image: url(../img/zoomin.svg);
+    background-size: 60%;
+}
+
+.button-admin-edit,
+.button-admin-edit:active
+{
+    position: absolute;
+    top: 0;
+    left: 0;
+    background-image: url(../img/edit.svg);
     background-size: 60%;
 }
 

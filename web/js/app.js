@@ -235,6 +235,22 @@ app.controller("catCtrl", function ($scope, vault, $rootScope, $location, $route
 		
 		$scope.getProducts($scope.page, $rootScope.perpage, $scope.catid, $rootScope.catFilter);
 	}
+	
+	$scope.placeModel = function(id) {		
+		vault.placeModel(id, $scope.place);				
+	}
+	
+	if(!$cookieStore.get('place-mode')) {		
+		$cookieStore.put('place-mode', 0);	
+	};
+	
+	$scope.place = $cookieStore.get('place-mode');
+		
+	
+	$scope.changePlace = function(mode) {
+		$scope.place = mode;
+		$cookieStore.put('place-mode', mode);
+	}
 });
 
 // AUTO RUN
@@ -497,6 +513,23 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		});
 	}
 	
+	var placeModel = function(id, mode) {
+		var json = {'id': id};
+		
+		HttpPost('ADDMODEL', json).then(function(r){						
+			console.log(r.data)
+				
+			if(r.data.file) {						
+				window.external.text = (mode ? 'xref_model=' : 'merge_model=') + r.data.file + '#' + new Date().getTime();								
+			}
+									
+			responceMessage(r.data);
+		},
+		function(r){
+			responceMessage(r);
+		});
+	}
+	
 	return {
 		showMessage: showMessage,
 		deleteMessage: deleteMessage,
@@ -505,7 +538,8 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		getGlobal: getGlobal,
 		getCat: getCat,
 		getHomeProd: getHomeProd,
-		getProducts: getProducts
+		getProducts: getProducts,
+		placeModel: placeModel
 	};
 });
 

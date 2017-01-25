@@ -1,263 +1,347 @@
-try(destroyDialog rViscoLibrary)catch()
-rollout rViscoLibrary "VISCO Assets" width:650 height:600
 (
-	dotNetControl wb "System.Windows.Forms.WebBrowser" pos:[0,0] width:650 height:600
-	dotNetControl wb2 "System.Windows.Forms.WebBrowser" pos:[-100,-100] width:0 height:0
-	dotNetControl execCommand "System.Windows.Forms.Textbox" pos:[0,0] visible:false
+--global siteUrl = @"http://assets.visco.no/"
+global siteUrl = @"http://svg-web-003/"
+global iconFile = @"\\visco.local\data\Instal_Sync\scripts\scripts\img\favicon.ico"
+global trustUrl = siteUrl + @"vault/mxs/mxsTrustUser.php?user=" + sysInfo.username
 
-	--global siteUrl = @"D:\CLOUD\Yandex\YandexDisk\WEBSERVER\home\lib\www\index.html"
-	--global siteUrl = @"http://192.168.0.170/"
-	--global siteUrl = @"http://193.84.22.46:8282/3DLibrary"
-	--global siteUrl = @"http://kitpes.org"
-	--global siteUrl = @"http://getbootstrap.com/"
-	global siteUrl = @"http://assets.visco.no/"
-	global trustUrl = siteUrl + @"vault/mxs/mxsTrustUser.php?user=" + sysInfo.username
-		
-	-- Placer Globals
-	global trackCallback = #continue
-	global placeObj = #()
-	global initMousePos
-	global rotationAngle = 0
-	global originalScale
-	global currentRotation
-	global shiftState = false
-
-	fn stripSpecialChars s =
+fn httpGet url =
+(	
+	t = ""
+	url += "&time=" + (timeStamp() as string)
+	try
 	(
-		c = #(#(@"%5C", @"\"), #(@"%20", @" "))
+		w = dotNetObject (dotNetClass "System.Net.WebClient")
+		s = dotNetClass "System.IO.StreamReader"
+		o = w.OpenRead url
+		l = dotNetObject s o
+		t = l.ReadToEnd()
+	)
+	catch()
+	
+	return t
+)
 
-		for i in c do while (f = findString s i[1]) != undefined do s = replace s f (i[1].count) i[2]
+ fn useSettings k p w =
+(
+	u = sysInfo.username
+	d = getFilenamePath  (getThisScriptFilename())
+	n = filenameFromPath (getThisScriptFilename())			
+	settingsFile = d + @"ini\" + u + "_" + n + ".ini"
+		
+	v = maxVersion()
+	v = 2000 + ((v[1] / 1000) - 2)
+	
+	t = v as string
+	
+	case w of
+	(
+		"r":
+		(
+			s = getINISetting settingsFile t k
+			case p of
+			(
+				"int": return s as integer
+				"float": return s as float
+				"bool": if s == "true" or s.count < 1 then true else false
+				"bool_not": if s == "true" then true else false
 				
-		return s
-	)
-	
-	fn addFile f =
-	(					
-		f = stripSpecialChars f
-				
-		if(not doesFileExist f) do return false
-		
-		mergeMaxFile f #select #mergeDups  #renameMtlDups  quiet:true 
-		
-		return true
-	)
-	
-	fn getHandler s =
-	(
-		g = for i in s collect i.parent
-		if(g[1] != undefined) do return g[1]
-		if(superClassOf s[1] != GeometryClass) do return undefined
-		return s[1]
-	)
-	
-	fn DownloadFile url newFile = 
-	(
-		wc = dotNetClass "System.Net.WebClient"
-		sr = dotNetClass "System.IO.StreamReader"
-		wcob j =(dotNetObject wc)
-		stm = wcobj.DownloadFile url newFile
-	)
-	
-	fn setRot r rAngle: 2 =
-	(
-		return case of
-		(
-			(r < 0): -rAngle
-			(r > 0): rAngle
-			default: 0
+				default: return s
+			)
 		)
+		default: return setINISetting settingsFile t k (p as string)
 	)
-	
-	fn trackRay ir =
-	(
-		if(ir != undefined) then
-		(											
-			placeObj.pos = ir.pos 
-			placeObj.dir = ir.dir
-			
-			r = placeObj.rotation as eulerAngles
-			
-			in coordsys local rotate placeObj (eulerAngles 0 0 (r.z - currentRotation.z))
-		
-			initMousePos = mouse.pos
-			
-			return #continue
-		)
-		else
-		(			
-			placeObj.pos = mapScreenToCP mouse.pos						
-			placeObj.dir = [0,0,1]
-			
-			r = placeObj.rotation as eulerAngles			
-			in coordsys local rotate placeObj (eulerAngles 0 0 (r.z - currentRotation.z))
-			
-			initMousePos = mouse.pos
-			
-			return #continue
-		)
-	)
-	
-	fn placeObject =
-	(
-		fn mouseTrackCallback msg ir obj faceNum shift ctrl alt =
-		(	
-			case msg of
-			(
-				#freeMove:
-				(			
-					initMousePos = mouse.pos					
-																	
-					return #continue
-				)
-				#mouseAbort:
-				(																				
-					currentRotation = undefined
-					shiftState = false
-										
-					return #end
-				)
-				#mousePoint:
-				(
-					originalScale = placeObj.scale									
-					shiftState = false
-					
-					return #continue
-				)
-				#mouseMove:
-				(									
-					if(shift and shiftState == false) then
-					(												
-						maxops.cloneNodes placeObj clonetype:#instance actualNodelist:placeObj newnodes:n
+)	
 
-						shiftState = true
-					)
-					
-					if(ctrl) do
-					(
-						s = ((initMousePos.y  - mouse.pos.y) / 100.0) + originalScale
-						
-						if s != undefined and (s[1] > 0.0 and s[2] > 0.0 and s[3] > 0.0) do placeObj.scale = s	
-						
-						return #continue
-					)	
-					
-					if(alt) do
-					(
-						p = rotationAngle				
-						rotationAngle = (initMousePos.x  - mouse.pos.x)
-						rot = p - rotationAngle
-							
-						rot = setRot rot								
-										
-						in coordsys local rotate placeObj (angleaxis rot [0,0,1])								
-						
-						currentRotation = placeObj.rotation as eulerAngles
-	
-						return #continue	
-					)
-					
-					trackRay ir
-					return #continue
-				)									
-			)
-		)
-		
-		placeObj = getHandler selection
-			
-		if(placeObj == undefined) do 
-		(
-			messageBox "Please select object!" title: "Warning!"
-			return trackCallback = #end
-		)
-		
-		originalScale = placeObj.scale
-		currentRotation = placeObj.rotation as eulerAngles
-		
-		o = for i in geometry where i.isHidden == false and placeObj != i  collect i
-		trackCallback = mouseTrack on:o trackCallBack: mouseTrackCallback
-	)
-	
-	on rViscoLibrary open do
-	(
-		w = 651
-		h = 800
-		
-		rViscoLibrary.height = h
-		rViscoLibrary.width = w
-		
-		wb.height = h
-		wb.width = w
-		
-		wb2.url = dotNetObject "System.Uri" trustUrl
-		wb.url = dotNetObject "System.Uri" siteUrl
-		
-		wb.AllowWebBrowserDrop  = true
-		wb.ObjectForScripting = execCommand;		
-	)
+global _ViscoAssetsForm
 
-	on execCommand TextChanged e do
-	(
-		t = filterString execCommand.text "="
-		
-		case t[1] of
-		(
-			"add_model": addFile t[2]
-		)
-		
-		execCommand.text = ""
-		setFocus rViscoLibrary.wb
-	)
+try(_ViscoAssetsForm.close())catch()	
 	
-	on wb DocumentCompleted t do
-	(				
-		u = wb.url.query			
-		u = stripSpecialChars u
-		p = filterString u "="
-	  	
-		case p[1] of
-		(
-			"?add_model": addFile p[2]
-			"?place_model": 
-			(
-				while trackCallback != #end do placeObject()
-				trackCallback = #continue
-			)
-			"?add_model_and_place": 
-			(				
-				f = addFile p[2]
-				if(f) do 
-				(											
-					while trackCallback != #end do placeObject()
-					trackCallback = #continue
-				)
-			)
-			"?close": 
-			(
-				DestroyDialog rViscoLibrary
-			)
-			"?execute_smth":
-			(				
-				wb.navigate "javascript:fromMaxScript('Pressed favorite!')"
-			)
-		)
+_ViscoAssetsForm = dotNetObject "System.Windows.Forms.Form"
+_ViscoAssetsForm.size = dotNetObject "System.Drawing.Size" 1240 800
+_ViscoAssetsForm.MinimumSize = dotNetObject "System.Drawing.Size" 800 600
+_ViscoAssetsForm.ShowInTaskBar = true
+_ViscoAssetsForm.text = siteUrl
+_ViscoAssetsForm.StartPosition = _ViscoAssetsForm.StartPosition.Manual	
+	
+executeTimer = dotNetObject "System.Windows.Forms.Timer"	
+executeTimer.interval = 10
 
-		setFocus rViscoLibrary.wb				
-	)	
 	
-	on rViscoLibrary resized s do
-	(
-		rViscoLibrary.wb.size = dotnetobject "System.Drawing.Size" s[1] s[2];
-	)
+try(_ViscoAssetsForm.icon = dotNetObject "System.Drawing.Icon" iconFile)catch()
+_ViscoAssetsForm.topmost = true
+
+wbTrust = dotNetObject "System.Windows.Forms.WebBrowser"
+wbTrust.size =dotNetObject "System.Drawing.Size" 0 0
+wbTrust.location = dotNetObject "System.Drawing.Point" -100 -100
+wbTrust.url = dotNetObject "System.Uri" trustUrl
+
+httpGet trustUrl		
+
+execCommand = dotNetObject "System.Windows.Forms.Textbox"			
+execCommand.size = dotNetObject "System.Drawing.Size" 0 0
+execCommand.location = dotNetObject "System.Drawing.Point" -100 -100
 	
-	on rViscoLibrary mouseMove a do
-	(
-		setFocus rViscoLibrary.wb
-	)
+wb = dotNetObject "System.Windows.Forms.WebBrowser"
+wb.size = _ViscoAssetsForm.ClientSize
+--wb.AllowWebBrowserDrop  = true
+wb.location = dotNetObject "System.Drawing.Point" 0 0
+wb.url = dotNetObject "System.Uri" siteUrl
+wb.ObjectForScripting = execCommand
+
 	
-	on rViscoLibrary okToClose do
-	(
-		wb.Dispose() 
+_ViscoAssetsForm.controls.add  execCommand
+_ViscoAssetsForm.controls.add  wbTrust
+_ViscoAssetsForm.controls.add  wb
+
+fn getWidnowState =
+(
+	s = dotNetClass "System.Windows.Forms.FormWindowState"
+	
+	case _ViscoAssetsForm.WindowState of
+	(	
+		(s.Maximized): return #maximized
+		(s.Minimized): return #minimized
+		default: return #normal
 	)
 )
-createdialog 
-CreateDialog rViscoLibrary 650 700 style:#(#style_titlebar,#style_sysmenu,#style_toolwindow,#style_resizing)
+
+fn setWindowState =
+(
+	s = dotNetClass "System.Windows.Forms.FormWindowState"
+	v = useSettings "STATE" "str" "r"
+	
+	case v of
+	(
+		"maximized": _ViscoAssetsForm.WindowState = s.Maximized
+		--"minimized": _ViscoAssetsForm.WindowState = s.Minimized
+		default: _ViscoAssetsForm.WindowState = s.Normal
+	)
+)
+
+fn saveWindowState =
+(
+	s = getWidnowState()
+	useSettings "STATE" s "w"
+)
+
+fn saveWindowPos =
+(
+	s = getWidnowState()
+	
+	if(s != #maximized) do
+	(	
+		x = _ViscoAssetsForm.left
+		y = _ViscoAssetsForm.top
+	
+		if(x < -31000 or y < -31000) do return false
+		
+		useSettings "POSX" x "w"
+		useSettings "POSY" y "w"
+	) 	
+)
+
+fn saveWindowSize =
+(
+	s = getWidnowState()
+	
+	if(s == #normal) do
+	(
+		w = _ViscoAssetsForm.size.width
+		h = _ViscoAssetsForm.size.height
+				
+		useSettings "WIDTH" w "w"
+		useSettings "HEIGHT" h "w"
+	)		
+)
+
+fn setWindowPos =
+(
+	x = useSettings "POSX" "int" "r"	
+	y = useSettings "POSY" "int" "r"	
+	
+	if(x != 0 and y != 0) do	
+	(
+		_ViscoAssetsForm.location = dotNetObject "System.Drawing.Point" x y
+	)
+)
+
+fn setWindowSize =
+(
+	w = useSettings "WIDTH" "int" "r"	
+	h = useSettings "HEIGHT" "int" "r"	
+	
+	
+	if(w != 0 and h != 0) do	
+	(
+		_ViscoAssetsForm.size = dotNetObject "System.Drawing.Size" w h
+	)
+)
+
+fn forceRefresh = 
+(
+	for i in 1 to 10 do
+	(
+		wb.refresh()
+		wb.refresh (dotnetclass "System.Windows.Forms.WebBrowserRefreshOption").Completely
+	)
+)
+
+fn onResize s e = 
+(
+	wb.size = _ViscoAssetsForm.ClientSize
+	saveWindowSize()		
+)
+
+fn onMove s e = 
+(
+	saveWindowPos()
+)
+
+fn onClose s e =
+(
+	saveWindowSize()
+	saveWindowPos()
+	saveWindowState()
+)
+
+fn onLoad s e =
+(
+	setWindowPos()
+	setWindowSize()
+	setWindowState()
+)
+
+fn onNavigating e =
+(
+	enableAccelerators = false
+)
+
+fn onFocus e = 
+(
+	enableAccelerators = false
+)
+
+fn setTexturesPath path: "" geom: selection type: BitmapTex =
+(
+	for i in selection do
+	(
+		for b in getClassInstances type target: i do 
+		(	
+			if(b.filename != undefined and not doesFileExist b.filename) do
+			(
+				b.filename = path + b.filename
+			)
+		)
+	)
+)
+
+fn setIesPath path: "" geom: selection type: light =
+(
+	for l in selection where superClassOf l == type do 
+	(
+		if(isProperty l #ies_file and not doesFileExist l.ies_file) do l.ies_file = path + l.ies_file
+		if(isProperty l #webFile and not doesFileExist l.webFile) do l.webFile = path + l.webFile
+		if(isProperty l #iesFile and not doesFileExist l.iesFile) do l.iesFile = path + l.iesFile	
+	)
+)
+
+fn showStatusPaste t c: false =
+(
+	global statusText = t
+	global timerActive = c
+	global PasteStatus
+	
+	try(destroyDialog PasteStatus) catch()
+	
+	rollout PasteStatus "MastaMan" 
+	(
+		label lblStatus "Downloading..." offset: [0, 14] 
+		timer tmrTimer "" active: true interval: 30000
+		
+		on CopyTo open do
+		(
+			lblStatus.caption = statusText
+			tmrTimer.active = timerActive
+		)
+		
+		on tmrTimer tick do 
+		(	
+			try(destroyDialog PasteStatus)catch()
+			tmrTimer.active = false
+		)
+	)
+	createDialog PasteStatus 160 50 style: #(#style_border)
+)
+
+fn addFile f mode: #merge =
+(								
+	if(not doesFileExist f) do return false
+	
+	showStatusPaste "Downloading..."
+	
+	disableSceneRedraw()
+	case mode of
+	(
+		#xref:
+		(
+			objs = getMAXFileObjectNames f
+			o = xrefs.addnewXrefObject f objs dupMtlNameAction: #autoRename
+			select o
+		)
+		default: 
+		(
+			mergeMaxFile f #select #mergeDups  #renameMtlDups  quiet:true
+			p = (getFilenamePath f)
+	
+			setTexturesPath path: p geom: selection type: BitmapTex
+			try(setTexturesPath path: p geom: selection type: CoronaBitmap)catch()
+			setIesPath path: p geom: selection
+		)
+	)
+		
+	toolMode.selectioncenter() 
+	enableSceneRedraw()
+	
+	max tool zoomextents all
+		
+	try(destroyDialog PasteStatus) catch()
+	
+	return true
+)
+
+fn onExecute e =
+(	
+	executeTimer.start()
+)
+
+fn onExecuteCommand s e =
+(
+	executeTimer.stop()
+	
+	t = filterString execCommand.text "="
+	p = if(t[2] != undefined) then (filterString t[2] "#")[1] else ""
+		
+	case t[1] of
+	(
+		"merge_model": addFile p mode: #merge
+		"xref_model": addFile p mode: #xref
+	)
+	
+	execCommand.text = ""		
+)
+
+showEvents _ViscoAssetsForm
+dotNet.addEventHandler _ViscoAssetsForm "Resize" onResize
+dotNet.addEventHandler _ViscoAssetsForm "Move" onMove
+dotNet.addEventHandler _ViscoAssetsForm "Load" onLoad
+dotNet.addEventHandler _ViscoAssetsForm "Closing" onClose
+dotnet.addEventHandler wb "gotFocus" onFocus
+dotnet.addEventHandler wb "Click" onFocus
+dotNet.addEventHandler wb "Navigating" onNavigating
+dotNet.addEventHandler execCommand "TextChanged" onExecute
+dotnet.addEventHandler executeTimer "tick" onExecuteCommand
+
+_ViscoAssetsForm.show()
+--clearListener()
+
+)

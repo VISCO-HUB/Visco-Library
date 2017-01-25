@@ -43,7 +43,7 @@
 <div class="header">
 	<div class="container">
 		<div class="padding-0-15">
-			<div class="navbar-header hidden-xxs"> <a href="#/"><img src="../visco_logo.svg" class="logo"></a> <span class="head-title hidden-xs">Assets Library</span> </div>
+			<div class="navbar-header hidden-xxs"> <a href="/"><img src="../visco_logo.svg" class="logo"></a> <span class="head-title hidden-xs">Assets Library</span> </div>
 			<div id="navbar3" class="navbar-default">
 				<ul class="nav nav-buttons">
 					<li class="active"><a href="#/" tooltip-popup-delay="200" uib-tooltip="Home" tooltip-placement="bottom"><span class="glyphicon glyphicon-home"></span></a></li>

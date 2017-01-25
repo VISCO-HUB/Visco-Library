@@ -291,18 +291,30 @@
 		}
 		
 		PUBLIC STATIC FUNCTION TRUSTUSER($USER) {			
-			IF(!ISSET($USER)) RETURN [];
+			$SUCCESS = 'TRUSTOK';
+			$ERROR =  '';
+			
+			IF(!ISSET($USER)) {
+				ECHO $ERROR;
+				RETURN FALSE;
+			}
 			
 			$WHERE['user'] = $USER;					
 			$RESULT = DB::SELECT('users', $WHERE);			
 				
 			$ROWS = MYSQLI_NUM_ROWS($RESULT);
 
-			IF($ROWS != 1) RETURN [FALSE];
+			IF($ROWS != 1) {
+				ECHO $ERROR;
+				RETURN FALSE;
+			}
+			
 			$ROW = $RESULT->fetch_object();
 				
 			$_SESSION['browser'] = 'MXS';
 			$_SESSION['token'] = $ROW->token;
+			
+			ECHO $SUCCESS;
 		}
 		
 		PUBLIC STATIC FUNCTION CHECK() {							
@@ -320,7 +332,7 @@
 			$AUTH = [];
 			$AUTH['exist'] = TRUE;
 			$AUTH['user'] = $ROW;
-			$AUTH['browser'] = $_SESSION['browser'];
+			$AUTH['user']->browser = $_SESSION['browser'];
 			
 			RETURN $AUTH;
 		}
@@ -328,6 +340,7 @@
 		PUBLIC STATIC FUNCTION SIGNOUT() {
 			SESSION_START();
 			$_SESSION['token'] = '';
+			$_SESSION['browser'] = '';
 			SESSION_DESTROY();
 			SESSION_UNSET();
 			
@@ -384,6 +397,10 @@
 			}
 			
 			RETURN JSON_ENCODE($OUT);
+		}
+		
+		PUBLIC STATIC FUNCTION PARSE() {			
+			RETURN JSON_DECODE($GLOBALS['GLOBS']);
 		}
 	}
 	
@@ -623,6 +640,49 @@
 			$OUT['pathway'] = $PATHWAY;
 						
 			RETURN JSON_ENCODE($OUT);
+		}
+	}
+	
+		
+	///////////////////////////////////////////////////////
+	// MXS CLASS
+	///////////////////////////////////////////////////////
+	
+	CLASS MXS {
+		PUBLIC STATIC FUNCTION ADDMODEL($DATA) {
+			$ERROR = '{"responce": "MODELBAD"}';
+			$NOTEXIST = '{"responce": "MODELNOTEXIST"}';
+			
+			IF(!ISSET($DATA->id) OR !IS_NUMERIC($DATA->id)) RETURN $ERROR;
+			
+			$WHERE['id'] = $DATA->id;
+			$RESULT = DB::SELECT('models', $WHERE);
+			
+			$ROWS = MYSQLI_NUM_ROWS($RESULT);
+			
+			IF($ROWS != 1) {
+				ECHO $ERROR;
+				RETURN FALSE;
+			}
+						
+			$RESULT = DB::TOARRAY($RESULT);	
+			$MODEL = $RESULT[0];
+			$PATH = CAT::BUILDPATH($MODEL->catid) ;		
+			IF(!COUNT($PATH)) RETURN $ERROR;
+			$PATH .= CAT::CLEAR($MODEL->name) . '\\' . CAT::CLEAR($MODEL->render)  . '\\';
+			
+			$FILES = (GLOB($PATH . '*.max'));
+			$FILE = $FILES[0];
+			IF(!$FILE) RETURN $NOTEXIST;
+			
+			
+			$SET['downloads'] = $MODEL->downloads + 1;
+			DB::UPDATE('models', $SET, $WHERE);
+						
+			$OUT['responce'] = "MODELOK";
+			$OUT['file'] = $FILE;
+			
+			RETURN JSON_ENCODE($OUT);					
 		}
 	}
 	

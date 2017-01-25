@@ -49,7 +49,7 @@
 					<li ng-show="auth.rights > 0" class="hidden-xs"><a href="#/"><span class="glyphicon glyphicon-home"></span></a></li>					
 					<li class="visible-xs-inline"><a href="" ng-click="toggleOverlayMenu()" ><span class="glyphicon glyphicon-menu-hamburger"></span></a></li>					
 					<li class=""><a href="#/"><span class="glyphicon glyphicon-heart"></span></a></li>					
-					<li class="dropdown" ng-show="auth.rights > 0 && auth.browser != 'MXS'"> <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false"><span class="glyphicon glyphicon-user"></span></a>
+					<li class="dropdown" ng-show="auth.rights > 0"> <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false"><span class="glyphicon glyphicon-user"></span></a>
 						<ul class="dropdown-menu" role="menu">
 							<li class="dropdown-header">Hi, {{auth.name || auth.user}}</li>
 							<li class="divider"></li>
