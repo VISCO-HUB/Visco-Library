@@ -19,12 +19,12 @@
 <link rel="icon" href="img/favicon.ico" type="image/x-icon">
 <title>Assets Library Admin</title>
 <!--<link rel="stylesheet" type="text/css" href="css/template.css">-->
-<script src="http://code.jquery.com/jquery-latest.js"></script>
-<script type="text/javascript" src="https://code.angularjs.org/1.5.8/angular.min.js"></script>
-<script type="text/javascript" src="https://code.angularjs.org/1.5.8/angular-route.min.js"></script>
-<script type="text/javascript" src="https://code.angularjs.org/1.5.8/angular-sanitize.min.js"></script>
-<script type="text/javascript" src="https://code.angularjs.org/1.5.8/angular-cookies.min.js"></script>
-<script type="text/javascript" src="http://nervgh.github.io/pages/angular-file-upload/dist/angular-file-upload.min.js"></script>
+<script src="../js/jquery-latest.js"></script>
+<script type="text/javascript" src="../js/angular.min.js"></script>
+<script type="text/javascript" src="../js/angular-route.min.js"></script>
+<script type="text/javascript" src="../js/angular-sanitize.min.js"></script>
+<script type="text/javascript" src="../js/angular-cookies.min.js"></script>
+<script type="text/javascript" src="../js/angular-file-upload.min.js"></script>
 <script type="text/javascript" src="../js/canvasjs.min.js"></script>
 <script type="text/javascript" src="js/app.js"></script>
 <script type="text/javascript" src="../js/bootstrap.min.js"></script>
@@ -34,8 +34,8 @@
 <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
 <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
 <!--[if lt IE 9]>
-		<script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
-		<script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+		<script src="../js/html5shiv.min.js"></script>
+		<script src="../js/respond.min.js"></script>
 	<![endif]-->
 </head>
 

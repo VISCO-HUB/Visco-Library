@@ -25,10 +25,17 @@ document.addEventListener("contextmenu", function(e){
 
 var hostname = 'http://' + window.location.hostname + '/';
 
+var getUrlVars = function (url) {
+	var vars = {};
+	var parts = url.replace(/[?&]+([^=&]+)=([^&]*)/gi, function(m,key,value) {
+		vars[key] = value;
+	});
+	return vars;
+}
+
 /* APP */
 
 var app = angular.module('app', ['ngRoute', 'ngSanitize', 'ui.bootstrap', 'ngAnimate', 'ngCookies']);
-
 
 // CONFIG 
 app.config(function($routeProvider) {    
@@ -79,6 +86,18 @@ app.directive("preview", function($rootScope) {
         templateUrl : hostname + 'templates/preview.html'
     };
 });
+
+app.directive('iframeOnload', [function(){
+return {
+    scope: {
+        callBack: '&iframeOnload'
+    },
+    link: function(scope, element, attrs){
+        element.on('load', function(){
+            return scope.callBack();
+        })
+    }
+}}]);
 
 // FILTERS
 
@@ -245,12 +264,63 @@ app.controller("catCtrl", function ($scope, vault, $rootScope, $location, $route
 	};
 	
 	$scope.place = $cookieStore.get('place-mode');
-		
+	
+	$scope.placename = '';
+	$scope.getPlaceName = function(mode) {
+		switch(mode) {
+			case 1: $scope.placename = 'X-Ref Model';
+			break;
+			case 2: $scope.placename = 'Open Model';
+			break;
+			default: $scope.placename = 'Merge Model';
+			break;
+		}
+	}
+
+	$scope.getPlaceName($scope.place);
 	
 	$scope.changePlace = function(mode) {
+		$scope.getPlaceName(mode);
 		$scope.place = mode;
 		$cookieStore.put('place-mode', mode);
 	}
+	
+	$scope.downloadModel = function(id) {
+		vault.downloadModel(id);
+	}
+	
+	$scope.download = '';
+	
+	$scope.downloadUrl = function(id) {		
+		if($rootScope.auth.rights < 1) {return false;}
+		
+		$scope.download = hostname + 'vault/download.php?id=' + id +'&type=1';
+		
+		$timeout(function() {
+			$scope.download = '';
+		}, 1000);
+	}
+	
+	$scope.modelError = {};
+	
+	$scope.downloadMsg = function() {
+		
+		var t = $("#download").contents().find("body").html();		
+		if(!t.length) {return false;}
+		
+		var j = JSON.parse(t);	
+		v = getUrlVars($scope.download);
+			
+		if(j.responce == "MODELBAD" || j.responce == "MODELNOTEXIST"){			
+			id = v['id'];
+			$scope.modelError[id] = true;
+		}
+			
+		$scope.download = '';
+		$scope.$apply();
+	}
+	
+	
 });
 
 // AUTO RUN
@@ -401,9 +471,10 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 			break;
 			case 'NORIGHTS': s.error = 'You have no rights for make changes!';
 			break;
-		}
-		
-		$rootScope.msg = s;
+			case 'MODELNOTEXIST': s.error = 'Error! Model not found. Please report about this model!';
+			break;
+		}		
+		$rootScope.msg = s;		
 	}
 	
 	// SIMPLIFY POST PROCEDURE
@@ -513,6 +584,11 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		});
 	}
 	
+	var sendCommandMXS = function(cmd, value) {
+		if(!value) {value = '';}
+		window.external.text = cmd + '=' + value + '#' + new Date().getTime();
+	}
+	
 	var placeModel = function(id, mode) {
 		var json = {'id': id};
 		
@@ -520,9 +596,46 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 			console.log(r.data)
 				
 			if(r.data.file) {						
-				window.external.text = (mode ? 'xref_model=' : 'merge_model=') + r.data.file + '#' + new Date().getTime();								
+				//window.external.text = (mode ? 'xref_model=' : 'merge_model=') + r.data.file + '#' + new Date().getTime();								
+				
+				var cmd = '';
+				
+				switch(mode) {
+					case 1: cmd = 'XREF_MODEL';
+					break;
+					case 2: cmd = 'OPEN_MODEL';
+					break;
+					default: cmd = 'MERGE_MODEL';
+					break;
+				}
+				
+				sendCommandMXS(cmd, r.data.file)
 			}
-									
+				
+			if(r.data.responce == 'MODELNOTEXIST') {
+				cmd = r.data.responce;
+				sendCommandMXS(cmd)
+			}
+			
+			if(r.data.responce == 'MODELBAD') {
+				cmd = r.data.responce;
+				sendCommandMXS(cmd)
+			}
+			
+				
+			responceMessage(r.data);
+		},
+		function(r){
+			responceMessage(r);
+		});
+	}
+	
+	var downloadModel = function(id) {
+		var json = {'id': id};
+		
+		HttpPost('DOWNLOADMODEL', json).then(function(r){						
+			console.log(r.data)
+				
 			responceMessage(r.data);
 		},
 		function(r){
@@ -531,6 +644,7 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 	}
 	
 	return {
+		responceMessage: responceMessage,
 		showMessage: showMessage,
 		deleteMessage: deleteMessage,
 		signIn: signIn,
@@ -539,7 +653,8 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		getCat: getCat,
 		getHomeProd: getHomeProd,
 		getProducts: getProducts,
-		placeModel: placeModel
+		placeModel: placeModel,
+		downloadModel: downloadModel
 	};
 });
 

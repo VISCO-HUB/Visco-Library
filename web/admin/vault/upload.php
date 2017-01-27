@@ -1,11 +1,9 @@
 <?php	
 	GLOBAL $GLOBS;
 	GLOBAL $MYSQLI;
-
 	INCLUDE '../../vault/config.php';
 	INCLUDE 'lib.php';
 	$ISREPLACE = ISSET($_GET['replace']);
-
 	$DATE = DATE('d.m.Y');
 		
 	$MYSQLI = DB::CONNECT();
@@ -28,7 +26,6 @@
 	
 	//!!!!!!!!!! CREATE BUTTON CLEAR CACHE!
 	
-
 	IF(!MOVE_UPLOADED_FILE($FTMP, $FNAME)) DIE($ERROR);
 	
 	$ZIP = NEW ZipArchive;
@@ -44,7 +41,6 @@
 	$PARSEDINI = PARSE_INI_STRING($INI_UTF8, TRUE);
 	
 	$INFO = $PARSEDINI['INFO'];	
-
 	IF(($INFO['TYPE'] != 'model') AND ($INFO['TYPE'] != 'texture')) DIE($BADZIP);
 	
 	// !!!! MUST ADD CHEK FOR ALL FILES!
@@ -116,12 +112,14 @@
 			FOREACH($TAGS AS $TAG) {
 				IF(STRLEN($TAG) > 2) $T[]['name'] = TRIM($TAG);
 			}
-
 			DB::MULTIINSERT('tags', $T);
 		}
 				
 		IF($ISREPLACE) FS::CLEAR($MOVETO);
 		FS::MOVE($EXTRACTTO, $MOVETO);
+		
+		$BACKUP_FILE_PATH = $MOVETO . $ONAME;		
+		RENAME($FNAME,  $BACKUP_FILE_PATH);
 	}
 		
 	DB::CLOSE();

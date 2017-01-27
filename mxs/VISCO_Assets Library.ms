@@ -53,6 +53,9 @@ fn httpGet url =
 )	
 
 global _ViscoAssetsForm
+global _FILLREPORT = "\n1. Open full model info\n2. Press the button \"Report\"\n3. Fill the form\n4. Press the button \"Send\""
+global _MODELNOTEXIST = "This model not exist!\n\nPlease notify administrator about this issue:" + _FILLREPORT
+global _MODELBAD = "This model not exist in data base!\n\nPlease notify administrator about this issue:" + _FILLREPORT
 
 try(_ViscoAssetsForm.close())catch()	
 	
@@ -223,7 +226,7 @@ fn onFocus e =
 
 fn setTexturesPath path: "" geom: selection type: BitmapTex =
 (
-	for i in selection do
+	for i in geom do
 	(
 		for b in getClassInstances type target: i do 
 		(	
@@ -237,7 +240,7 @@ fn setTexturesPath path: "" geom: selection type: BitmapTex =
 
 fn setIesPath path: "" geom: selection type: light =
 (
-	for l in selection where superClassOf l == type do 
+	for l in geom where superClassOf l == type do 
 	(
 		if(isProperty l #ies_file and not doesFileExist l.ies_file) do l.ies_file = path + l.ies_file
 		if(isProperty l #webFile and not doesFileExist l.webFile) do l.webFile = path + l.webFile
@@ -278,10 +281,22 @@ fn addFile f mode: #merge =
 	if(not doesFileExist f) do return false
 	
 	showStatusPaste "Downloading..."
-	
+	p = (getFilenamePath f)
+		
 	disableSceneRedraw()
 	case mode of
 	(
+		#open:
+		(
+			setSaveRequired true
+			checkForSave()
+			resetMaxFile #noPrompt
+			loadMaxFile f useFileUnits: true quiet:true	
+			
+			setTexturesPath path: p geom: objects type: BitmapTex
+			try(setTexturesPath path: p geom: objects type: CoronaBitmap)catch()
+			setIesPath path: p geom: objects			
+		)
 		#xref:
 		(
 			objs = getMAXFileObjectNames f
@@ -291,7 +306,6 @@ fn addFile f mode: #merge =
 		default: 
 		(
 			mergeMaxFile f #select #mergeDups  #renameMtlDups  quiet:true
-			p = (getFilenamePath f)
 	
 			setTexturesPath path: p geom: selection type: BitmapTex
 			try(setTexturesPath path: p geom: selection type: CoronaBitmap)catch()
@@ -323,14 +337,16 @@ fn onExecuteCommand s e =
 		
 	case t[1] of
 	(
-		"merge_model": addFile p mode: #merge
-		"xref_model": addFile p mode: #xref
+		"MERGE_MODEL": addFile p mode: #merge
+		"XREF_MODEL": addFile p mode: #xref
+		"OPEN_MODEL": addFile p mode: #open
+		"MODELNOTEXIST": messageBox _MODELNOTEXIST title: "Error!"
+		"MODELBAD": messageBox _MODELBAD title: "Error!"
 	)
 	
 	execCommand.text = ""		
 )
 
-showEvents _ViscoAssetsForm
 dotNet.addEventHandler _ViscoAssetsForm "Resize" onResize
 dotNet.addEventHandler _ViscoAssetsForm "Move" onMove
 dotNet.addEventHandler _ViscoAssetsForm "Load" onLoad

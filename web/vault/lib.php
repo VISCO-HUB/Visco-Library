@@ -4,7 +4,6 @@
 	// MYSQLI CLASS
 	///////////////////////////////////////////////////////
 
-	
 	CLASS DB {
 		PUBLIC STATIC FUNCTION STRIP($S) {																		
 			$MYSQLI = $GLOBALS['MYSQLI'];		
@@ -215,7 +214,8 @@
 			RETURN TRIM(ICONV(MB_DETECT_ENCODING($TEXT, MB_DETECT_ORDER(), TRUE), "UTF-8", $TEXT));
 		}
 	}
-	
+
+
 	///////////////////////////////////////////////////////
 	// AUTH CLASS
 	///////////////////////////////////////////////////////
@@ -641,6 +641,83 @@
 						
 			RETURN JSON_ENCODE($OUT);
 		}
+		
+		PUBLIC STATIC FUNCTION GETMODELPATH($MODEL) {
+			$PATH = CAT::BUILDPATH($MODEL->catid);
+			IF(!COUNT($PATH)) RETURN -1;
+			$PATH .= CAT::CLEAR($MODEL->name) . '\\' . CAT::CLEAR($MODEL->render)  . '\\';
+			$FILES = (GLOB($PATH . '*.max'));
+			$FILE = $FILES[0];
+			IF(!$FILE) RETURN -1;
+			
+			RETURN $FILE;
+		}
+		
+		PUBLIC STATIC FUNCTION DOWNLOAD($FILE) {
+			IF(FILE_EXISTS($FILE)) {
+				HEADER('Content-Description: File Transfer');
+				HEADER('Content-Type: application/octet-stream');
+				HEADER('Content-Disposition: attachment; filename="' . BASENAME($FILE)) . '"';
+				HEADER('Content-Transfer-Encoding: binary');
+				HEADER('Expires: 0');
+				HEADER('Cache-Control: must-revalidate, post-check=0, pre-check=0');
+				HEADER('Pragma: public');
+				HEADER('Content-Length: ' . FILESIZE($FILE));
+				OB_CLEAN();
+				FLUSH();
+				READFILE($FILE);
+				EXIT;
+			}
+		}
+					
+		PUBLIC STATIC FUNCTION MODELDOWNLOAD($ID, $TYPE) {
+			
+			$ERROR = '{"responce": "MODELBAD"}';
+			$NOTEXIST = '{"responce": "MODELNOTEXIST"}';
+			
+			$TYPE = PRODUCTS::TYPE($TYPE);
+			IF(!$TYPE) {
+				ECHO $ERROR;
+				RETURN FALSE;
+			}
+								
+			$WHERE['id'] = $ID;
+			$RESULT = DB::SELECT($TYPE, $WHERE);
+			
+			$ROWS = MYSQLI_NUM_ROWS($RESULT);
+			
+			IF($ROWS != 1) {
+				ECHO $ERROR;
+				RETURN FALSE;
+			}
+			
+			$RESULT = DB::TOARRAY($RESULT);	
+			$PROD = $RESULT[0];
+			$DIR = '';
+			IF($TYPE == 'models') {
+										
+				$FILE = PRODUCTS::GETMODELPATH($PROD);
+				IF($FILE == -1) {
+					ECHO $NOTEXIST;
+					RETURN FALSE;
+				}
+				
+				$DIR = DIRNAME($FILE) . '\\';	
+			}
+			
+			$FILES = GLOB($DIR . '*.zip');
+						
+			IF(!COUNT($FILES)) {
+				ECHO $NOTEXIST;
+				RETURN FALSE;
+			}
+			
+			$SET['downloads'] = $PROD ->downloads + 1;
+			DB::UPDATE($TYPE, $SET, $WHERE);
+			
+			$FILE = $FILES[0];
+			SELF::DOWNLOAD($FILE);		
+		}
 	}
 	
 		
@@ -667,13 +744,9 @@
 						
 			$RESULT = DB::TOARRAY($RESULT);	
 			$MODEL = $RESULT[0];
-			$PATH = CAT::BUILDPATH($MODEL->catid) ;		
-			IF(!COUNT($PATH)) RETURN $ERROR;
-			$PATH .= CAT::CLEAR($MODEL->name) . '\\' . CAT::CLEAR($MODEL->render)  . '\\';
-			
-			$FILES = (GLOB($PATH . '*.max'));
-			$FILE = $FILES[0];
-			IF(!$FILE) RETURN $NOTEXIST;
+						
+			$FILE = PRODUCTS::GETMODELPATH($MODEL);
+			IF($FILE == -1) RETURN $NOTEXIST;
 			
 			
 			$SET['downloads'] = $MODEL->downloads + 1;
