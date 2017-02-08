@@ -1017,7 +1017,7 @@
 			$S = 1;
 			
 			FOREACH($INTERVALS AS $K => $V) {
-				IF($V['end'] - $V['start'] > 20) {
+				IF($V['end'] - $V['start'] > 35) {
 					$W = $V['end'] - $V['start'];
 					$S = $V['start'];
 				}

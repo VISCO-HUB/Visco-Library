@@ -3,7 +3,7 @@
 	DEFINE('ROOT', $_SERVER['DOCUMENT_ROOT'] . '\\');
 	
 	//SERVER
-	DEFINE('HOSTNAME', 'http://' . $_SERVER['HTTP_HOST'] . '/');
+	DEFINE('HOSTNAME', ($_SERVER['HTTPS'] ?  'https' : 'http') . '://' . $_SERVER['HTTP_HOST'] . '/');
 	
 	// MYSQL DATA
 	DEFINE('MYSQL_DB', 'assets_library');
@@ -26,5 +26,6 @@
 	
 	// LIB TYPES (SQL TABLES MUST NAMED AS TYPES)
 	DEFINE('LIBTYPES', ARRAY(1 => 'models', 2 => 'textures'));
+	DEFINE('PRODUCTPAGE', ARRAY(1 => 'model', 2 => 'texture'));
 
 ?>

@@ -74,12 +74,14 @@
 		$SET['rigged'] = $INFO['RIGGED'];		
 		$SET['lods'] = $INFO['LODS'];		
 		$SET['unwrap'] = $INFO['UNWRAP'];
+		$SET['lights'] = $INFO['LIGHTS'];
 		$SET['project'] = $INFO['PROJECT'];
 		$SET['modeller'] = $INFO['MODELLER'];
 		$SET['tags'] = TRIM(STR_REPLACE(' ', '', $INFO['TAGS']), ',') . ',';
 		$SET['manufacturer'] = $INFO['MANUFACTURER'];
 		$SET['overview'] = $INFO['OVERVIEW'];
 		$SET['custom1'] = $INFO['CUSTOM1'];
+		$SET['client'] = $INFO['CLIENT'];
 		$SET['status'] = 0;
 		$SET['pending'] = 1;
 		$SET['date'] = TIME();

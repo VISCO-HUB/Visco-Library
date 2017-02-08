@@ -45,7 +45,7 @@
 			RETURN $W;
 		}
 		
-		PUBLIC STATIC FUNCTION SELECT($TABLE, $WHEREOR = [], $WHEREAND = [], $SORT = NULL, $LIMIT = NULL) {		
+		PUBLIC STATIC FUNCTION SELECT($TABLE, $WHEREOR = [], $WHEREAND = [], $SORT = NULL, $LIMIT = NULL, $REVERSE=NULL) {		
 			
 			$MYSQLI = $GLOBALS['MYSQLI'];
 						
@@ -65,7 +65,7 @@
 			$ATTACHLIMIT = '';
 			IF($LIMIT) $ATTACHLIMIT = ' LIMIT ' . SELF::STRIP($LIMIT['start']) . ", " . SELF::STRIP($LIMIT['end']);
 			
-			$QUERY = "SELECT * FROM " . $TABLE . " " . $ATTACHWHERE . " " . $ATTACHSORT . " " . $ATTACHLIMIT . ";";			
+			$QUERY = "SELECT * FROM " . $TABLE . " " . $ATTACHWHERE . " " . $ATTACHSORT . " " . ($REVERSE ? 'DESC' : '') . " " . $ATTACHLIMIT . ";";			
 		 
 			$RESULT = $MYSQLI->query($QUERY);
 		
@@ -79,6 +79,51 @@
 			
 			$RESULT = $MYSQLI->query($QUERY);
 		
+			RETURN $RESULT;
+		}
+		
+		PUBLIC STATIC FUNCTION SELECTLIKE($TABLE, $COL = [], $FIND = [], $LIMIT = NULL, $WHERE = NULL, $CNT = NULL) {		
+			
+			$MYSQLI = $GLOBALS['MYSQLI'];
+			
+			$S = '';
+			$I = 1;
+			
+			FOREACH($FIND AS $F){
+				$AND = FALSE;
+				IF($I > 1) $S .= ' AND ';
+				$S .= "(";
+				$II = 1;
+				FOREACH($COL AS $C) {
+					IF($II > 1) $S .= ' OR ';
+					
+					$S .= "(`" . SELF::STRIP($C) . "` LIKE '%" . SELF::STRIP($F) ."%')";
+					$II++;
+				}
+				$S .= ")";
+				$I++;
+			}
+						
+			$ATTACHLIMIT = '';
+			IF($LIMIT) $ATTACHLIMIT = ' LIMIT ' . SELF::STRIP($LIMIT['start']) . ", " . SELF::STRIP($LIMIT['end']);
+			
+			$ATTACHWAND = '';
+			IF($WHERE) {
+				FOREACH($WHERE AS $K => $V){
+					$ATTACHWAND .= ' AND ' . SELF::STRIP($K) . '=' . "'" . $V . "'";
+				}
+			}
+				
+			$SEL = $CNT ? "SELECT COUNT(*) AS cnt " : "SELECT * ";
+			$QUERY = $SEL . " FROM `" . $TABLE . "` WHERE (" . $S . ")" . $ATTACHWAND . $ATTACHLIMIT  . ";";			
+		
+			$RESULT = $MYSQLI->query($QUERY);
+
+			IF($CNT) {
+				$ROW = mysqli_fetch_assoc($RESULT);
+				RETURN $ROW['cnt'];
+			}
+			
 			RETURN $RESULT;
 		}
 		
@@ -319,17 +364,19 @@
 		
 		PUBLIC STATIC FUNCTION CHECK() {							
 			
-			IF(!ISSET($_SESSION['token'])) RETURN [FALSE];
+			$AUTH = [];
+			$AUTH['exist'] = FALSE;
+			
+			IF(!ISSET($_SESSION['token'])) RETURN $AUTH;
 			$WHERE = [];
 			$WHERE['token'] = $_SESSION['token'];
 			$RESULT = DB::SELECT('users', $WHERE);
 			
 			$ROWS = MYSQLI_NUM_ROWS($RESULT);
 
-			IF($ROWS != 1) RETURN [FALSE];			
+			IF($ROWS != 1) RETURN $AUTH;			
 			$ROW = $RESULT->fetch_object();
-			
-			$AUTH = [];
+						
 			$AUTH['exist'] = TRUE;
 			$AUTH['user'] = $ROW;
 			$AUTH['user']->browser = $_SESSION['browser'];
@@ -585,8 +632,9 @@
 	
 	CLASS PRODUCTS {
 		
-		PUBLIC STATIC FUNCTION TYPE($T) {				
-			IF($T > 0 AND $T <= COUNT(LIBTYPES)) RETURN LIBTYPES[$T];
+		PUBLIC STATIC FUNCTION TYPE($T, $S = NULL) {				
+			IF(!$S) $S = LIBTYPES;
+			IF($T > 0 AND $T <= COUNT($S)) RETURN $S[$T];
 			RETURN NULL;
 		}
 		
@@ -609,7 +657,10 @@
 			$PATHWAY = ARRAY_REVERSE($PATHWAY);
 						
 			$TYPE = CAT::GETCATTYPE($DATA->id, $CATEGORIES);
-			$TYPE = SELF::TYPE($TYPE);
+			$TABLE = SELF::TYPE($TYPE);
+			$PRODPAGE = PRODUCTS::TYPE($TYPE, PRODUCTPAGE);
+			
+			
 			IF(!$TYPE) RETURN '[]';
 			
 			$CURPAGE = 1;
@@ -626,10 +677,10 @@
 			
 			$WHEREOR['catid'] = $SUBIDS;
 						
-			$RESULT = DB::SELECT($TYPE, $WHEREOR, $WHEREAND, 'date', $LIMIT);			
+			$RESULT = DB::SELECT($TABLE, $WHEREOR, $WHEREAND, 'date', $LIMIT);			
 			$PRODUCTS = DB::TOARRAY($RESULT);
 			
-			$ROWS = DB::CNT($TYPE, $WHEREOR, $WHEREAND);						
+			$ROWS = DB::CNT($TABLE, $WHEREOR, $WHEREAND);						
 			$NUMPAGES = $ROWS;
 			
 			$OUT['currpage'] = $CURPAGE;
@@ -638,6 +689,7 @@
 			
 			$OUT['products'] = $PRODUCTS;
 			$OUT['pathway'] = $PATHWAY;
+			$OUT['productpage'] = $PRODPAGE;
 						
 			RETURN JSON_ENCODE($OUT);
 		}
@@ -760,6 +812,80 @@
 	}
 	
 	///////////////////////////////////////////////////////
+	// SEARCH CLASS
+	///////////////////////////////////////////////////////
+	
+	CLASS SEARCH {
+		PUBLIC STATIC FUNCTION FASTSEARCH($DATA) {
+			IF(!ISSET($DATA->type) OR !ISSET($DATA->query))RETURN '{}';
+						
+			$OUT = [];
+			
+			$TYPE = PRODUCTS::TYPE($DATA->type);
+			$PRODPAGE = PRODUCTS::TYPE($DATA->type, PRODUCTPAGE);
+			
+			$LIMIT['start'] = 0;
+			$LIMIT['end'] = 7;
+			
+			$COL = [];
+			$COL[] = 'name';
+			$COL[] = 'tags';
+			
+			$WHERE['status'] = 1;
+			$WHERE['pending'] = 0;
+			
+			$FIND = ARRAY_FILTER(EXPLODE(' ', $DATA->query));
+			
+			$RESULT = DB::SELECTLIKE($TYPE, $COL, $FIND, $LIMIT, $WHERE);			
+			$OUT['result'] = DB::TOARRAY($RESULT);
+			$OUT['productpage'] = $PRODPAGE;
+			
+			RETURN JSON_ENCODE($OUT);
+		}
+		
+		PUBLIC STATIC FUNCTION GLOBALSEARCH($DATA) {
+			IF(!ISSET($DATA->type) OR !ISSET($DATA->query))RETURN '{}';
+			IF(!ISSET($DATA->page)) RETURN '{}';
+			IF(!ISSET($DATA->perpage)) RETURN '{}';
+			
+			$OUT = [];
+			
+			$TYPE = PRODUCTS::TYPE($DATA->type);
+			$PRODPAGE = PRODUCTS::TYPE($DATA->type, PRODUCTPAGE);
+			
+			$COL = [];
+			$COL[] = 'name';
+			$COL[] = 'tags';
+			
+			$CURPAGE = 1;
+						
+			IF($DATA->page > 0) $CURPAGE = $DATA->page;
+			$LIMIT['start'] = ($CURPAGE - 1) * $DATA->perpage;
+			$LIMIT['end'] = $DATA->perpage;
+			
+			$WHERE['status'] = 1;
+			$WHERE['pending'] = 0;
+			
+			$FIND = ARRAY_FILTER(EXPLODE(' ', $DATA->query));
+
+			$RESULT = DB::SELECTLIKE($TYPE, $COL, $FIND, $LIMIT, $WHERE);			
+			$OUT['result'] = DB::TOARRAY($RESULT);
+			
+			$ROWS = DB::SELECTLIKE($TYPE, $COL, $FIND, NULL, $WHERE, TRUE);						
+			$NUMPAGES = $ROWS;
+						
+			$OUT['productpage'] = $PRODPAGE;
+			
+			$OUT['currpage'] = $CURPAGE;
+			$OUT['totalitems'] = $NUMPAGES;
+			$OUT['perpage'] = $DATA->perpage;
+			
+						
+			RETURN JSON_ENCODE($OUT);
+		}
+	}
+	
+	///////////////////////////////////////////////////////
 	// HOME CLASS
 	///////////////////////////////////////////////////////
 	
@@ -793,7 +919,8 @@
 			IF(!$TYPE) RETURN '{}';
 			
 			$WHERE['status'] = 1;
-			$RESULT = DB::SELECT('category', $WHERE,[], 'sort');
+						
+			$RESULT = DB::SELECT('category', $WHERE,[], 'sort', NULL, TRUE);
 			$CATEGORIES = DB::TOARRAY($RESULT);
 			$IDS = [];
 			$OUT = [];
@@ -806,6 +933,7 @@
 						IF($C->parent == $CAT->id) {							
 							$IDS[$CAT->name]['id'] = $CAT->id;
 							$IDS[$CAT->name]['type'] = $CAT->type;
+							$IDS[$CAT->name]['sort'] = $CAT->sort;
 							$IDS[$CAT->name]['sub'][$C->name]['id'] = $C->id;
 							$IDS[$CAT->name]['sub'][$C->name]['ids'] = SELF::EXTRACTIDS($CATEGORIES, $C->id);
 						}
@@ -821,13 +949,18 @@
 					
 					$RESULT = DB::SELECT($TYPE, $WHERE, [], 'date', $LIMIT);
 					$RESULT = DB::TOARRAY($RESULT);	
-										
-					$OUT[$K]['id'] = $V['id'];
-					$OUT[$K]['type'] = $V['type'];
-					$OUT[$K]['name'] = $K;
-					$OUT[$K][$K2]['id'] = $V2['id'];
-					$OUT[$K][$K2]['name'] = $K2;
-					$OUT[$K][$K2]['previews'] = SELF::GETTHUMBS($RESULT);
+					$T = SELF::GETTHUMBS($RESULT);
+
+					IF(COUNT($T)) {			
+						$OUT[$K]['child'][$K2]['id'] = $V2['id'];
+						$OUT[$K]['child'][$K2]['name'] = $K2;
+						$OUT[$K]['child'][$K2]['sort'] = $RESULT[0]->date;
+						$OUT[$K]['child'][$K2]['previews'] = $T;
+						$OUT[$K]['id'] = $V['id'];
+						$OUT[$K]['type'] = $V['type'];
+						$OUT[$K]['sort'] = $V['sort'];
+						$OUT[$K]['name'] = $K;
+					}
 				};												
 			}
 			

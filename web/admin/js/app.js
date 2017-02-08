@@ -1,6 +1,6 @@
 /* GLOBAL VARS */
 
-var hostname = 'http://' + window.location.hostname + '/';
+var hostname = window.location.protocol + '//' + window.location.hostname + '/';
 var previewSizes = {'small': 60, 'medium': 200, 'huge': 600};
 
 /* GLOBAL FUNCTIONS */
@@ -154,7 +154,7 @@ app.controller('uploadCtrl', function($scope, FileUploader, vault, $rootScope) {
 		}
 				
 		if(response.response == 'REPLACEFILE') {
-			vault.showMessage('Some files already exist! Press the button replace for needed files!', 'warning');
+			vault.showMessage('Some files already exist. Click "Replace" button if you want to keep the new files or \"Clear\" button to delete from list.', 'warning');
 				
 			angular.forEach(uploader.queue, function(item, key) {
 				  if(fileItem.file.name == item.file.name) {					

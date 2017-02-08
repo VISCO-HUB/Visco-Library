@@ -23,7 +23,7 @@ document.addEventListener("contextmenu", function(e){
    e.preventDefault();
 }, false);
 
-var hostname = 'http://' + window.location.hostname + '/';
+var hostname = window.location.protocol + '//' + window.location.hostname + '/';
 
 var getUrlVars = function (url) {
 	var vars = {};
@@ -45,12 +45,16 @@ app.config(function($routeProvider) {
         templateUrl : 'templates/home.php',
 		controller: 'homeCtrl'
     })
-	 .when('/cat/:catid/:page', {
-        templateUrl : 'templates/cat.php',
-		controller: 'catCtrl'
+	.when('/models/:catid/:page', {
+        templateUrl : 'templates/models.php',
+		controller: 'modelsCtrl'
+    })
+	.when('/search/:query/:page', {
+        templateUrl : 'templates/search.php',
+		controller: 'searchCtrl'
     })
   	.when('/about/', {
-        templateUrl : "templates/about.html",
+        templateUrl : 'templates/about.html',
 		controller: 'aboutCtrl'
     }) 	
 	.otherwise({redirectTo:'/home'});
@@ -72,6 +76,12 @@ app.directive("search", function($rootScope) {
 app.directive("menu", function($rootScope) {	 
     return {
         templateUrl : hostname + 'templates/menu.html'
+    };
+});
+
+app.directive("modelcard", function($rootScope) {	 
+    return {
+        templateUrl : hostname + 'templates/model-card.html'
     };
 });
 
@@ -99,13 +109,26 @@ return {
     }
 }}]);
 
+app.directive('watchChange', function() {
+    return {
+        scope: {
+            onchange: '&watchChange'
+        },
+        link: function(scope, element, attrs) {
+            element.on('input', function() {
+                scope.onchange();
+            });
+        }
+    };
+});
+
 // FILTERS
 
 app.filter('orderObjectBy', function() {
   return function(items, field, reverse) {
     var filtered = [];
-    angular.forEach(items, function(item) {
-      filtered.push(item);
+    angular.forEach(items, function(item) {      	 
+		filtered.push(item);	  
     });
     filtered.sort(function (a, b) {
       return (a[field] > b[field] ? 1 : -1);
@@ -115,6 +138,18 @@ app.filter('orderObjectBy', function() {
   };
 });
 
+
+app.filter('encode', function() {
+	return function(s) {
+		return btoa(s);
+	}
+});
+
+app.filter('decode', function() {
+	return function(s) {
+		return atob(s);
+	}
+});
 
 // CONTROLLERS
 	// ABOUT
@@ -149,9 +184,52 @@ app.controller("msgCtrl", function ($scope, $rootScope, vault) {
 	$rootScope.msg = {};
 });
 
-app.controller("searchCtrl", function ($scope, $rootScope, vault) {
+	// SEARCH
+
+app.controller("fastSearchCtrl", function ($scope, $rootScope, $location, vault) {
 	$rootScope.msg = {};
+
+	//$rootScope.globalQuery = '';
 });
+	
+app.controller("searchCtrl", function ($scope, vault, $rootScope, $location, $routeParams, $timeout, $cookieStore) {
+	$rootScope.isHome = false;
+	
+	$scope.page = $routeParams.page;
+	$rootScope.globalQuery = atob($routeParams.query);
+	
+	$rootScope.breadcrumbs = [];
+	$rootScope.addCrumb('Search', '#/search/');
+			
+	$scope.searchProducts = function(page, perpage, query, filter){				
+		var type = $rootScope.libType;
+		vault.searchProducts(type, page, perpage, query, filter);
+	};
+		
+	$timeout(function(){
+		$scope.currentPage = $scope.page;	
+	}, 50);
+		
+	if(!$cookieStore.get('perpage-home')) {		
+		$cookieStore.put('perpage-home', 24);	
+	};
+	
+	$rootScope.perpage = $cookieStore.get('perpage-home');
+	
+	$scope.searchProducts($scope.page, $rootScope.perpage, $rootScope.globalQuery, $rootScope.searchFilter);
+	
+	$scope.changePage = function() {							
+		$location.path('/search/' + btoa($rootScope.globalQuery) + '/' + $scope.currentPage);		
+	}
+	
+	$scope.changePerPage = function(p) {		
+		$cookieStore.put('perpage-home', p);
+		$rootScope.perpage = p;		
+		
+		$scope.searchProducts($scope.page, $rootScope.perpage, $rootScope.globalQuery, $rootScope.searchFilter);
+	}	
+});
+
 
 	// LOGIN
 app.controller("loginCtrl", function($scope, $rootScope, vault){
@@ -202,9 +280,9 @@ app.controller("homeCtrl", function ($scope, $rootScope, vault, $interval) {
 		if(!v) {return false;}
 		
 		angular.forEach(v, function (value, key) {					
-			angular.forEach(value, function (value2, key2) {				
+			angular.forEach(value.child, function (value2, key2) {				
 				if(value2.name != undefined) {				
-					if(!$scope.activeIndex[value2.id]){$scope.activeImage[value2.id] = value2.previews[0];}
+					if(!$scope.activeIndex[value2.id]){$scope.activeImage[value2.id] = value2.previews[value2.previews.length-1];}
 					
 					$interval(function(){
 						if($scope.activeIndex[value2.id] > value2.previews.length-1 || !$scope.activeIndex[value2.id]){$scope.activeIndex[value2.id] = 0}
@@ -212,16 +290,15 @@ app.controller("homeCtrl", function ($scope, $rootScope, vault, $interval) {
 						var i = $scope.activeIndex[value2.id];
 						$scope.activeImage[value2.id] = value2.previews[i];			
 						$scope.activeIndex[value2.id]++;
-					},  $scope.rnd(3800, 6500));
+					},  $scope.rnd(3000, 7000));					
 				}
 			});
 		});
 	});
-	
 
 });
 
-app.controller("catCtrl", function ($scope, vault, $rootScope, $location, $routeParams, $timeout, $cookieStore) {
+app.controller("modelsCtrl", function ($scope, vault, $rootScope, $location, $routeParams, $timeout, $cookieStore) {
 	$rootScope.isHome = false;
 	
 	$scope.page = $routeParams.page;
@@ -245,7 +322,7 @@ app.controller("catCtrl", function ($scope, vault, $rootScope, $location, $route
 	$scope.getProducts($scope.page, $rootScope.perpage, $scope.catid, $rootScope.catFilter);
 	
 	$scope.changePage = function() {							
-		$location.path('/cat/' + $scope.catid + '/' + $scope.currentPage);		
+		$location.path('/models/' + $scope.catid + '/' + $scope.currentPage);		
 	}
 	
 	$scope.changePerPage = function(p) {		
@@ -254,78 +331,21 @@ app.controller("catCtrl", function ($scope, vault, $rootScope, $location, $route
 		
 		$scope.getProducts($scope.page, $rootScope.perpage, $scope.catid, $rootScope.catFilter);
 	}
-	
-	$scope.placeModel = function(id) {		
-		vault.placeModel(id, $scope.place);				
-	}
-	
+		
 	if(!$cookieStore.get('place-mode')) {		
 		$cookieStore.put('place-mode', 0);	
 	};
 	
-	$scope.place = $cookieStore.get('place-mode');
-	
-	$scope.placename = '';
-	$scope.getPlaceName = function(mode) {
-		switch(mode) {
-			case 1: $scope.placename = 'X-Ref Model';
-			break;
-			case 2: $scope.placename = 'Open Model';
-			break;
-			default: $scope.placename = 'Merge Model';
-			break;
-		}
-	}
-
-	$scope.getPlaceName($scope.place);
-	
-	$scope.changePlace = function(mode) {
-		$scope.getPlaceName(mode);
-		$scope.place = mode;
-		$cookieStore.put('place-mode', mode);
-	}
 	
 	$scope.downloadModel = function(id) {
 		vault.downloadModel(id);
 	}
 	
-	$scope.download = '';
-	
-	$scope.downloadUrl = function(id) {		
-		if($rootScope.auth.rights < 1) {return false;}
-		
-		$scope.download = hostname + 'vault/download.php?id=' + id +'&type=1';
-		
-		$timeout(function() {
-			$scope.download = '';
-		}, 1000);
-	}
-	
-	$scope.modelError = {};
-	
-	$scope.downloadMsg = function() {
-		
-		var t = $("#download").contents().find("body").html();		
-		if(!t.length) {return false;}
-		
-		var j = JSON.parse(t);	
-		v = getUrlVars($scope.download);
-			
-		if(j.responce == "MODELBAD" || j.responce == "MODELNOTEXIST"){			
-			id = v['id'];
-			$scope.modelError[id] = true;
-		}
-			
-		$scope.download = '';
-		$scope.$apply();
-	}
-	
-	
 });
 
 // AUTO RUN
-app.run(function($rootScope, $location, $routeParams, vault) {
-   
+app.run(function($rootScope, $location, $routeParams, $timeout, $cookieStore, vault) {
+      
    $rootScope.menuItemActive = [];
    
    $rootScope.goLogin = function() {
@@ -417,6 +437,150 @@ app.run(function($rootScope, $location, $routeParams, vault) {
 		}		
 	}
 	
+	// PLACE 
+	
+	$rootScope.place = $cookieStore.get('place-mode');
+	
+	$rootScope.placename = '';
+	$rootScope.getPlaceName = function(mode) {
+		switch(mode) {
+			case 1: $rootScope.placename = 'X-Ref Model';
+			break;
+			case 2: $rootScope.placename = 'Open Model';
+			break;
+			default: $rootScope.placename = 'Merge Model';
+			break;
+		}
+	}
+
+	$rootScope.getPlaceName($rootScope.place);
+	
+	$rootScope.changePlace = function(mode) {
+		$rootScope.getPlaceName(mode);
+		$rootScope.place = mode;
+		$cookieStore.put('place-mode', mode);
+	}
+	
+	$rootScope.placeModel = function(id) {		
+		vault.placeModel(id, $rootScope.place);				
+	}
+	
+	// DOWNLOAD
+	
+	$rootScope.download = '';	
+	
+	$rootScope.downloadUrl = function(id, type) {		
+		if($rootScope.auth.rights < 1) {return false;}
+		
+		$rootScope.download = hostname + 'vault/download.php?id=' + id +'&type=' + type;
+		
+		$timeout(function() {
+			$rootScope.download = '';
+		}, 1000);
+	}
+	
+	$rootScope.prodError = {};
+	
+	$rootScope.downloadMsg = function() {
+		
+		var t = $("#download").contents().find("body").html();		
+		if(!t || !t.length) {return false;}
+		
+		var j = JSON.parse(t);	
+		var v = getUrlVars($rootScope.download);
+		
+		if(j.responce == "MODELBAD" || j.responce == "MODELNOTEXIST"){			
+			var id = v['id'];
+			$rootScope.$apply(function(){$rootScope.prodError[id] = true});						
+		}	
+		
+		$rootScope.download = '';		
+	}
+	
+	// SEARCH
+
+	$rootScope.doFastSearch = function(q) {				
+		$rootScope.showResults = false;
+				
+		if(!q || q.length < 2) {
+			$rootScope.fastSearch = {};			
+			return false;
+		}
+		
+		$rootScope.showResults = true;
+		vault.fastSearch(q, $rootScope.libType);
+	}
+	
+	$rootScope.onListEnter = function(s) {
+		$rootScope.listEnter = s;
+	}
+	
+	$(document).keydown(function(e){ 		
+		
+		if(e.which == 40){
+			$rootScope.showResults = true;
+			
+			if($(".fast-result a.active").length != 0) {
+				var storeTarget = $('.fast-result').find("a.active").next();
+				$(".fast-result a.active").removeClass("active");
+				storeTarget.addClass("active");
+			}
+			else {
+				$('.fast-result').find("a:first").addClass("active");
+			}
+		}
+		
+		if(e.which == 38){
+			if($(".fast-result a.active").length != 0) {
+				var storeTarget = $('.fast-result').find("a.active").prev();
+				$(".fast-result a.active").removeClass("active");
+				storeTarget.addClass("active");
+			}
+			else {
+				$('.fast-result').find("a:first").addClass("active");
+			}
+		}
+	});
+		
+	$rootScope.bindSearchEvent = function() {
+		// Angular not working with WebBrowser Component!
+		$('#fast-search').unbind('input');
+		$('#fast-search').bind('input', function(){
+			var v = $(this).val();
+			$rootScope.globalQuery = v;	
+			$rootScope.doFastSearch(v);			
+		});
+				
+		
+		var v = $('#fast-search').val();
+		$rootScope.globalQuery = v;
+	}	
+	
+	$rootScope.showHideResults = function(show) {			
+		$rootScope.showResults = show;
+		if(show == false && $rootScope.listEnter) {
+			$rootScope.showResults = true;
+			
+		} else {
+			$rootScope.bindSearchEvent();
+		}		
+	}
+	
+	$rootScope.goSearch = function() {
+		$rootScope.bindSearchEvent();
+
+		if($rootScope.showResults == true) {
+			if($(".fast-result a.active").length != 0) {
+				var href = $('.fast-result').find("a.active").attr('href');
+				$location.path(href);
+				
+				return false;
+			}						
+		}
+		
+		$location.path('/search/' + btoa($rootScope.globalQuery) + '/1');
+	}
+
 	
    $rootScope.$watch(function() { 
         return $location.path(); 
@@ -425,17 +589,21 @@ app.run(function($rootScope, $location, $routeParams, vault) {
 			
 		// INIT
 				
-		$rootScope.msg = {};
-						
-		$rootScope.globals = {};
-				
-		$rootScope.showOverlayMenu = false;
-			
-		if(!$rootScope.categories) {vault.getCat();}
-				
+		$rootScope.msg = {};						
+		$rootScope.globals = {};				
+		$rootScope.showOverlayMenu = false;			
+		if(!$rootScope.categories) {vault.getCat();}				
 		$rootScope.breadcrumbs = [];
 		$rootScope.menuItem = [];				
 		$rootScope.activeMenuId = [];
+		$rootScope.globalQuery = '';
+		$rootScope.download = '';		
+		$rootScope.fastSearch = {};	
+		$rootScope.listEnter = false;
+		$rootScope.showResults = false;
+		$rootScope.prodError = {};
+
+		$rootScope.bindSearchEvent();
     });
 });
 
@@ -469,7 +637,7 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 			break;
 			case 'RESTRICTED': s.error = 'This user is not allowed!';
 			break;
-			case 'NORIGHTS': s.error = 'You have no rights for make changes!';
+			case 'NORIGHTS': s.error = 'You have no rights view this content!';
 			break;
 			case 'MODELNOTEXIST': s.error = 'Error! Model not found. Please report about this model!';
 			break;
@@ -483,7 +651,12 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 			url: hostname + 'vault/handle.php?query=' + query + '&time=' + new Date().getTime(),
 			method: "POST",
 			data: json
-		});
+		}).then(function(r) {					
+				console.log(r.data);
+				if(r.data.responce == 'RESTRICTED') {$rootScope.goLogin(); return false;}
+				return r;
+			}			
+		);
 	}
 	
 	var httpGet = function(query) {		
@@ -502,7 +675,11 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 					$rootScope.goHome();
 				}, 200);
 			}
-
+			
+			if(m == 'RESTRICTED') {
+				$rootScope.goLogin();
+			}
+			
 			responceMessage(r.data);			
 		},
 		function(r){
@@ -547,7 +724,6 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		var json = {'type': type};
 		
 		HttpPost('HOMEGET', json).then(function(r){						
-			console.log(r.data);
 			$rootScope.homePreviews = r.data;
 						
 			responceMessage(r.data);
@@ -562,7 +738,6 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		var json = {'page': page, 'perpage': perpage, 'filter': filter, 'id': id};
 		
 		HttpPost('PRODGET', json).then(function(r){						
-			console.log(r.data)
 			$rootScope.products = r.data;									
 						
 			$rootScope.activeMenuId = [];
@@ -570,12 +745,26 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 						
 			if(r.data.pathway) {
 				angular.forEach(r.data.pathway, function(item) {
-					$rootScope.addCrumb(item.name, ('#/cat/' + item.id + '/1'));
+					$rootScope.addCrumb(item.name, ('#/models/' + item.id + '/1'));
 					$rootScope.activeMenuId.push(item.id);
 				});				
 			}
 			
 			$rootScope.setActiveMenu();
+			
+			responceMessage(r.data);
+		},
+		function(r){
+			responceMessage(r);
+		});
+	}
+	
+	var searchProducts = function(type, page, perpage, query, filter) {
+			
+		var json = {'page': page, 'perpage': perpage, 'filter': filter, 'query': query, 'type': type};
+		
+		HttpPost('GLOBALSEARCH', json).then(function(r){						
+			$rootScope.products = r.data;									
 			
 			responceMessage(r.data);
 		},
@@ -593,11 +782,8 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		var json = {'id': id};
 		
 		HttpPost('ADDMODEL', json).then(function(r){						
-			console.log(r.data)
 				
 			if(r.data.file) {						
-				//window.external.text = (mode ? 'xref_model=' : 'merge_model=') + r.data.file + '#' + new Date().getTime();								
-				
 				var cmd = '';
 				
 				switch(mode) {
@@ -634,7 +820,6 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		var json = {'id': id};
 		
 		HttpPost('DOWNLOADMODEL', json).then(function(r){						
-			console.log(r.data)
 				
 			responceMessage(r.data);
 		},
@@ -642,6 +827,14 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 			responceMessage(r);
 		});
 	}
+	
+	var fastSearch = function(query, type)
+	{		
+		var json = {'query': query, 'type': type};
+		HttpPost('FASTSEARCH', json).then(function(r){
+			$rootScope.fastSearch = r.data;
+		});
+	};
 	
 	return {
 		responceMessage: responceMessage,
@@ -654,7 +847,9 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		getHomeProd: getHomeProd,
 		getProducts: getProducts,
 		placeModel: placeModel,
-		downloadModel: downloadModel
+		downloadModel: downloadModel,
+		fastSearch: fastSearch,
+		searchProducts: searchProducts
 	};
 });
 

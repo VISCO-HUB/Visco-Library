@@ -41,7 +41,12 @@
 			<span ng-show="prod.status==1 && prod.pending!=1" class="label label-success pointer" ng-click="prodSetParam('status', '0', prod.id)">Enabled</span>
 			<span ng-show="prod.pending==1" class="label label-warning pointer" ng-click="prodSetParam('pending', '0', prod.id)">Pending</span></td>
 			<td> {{tm(prod.date)}} </td>
-			<td><a href="#/models-edit/{{prod.id}}/{{currentPage}}">Edit</a> &nbsp;&nbsp;|&nbsp;&nbsp; <a href="" ng-click="prodDelete(prod.id, prod.name)">Delete</a></td>
+			<td><a href="#/models-edit/{{prod.id}}/{{currentPage}}">Edit</a> 
+				|
+				<a href="" ng-click="prodDelete(prod.id, prod.name)">Delete</a>
+				|
+				<a href="/#/model/{{prod.id}}}" target="_blank">View</a></td>
+			</td>
 		</tr>
 	</table>
 </div>

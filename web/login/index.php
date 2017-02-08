@@ -14,7 +14,7 @@
 	<link rel="icon" href="img/favicon.ico" type="image/x-icon">
     <title>Assets Library Login</title>
     <!--<link rel="stylesheet" type="text/css" href="css/template.css">-->	   
-	<script src="http://code.jquery.com/jquery-latest.js"></script>
+	<script src="../js/jquery-latest.js"></script>
 	<script type="text/javascript" src="../js/angular.min.js"></script>	
     <script type="text/javascript" src="../js/angular-route.min.js"></script>
     <script type="text/javascript" src="../js/angular-sanitize.min.js"></script>    

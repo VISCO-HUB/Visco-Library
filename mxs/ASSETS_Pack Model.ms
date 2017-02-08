@@ -43,7 +43,7 @@ global _URL = "http://svg-web-003/"
 global _SAVEPATH = @"C:\temp\Assets Library\"
 
 try(closeRolloutFloater rAssetsLibraryModelPack)catch()
-global rAssetsLibraryModelPack = newRolloutFloater "Pack Model" 280 700
+global rAssetsLibraryModelPack = newRolloutFloater "Pack Model" 280 720
 
 /* GLOBALS */
 
@@ -67,10 +67,12 @@ global modellers = #()
 global models= #()
 global projects = #()
 global manufacturers = #()
+global clients = #()
 global sPreviewPath = #()
 global bMainPreview = #()
 global sOverview = ""
 global sCustom1 = ""
+global sClient = ""
 global zipper
 	
 global sModelName = ""
@@ -84,10 +86,50 @@ global bAnimated = false
 global bBakedTextures = false
 global bLods = false
 global bUnwrap = false
+global bLights = false
 
 global iCat1 = 1
 global iCat2 = 1
 global iCat3 = 1
+
+global catId1 = 1
+global catId2 = 1
+global catId3 = 1
+
+ fn useSettings k p w =
+(
+	/*
+		useSettings "key" "value/int/float/bool/bool_not" "r/w" 
+	*/
+	
+	u = sysInfo.username
+	d = getFilenamePath  (getThisScriptFilename())
+	n = filenameFromPath (getThisScriptFilename())			
+	settingsFile = d + @"ini\" + u + "_" + n + ".ini"
+		
+	v = maxVersion()
+	v = 2000 + ((v[1] / 1000) - 2)
+	
+	t = v as string
+	
+	case w of
+	(
+		"r":
+		(
+			s = getINISetting settingsFile t k
+			case p of
+			(
+				"int": return s as integer
+				"float": return s as float
+				"bool": if s == "true" or s.count < 1 then true else false
+				"bool_not": if s == "true" then true else false
+				
+				default: return s
+			)
+		)
+		default: return setINISetting settingsFile t k (p as string)
+	)
+)	
 
 /* CLASSES */
 
@@ -167,6 +209,8 @@ struct zip
 	)
 )
 
+/* MAIN FUNCTIONS */
+
 fn getScriptInfo s releaseInfo: "" =
 (		
 	if(releaseInfo != "") do
@@ -187,7 +231,20 @@ fn getScriptInfo s releaseInfo: "" =
 	return #(n, a, v, o, r, c, h)
 )
 
-/* MAIN FUNCTIONS */
+
+fn showTooltip c t =
+(
+	toolTip = dotnetobject "System.Windows.Forms.ToolTip"
+	toolTip.SetToolTip c t   
+	toolTip.Active = true    
+	toolTip.isBalloon = true
+	toolTip.InitialDelay = 0
+	toolTip.AutoPopDelay = 500
+	toolTip.ReshowDelay = 0
+	toolTip.ToolTipTitle = "Warning!"
+	toolTip.Show t c 3000	
+	toolTip.ToolTipIcon = (dotnetclass "System.Windows.Forms.ToolTipIcon").Warning
+)
 
 fn invalidBitmap b = 
 (	
@@ -284,7 +341,7 @@ fn getProp p type: #text =
 	(
 		#bool: return false
 		#text: return ""
-		#int: return 1
+		#int: return 0
 		#negative: return -1
 		#array: return #("")
 		default: ""
@@ -295,7 +352,7 @@ fn isSelected =
 (
 	if(selection.count < 1) do 
 	(
-		messageBox "Please select model!" title: "Warning!"
+		--messageBox "Please select model!" title: "Warning!"
 		return false
 	)
 	
@@ -309,7 +366,7 @@ fn isGroup s =
 	return s
 )
 
-fn isValidText t title: "" =
+fn isValidText t component =
 (
 	c = for i in 1 to t.count where findString szGoodChars t[i] == undefined collect t[i]
 
@@ -318,8 +375,8 @@ fn isValidText t title: "" =
 		c = makeUniqueArray c
 		m = "Unsupported symbols:"
 		for i in c do m += " " + i
-			
-		messageBox m title: title
+				
+		showTooltip component m
 		return false
 	)
 	
@@ -469,10 +526,15 @@ fn saveAllProp =
 	saveProp "cbxBakedTextures" bBakedTextures
 	saveProp "cbxLods" bLods
 	saveProp "cbxUnwrap" bUnwrap
+	saveProp "cbxLights" bLights
 	
 	saveProp "ddlLib" iCat1
 	saveProp "ddlCat" iCat2
 	saveProp "ddlSubCat" iCat3
+	
+	saveProp "catId1" (if(iCat1 > 0) then category1[iCat1][1] else -1)
+	saveProp "catId2" (if(iCat2 > 0) then category2[iCat2][1] else -1)
+	saveProp "catId3" (if(iCat3 > 0) then category3[iCat3][1] else -1)
 		
 	saveProp "category1" (implodeCat category1)
 	saveProp "category2" (implodeCat category2)
@@ -638,9 +700,11 @@ rollout _STEP1 "STEP 1: Model Transform"
 	
 	progressBar hr "" height: 3 offset:[0,15]
 	button btnNext "Next >>" align: #right  enabled: true	
+	dotnetcontrol nextWarn "System.Windows.Forms.Button" height:0 width:0 align: #right
+	
 	on btnNext pressed do 
 	(
-		if(not isSelected()) do return false	
+		if(not isSelected()) do return showTooltip nextWarn "Please select model!"
 			
 		goStep 2
 	)
@@ -661,7 +725,7 @@ rollout _STEP2 "STEP 2: Model Info"
 		
 		label lbl8 "Sub Category:" align: #left across: 2 
 		dotNetControl lblWarn5 "System.Windows.Forms.Label" text: "*" offset: [-51, 0] 
-		dropdownlist ddlSubCat ""
+		dropdownlist ddlSubCat ""		
 	)
 	
 	group "Model Info"
@@ -685,20 +749,22 @@ rollout _STEP2 "STEP 2: Model Info"
 		button btnTag4 "" visible: false width: 60 border: false
 	)
 	
-	group "Additional Info"
+	group "Model Properties"
 	(
 		checkbox cbxUnwrap "Unwrap"
+		checkbox cbxLights "Lights"
 		checkbox cbxRigged "Rigged"
 		checkbox cbxAnimated "Animated"
 		checkbox cbxBakedTextures "Baked Textures"
 		checkbox cbxLods "Lods"
 		
 	)
-	
+		
 	timer tmr1 "Tmr1" active: false interval: 300
 	progressBar hr "" height: 3 offset:[0,15]
 	button btnPrev "<< Back" align: #left  across: 2
 	button btnNext "Next >>" align: #right  enabled: true 
+	dotnetcontrol nextWarn "System.Windows.Forms.Button" height:0 width:0 align: #right
 	
 	global bgErrorColor = getColor 255 229 153
 	global fgErrorColor = getColor 215 144 0
@@ -733,7 +799,7 @@ rollout _STEP2 "STEP 2: Model Info"
 		(
 			i.backColor = bg
 			i.foreColor = i.foreColor.red
-		)
+		)				
 	)
 	
 	
@@ -766,66 +832,13 @@ rollout _STEP2 "STEP 2: Model Info"
 			b.SelectionStart = (b.text.count)
 		)
 		else
-		(
-			messageBox "Tag already exist!" title: "Warning!"
+		(			
+			showTooltip edtTags "Tag already exist!"
 		)
 		
 		setFocus b
 	)
 	
-	on btnNext pressed do 
-	( 						
-		sModelName = edtModelName.text		
-		sManufacturer = edtManufacturer.text
-		sModeller = edtModeller.text
-		sProject = edtProject.text
-		sTags = edtTags.text
-
-		bRigged = cbxRigged.checked
-		bAnimated = cbxAnimated.checked
-		bBakedTextures = cbxBakedTextures.checked
-		bLods = cbxLods.checked
-		bUnwrap = cbxUnwrap.checked
-			
-		iCat1 = ddlLib.selection
-		iCat2 = ddlCat.selection
-		iCat3 = ddlSubCat.selection
-
-		if(catID == -1) do return messageBox "Please select the category!" title: "Warning!"		
-		if(sModelName.count == 0) do return messageBox "Please enter correct Model Name!" title: "Warning!"		
-		if(sTags.count == 0) do return messageBox "Please enter few tags!" title: "Warning!"
-				
-		if(not isValidText sModelName title: "Model Name") do return false 
-		if(not isValidText sManufacturer title: "Manufacturer") do return false 
-		if(not isSelected()) do return false
-			
-		saveAllProp()
-		
-		goStep 3	
-	)
-	
-	on btnPrev pressed do
-	(
-		goStep 1
-	)
-	
-	on edtTags TextChanged s a do
-	(		
-		t = findTag edtTags.text		
-		if(t.count == 0) do return false
-		setTagText t	
-	)
-	
-	on edtTags KeyUp s e do
-	(
-		if(e.KeyCode == Keys.Enter) do (			
-			if(btnTag1.visible == true) do addTag btnTag1 edtTags	
-		)
-	)
-	
-	on edtModelName LostFocus s a do isValidText (edtModelName.text) title: "Model Name"
-	on edtManufacturer LostFocus s a do isValidText (edtManufacturer.text) title: "Manufacturer"
-		
 	fn getList s = 
 	(
 		l = filterString s ";"
@@ -865,6 +878,151 @@ rollout _STEP2 "STEP 2: Model Info"
 		return filterString r ";"
 	)
 	
+	fn findIndex c id =
+	(
+		for i in 1 to c.count where c[i][1] == id as string do return i
+		return -1
+	)
+	
+	fn ddlLib_selected v =
+	(		
+		catID = -1
+		ddlCat.items = #()
+		ddlSubCat.items = #()
+		category2 = getCat (category1[v][1])	
+				
+		useSettings "CAT1"	category1[v][1] "w"	
+		
+		ddlCat.items = for i in category2 collect i[2]
+	)
+	
+	fn ddlCat_selected v =
+	(
+		catID = -1		
+		ddlSubCat.items = #()
+		category3 = getCat (category2[v][1])	
+		
+		useSettings "CAT2"	category2[v][1] "w"	
+				
+		ddlSubCat.items = for i in category3 collect i[2]
+	)
+	
+	fn ddlSubCat_selected v = 
+	(
+		useSettings "CAT3"	category3[v][1] "w"	
+		catID = category3[v][1] as integer
+	)
+	
+	fn loadCategories =
+	(
+		catID = -1
+		category1 = getCat 0
+		
+		ddlLib.items = for i in category1 collect i[2]		
+		id = findIndex category1 catId1	
+		if(id > 0) do (
+			ddlLib_selected id
+			ddlLib.selection = id
+			
+			id = findIndex category2 catId2
+			if(id > 0) do (
+				ddlCat_selected id
+				ddlCat.selection = id
+				
+				id = findIndex category3 catId3
+				if(id > 0) do (
+					ddlSubCat_selected id
+					ddlSubCat.selection = id
+					catID = category3[id][1] as integer
+				)
+			)
+		)	
+	)
+	
+	fn detectLights =
+	(
+		for i in selection where superClassOf i == light do 
+		(
+			cbxLights.checked = true
+			bLights = true
+		)
+	)
+	
+	fn detectAnimation =
+	(
+		a = false
+		
+		for i in selection do 
+		(		
+			if(numKeys i.pos.controller > 0) do a = true
+			if(numKeys i.rotation.controller > 0) do a = true
+			if(numKeys i.scale.controller > 0) do a = true
+		)
+		
+		cbxAnimated.checked = a
+		bAnimated = a
+	)
+	
+	on btnNext pressed do 
+	( 						
+		sModelName = edtModelName.text		
+		sManufacturer = edtManufacturer.text
+		sModeller = edtModeller.text
+		sProject = edtProject.text
+		sTags = edtTags.text
+
+		bRigged = cbxRigged.checked
+		bAnimated = cbxAnimated.checked
+		bBakedTextures = cbxBakedTextures.checked
+		bLods = cbxLods.checked
+		bUnwrap = cbxUnwrap.checked
+		bLights = cbxLights.checked
+			
+		iCat1 = ddlLib.selection
+		iCat2 = ddlCat.selection
+		iCat3 = ddlSubCat.selection
+		
+		if(iCat1 > 0) do catId1 = category1[iCat1][1]
+		if(iCat2 > 0) do catId2 = category2[iCat1][1]
+		if(iCat3 > 0) do catId3 = category3[iCat1][1]
+
+		print catID
+
+		if(catID == -1) do return showTooltip lblWarn5 "Please select the category!"
+		if(sModelName.count == 0) do return showTooltip edtModelName "Please enter correct model name!"
+		if(sTags.count == 0) do 	return showTooltip edtTags "Please enter few tags!" 
+				
+		if(not isValidText sModelName edtModelName) do return false 
+		if(not isValidText sManufacturer edtManufacturer) do return false 
+		if(not isSelected()) do return showTooltip nextWarn "Please select model!"
+			
+		saveAllProp()
+		
+		goStep 3	
+	)
+	
+	on btnPrev pressed do
+	(
+		goStep 1
+	)
+	
+	on edtTags TextChanged s a do
+	(		
+		t = findTag edtTags.text		
+		if(t.count == 0) do return false
+		setTagText t	
+	)
+	
+	on edtTags KeyUp s e do
+	(
+		if(e.KeyCode == Keys.Enter) do (			
+			if(btnTag1.visible == true) do addTag btnTag1 edtTags	
+		)
+	)
+	
+	on edtModelName LostFocus s a do isValidText (edtModelName.text) edtModelName
+	on edtManufacturer LostFocus s a do isValidText (edtManufacturer.text) edtManufacturer
+		
 	on _STEP2 open do
 	(	
 		initDotNet()
@@ -880,37 +1038,38 @@ rollout _STEP2 "STEP 2: Model Info"
 		cbxBakedTextures.checked = getProp "cbxBakedTextures" type: #bool
 		cbxLods.checked = getProp "cbxLods" type: #bool
 		cbxUnwrap.checked	= getProp "cbxUnwrap" type: #bool
+		cbxLights.checked	= getProp "cbxLights" type: #bool
+				
+		catId1 = getProp "catId1" type: #int
+		catId2 = getProp "catId2" type: #int
+		catId3 = getProp "catId3" type: #int
 		
-		category1 = explodeCat (getProp "category1")
-		category2 = explodeCat (getProp "category2")
-		category3 = explodeCat (getProp "category3")
-		
-		ddlLib.items = for i in category1 collect i[2]
-		ddlCat.items = for i in category2 collect i[2]
-		ddlSubCat.items = for i in category3 collect i[2]
-		
-		ddlLib.selection = getProp "ddlLib" type: #int
-		ddlCat.selection = getProp "ddlCat" type: #int
-		ddlSubCat.selection = getProp "ddlSubCat" type: #int
+		if(catId1 == 0 and catId2 == 0 and catId3 == 0) do 
+		(
+			catId1 = useSettings "CAT1" "int" "r"
+			catId2 = useSettings "CAT2" "int" "r"
+			catId3 = useSettings "CAT3" "int" "r"
+		)
 		
 		catID = (getProp "catID" type: #negative) as integer
 		
 		tmr1.active = true	
 	
 		zipper = zip()
+
+		detectLights()
+		detectAnimation()		
 	)
 		
 	on _STEP2 close do
 	(
 	
 	)
-	
+		
 	on tmr1 tick do
-	(	
-		category1 = getCat 0
-				
-		ddlLib.items = for i in category1 collect i[2]
-			
+	(		
+		loadCategories()
+		
 		tags = getTagsList()			
 		modellers = getModellerList()
 		
@@ -924,39 +1083,31 @@ rollout _STEP2 "STEP 2: Model Info"
 				appendIfUnique models t[1]
 				appendIfUnique manufacturers t[2]
 				appendIfUnique projects t[3]
+				appendIfUnique clients t[4]
 			)
 		)
-		
-		
+			
 		edtProject.AutoCompleteCustomSource.AddRange projects
 		edtModelName.AutoCompleteCustomSource.AddRange models
 		edtManufacturer.AutoCompleteCustomSource.AddRange manufacturers
-					
+		
 		tmr1.active = false
 	)
 	
-	on ddlLib selected v do
-	(
-		ddlCat.items = #()
-		ddlSubCat.items = #()
-		category2 = getCat (category1[v][1])	
-				
-		ddlCat.items = for i in category2 collect i[2]
+	on ddlLib selected v do 
+	(	
+		ddlCat.selection = 0
+		ddlSubCat.selection = 0
+		
+		ddlLib_selected v	
 	)
-	
-	on ddlCat selected v do
-	(
-		ddlSubCat.items = #()
-		category3 = getCat (category2[v][1])	
-				
-		ddlSubCat.items = for i in category3 collect i[2]
+	on ddlCat selected v do 
+	(	
+		ddlSubCat.selection = 0
+		ddlCat_selected v
 	)
+	on ddlSubCat selected v do ddlSubCat_selected v
 
-	
-	on ddlSubCat selected v do
-	(
-		catID = category3[v][1]
-	)
 	
 	on btnTag1 pressed do addTag btnTag1 edtTags
 	on btnTag2 pressed do addTag btnTag2 edtTags
@@ -971,12 +1122,20 @@ rollout _STEP3 "STEP 3: Model Overview"
 	(
 		dotNetControl edtOverview "System.Windows.Forms.TextBox"  height: 250
 	)
+	group "Additional Info"
+	(
+		label lbl1 "Client:" align: #left		
+		dotNetControl edtClient "System.Windows.Forms.TextBox" height: 25 tabstop: true
+	)
+	
 	group "Custom Attributes"
 	(
-		label lbl1 "Custom 1:" align: #left				
+		label lbl2 "Custom 1:" align: #left				
 		dotNetControl edtCustom1 "System.Windows.Forms.TextBox" height: 25 tabstop: true
-		label lbl2 "Ex.: Collection, Unique ID,  Alternative Name..." align: #left
+		label lbl3 "Ex.: Collection, Unique ID,  Alternative Name..." align: #left
 	)
+	timer tmr1 "Tmr1" active: false interval: 300
+	
 	on _STEP3 open do
 	(
 		edtOverview.MultiLine = true
@@ -987,6 +1146,7 @@ rollout _STEP3 "STEP 3: Model Overview"
 		
 		edtOverview.text = getProp "edtOverview"
 		edtCustom1.text = getProp "edtCustom1"
+		edtClient.text = getProp "edtClient"
 	)
 	
 	on edtOverview keyPress s a do
@@ -1001,23 +1161,35 @@ rollout _STEP3 "STEP 3: Model Overview"
 	progressBar hr "" height: 3 offset:[0,15]
 	button btnPrev "<< Back" align: #left  across: 2
 	button btnNext "Next >>" align: #right  enabled: true	
+	dotnetcontrol nextWarn "System.Windows.Forms.Button" height:0 width:0 align: #right
+	
 	on btnPrev pressed do 
 	(	
 		sOverview = edtOverview.text
 		sCustom1 = edtCustom1.text
+		sClient = edtClient.text
 		goStep 2		
 	)
 	on btnNext pressed do 
 	(
-		if(not isSelected()) do return false
+		if(not isSelected()) do return showTooltip nextWarn "Please select model!"
 					
 		sOverview = edtOverview.text			
 		sCustom1 = edtCustom1.text			
+		sClient = edtClient.text			
 		
 		saveProp "edtOverview" sOverview
 		saveProp "edtCustom1" sCustom1
+		saveProp "edtClient" sClient
 			
 		goStep 4	
+	)
+	
+	on tmr1 tick do
+	(						
+		try(edtClient.AutoCompleteCustomSource.AddRange clients)catch()
+		
+		tmr1.active = false
 	)
 )
 
@@ -1037,11 +1209,13 @@ rollout _STEP4 "STEP 4: Preview"
 	progressBar hr "" height: 3 offset:[0,15]
 	button btnPrev "<< Back" align: #left  across: 2
 	button btnNext "Next >>" align: #right  enabled: true	
+	dotnetcontrol nextWarn "System.Windows.Forms.Button" height:0 width:0 align: #right
+	
 	on btnPrev pressed do goStep 3		
 	on btnNext pressed do 
 	(	
-		if(not isSelected()) do return false
-		if(sPreviewPath.count == 0) do return messageBox "Please add at least one image!" title: "Warning!"
+		if(not isSelected()) do return showTooltip nextWarn "Please select model!"
+		if(sPreviewPath.count == 0) do return showTooltip btmPreview "Please add at least one image!\nPress the \"Add New Picture\" button!"
 					
 		saveProp "sPreviewPath" (implode sPreviewPath)
 		saveProp "bMainPreview" (implode bMainPreview)
@@ -1226,17 +1400,25 @@ rollout _STEP5 "STEP 5: Pack Model"
 		dotNetControl _lblBaked "System.Windows.Forms.Label" text: "" 
 		
 		dotNetControl lbl15 "System.Windows.Forms.Label" text: "Unwrap:" across: 2 
-		dotNetControl _lblUnwrap "System.Windows.Forms.Label" text: "" 
+		dotNetControl _lblUnwrap "System.Windows.Forms.Label" text: "" 	
 		
-		dotNetControl lbl16 "System.Windows.Forms.Label" text: "Lods:" across: 2 
+		dotNetControl lbl16 "System.Windows.Forms.Label" text: "Lights:" across: 2 
+		dotNetControl _lblLights "System.Windows.Forms.Label" text: "" 
+		
+		dotNetControl lbl17 "System.Windows.Forms.Label" text: "Lods:" across: 2 
 		dotNetControl _lblLods "System.Windows.Forms.Label" text: "" 
 		
-		dotNetControl lbl17 "System.Windows.Forms.Label" text: "Custom 1:" across: 2 offset: [0, 20]
-		dotNetControl _lblCustom1 "System.Windows.Forms.Label" text: "" offset: [0, 20]
 
+		dotNetControl lbl18 "System.Windows.Forms.Label" text: "Client:" across: 2 offset: [0, 20]
+		dotNetControl _lblClient "System.Windows.Forms.Label" text: "" offset: [0, 20]	
+
+		dotNetControl lbl19 "System.Windows.Forms.Label" text: "Custom 1:" across: 2 
+		dotNetControl _lblCustom1 "System.Windows.Forms.Label" text: "" 
 	)
 	
-	button btnPackModel "Pack Model" width: 244 height: 45
+	button btnPackModel "Pack Model" width: 244 height: 45 align: #left across: 2
+	dotnetcontrol warnMsg "System.Windows.Forms.Button" height:0 width:0 offset: [0, 25]
+	
 		
 	fn getNA t = if(t == "" or t.count == 0) then "N/A" else t
 	fn getYesNo t = if(t == true) then "Yes" else "No"
@@ -1297,9 +1479,11 @@ rollout _STEP5 "STEP 5: Pack Model"
 		_lblAnimated.text = getYesNo bAnimated
 		_lblBaked.text = getYesNo bBakedTextures
 		_lblUnwrap.text = getYesNo bUnwrap
+		_lblLights.text = getYesNo bLights
 		_lblLods.text = getYesNo bLods
 		_lblFormat.text = (getMaxVersion())[1]
 		_lblCustom1.text = getNA sCustom1
+		_lblClient.text = getNA sClient
 	)
 		
 	fn checkTexturesError =
@@ -1312,7 +1496,10 @@ rollout _STEP5 "STEP 5: Pack Model"
 			for type in BitmapTypes where classOf type == textureMap do
 			(
 				for b in getClassInstances type target:i where b != undefined do
-				(				
+				(
+					try(b.coords.coords.realWorldScale = false)catch()
+					try(b.coords.realWorldScale = false)catch()
+					
 					if(invalidBitmap b and findItem oldTex b == 0) then
 					(										
 						append errorTex #("empty file name path! Map: " + b.name, i.name) 
@@ -1521,6 +1708,7 @@ rollout _STEP5 "STEP 5: Pack Model"
 		setIniSetting f "INFO" "DIMENSION" d
 		setIniSetting f "INFO" "PROJECT" (getNA sProject)
 		setIniSetting f "INFO" "CUSTOM1" sCustom1
+		setIniSetting f "INFO" "CLIENT" sClient
 		setIniSetting f "INFO" "RIGGED" (getYesNo bRigged)
 		setIniSetting f "INFO" "LODS" (getYesNo bLods)
 		setIniSetting f "INFO" "MODELLER" (getNA sModeller)
@@ -1528,8 +1716,9 @@ rollout _STEP5 "STEP 5: Pack Model"
 		setIniSetting f "INFO" "MANUFACTURER" (getNA sManufacturer)
 		setIniSetting f "INFO" "OVERVIEW" o
 		setIniSetting f "INFO" "UNWRAP" (getYesNo bUnwrap)
+		setIniSetting f "INFO" "LIGHTS" (getYesNo bLights)
 		setIniSetting f "INFO" "PREVIEW" (getYesNo (sPreviewPath.count > 0))
-		
+				
 		iCnt = 0	
 		for i in previewList do 
 		(
@@ -1541,12 +1730,12 @@ rollout _STEP5 "STEP 5: Pack Model"
 	
 	on btnPackModel pressed do
 	(
-		if(not isSelected()) do return false
+		if(not isSelected()) do return showTooltip warnMsg "Please select model!"
 		fileToLoad = maxFilePath + maxFileName
-		if(fileToLoad.count < 1) do return messageBox "Please save scene!" title: "Warning!"
-		if(sModelName.count < 1) do return messageBox "Please specify Model Name in STEP 1!" title: "Warning!"
-		if(sTags.count < 1) do return messageBox "Please specify Tags in STEP 1!" title: "Warning!"
-		if(catID == -1) do return messageBox "Please select the category in STEP 1!" title: "Warning!"	
+		if(fileToLoad.count < 1) do  return showTooltip warnMsg "Please save scene!"
+		if(sModelName.count < 1) do return showTooltip warnMsg "Please specify Model Name in STEP 1!" 
+		if(sTags.count < 1) do return showTooltip warnMsg "Please specify Tags in STEP 1!" 
+		if(catID == -1) do return showTooltip warnMsg "Please select the category in STEP 1!"
 		max file save
 		
 		-- Set paths
@@ -1625,6 +1814,7 @@ rollout _STEP5 "STEP 5: Pack Model"
 		
 		f = szExport + szName + r[1] + ".fbx"
 		FBXExporterSetParam "FileVersion" "FBX201200"	-- Warning!! This option important!!
+		ungroupRecursive objects
 		exportFile f #noPrompt  --selectedOnly:true
 		
 		createInfo szDir previewList

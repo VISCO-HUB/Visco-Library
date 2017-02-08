@@ -13,7 +13,9 @@
 		ECHO '|';
 		ECHO $MODEL->manufacturer;	
 		ECHO '|';
-		ECHO $MODEL->project;			
+		ECHO $MODEL->project;		
+		ECHO '|';
+		ECHO $MODEL->client;		
 		ECHO ';';		
 	}
 	

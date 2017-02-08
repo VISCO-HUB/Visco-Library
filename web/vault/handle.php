@@ -35,12 +35,13 @@
 	
 	// CHEK USER
 	$AUTH = AUTH::CHECK();
-	$ISUSER = $AUTH['exist'] == TRUE AND $AUTH['user']->status == 1 AND $AUTH['user']->rights >= 0;
+	$ISALLOW = $AUTH['user']->status == 1;
+	$ISUSER =  $AUTH['user']->rights >= 0;
 	$ISADMIN = $AUTH['user']->rights >= 1;
 	$ISSUPERADMIN = $AUTH['user']->rights == 2;
 
-	IF(!$ISUSER) {
-		ECHO $RESTRICTED;
+	IF(!$ISALLOW) {
+		DIE($RESTRICTED);	
 		EXIT;
 	}
 		
@@ -64,6 +65,11 @@
 		// MXS
 		CASE 'ADDMODEL': ECHO $ISUSER ? MXS::ADDMODEL($DATA) : $NORIGHTS;
 		BREAK;
+		// SEARCH
+		CASE 'FASTSEARCH': ECHO SEARCH::FASTSEARCH($DATA);
+		BREAK;
+		CASE 'GLOBALSEARCH': ECHO SEARCH::GLOBALSEARCH($DATA);
+		BREAK;		
 		// DEF
 		DEFAULT: ECHO $UNKNOWN;
 		BREAK;

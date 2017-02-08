@@ -3,6 +3,7 @@
 global siteUrl = @"http://svg-web-003/"
 global iconFile = @"\\visco.local\data\Instal_Sync\scripts\scripts\img\favicon.ico"
 global trustUrl = siteUrl + @"vault/mxs/mxsTrustUser.php?user=" + sysInfo.username
+global forceRefresh
 
 fn httpGet url =
 (	
@@ -109,15 +110,14 @@ fn getWidnowState =
 )
 
 fn setWindowState =
-(
-	s = dotNetClass "System.Windows.Forms.FormWindowState"
+(	
 	v = useSettings "STATE" "str" "r"
 	
 	case v of
 	(
-		"maximized": _ViscoAssetsForm.WindowState = s.Maximized
+		"maximized": _ViscoAssetsForm.WindowState = (dotNetClass "System.Windows.Forms.FormWindowState").Maximized
 		--"minimized": _ViscoAssetsForm.WindowState = s.Minimized
-		default: _ViscoAssetsForm.WindowState = s.Normal
+		default: _ViscoAssetsForm.WindowState = (dotNetClass "System.Windows.Forms.FormWindowState").Normal
 	)
 )
 
@@ -278,7 +278,7 @@ fn showStatusPaste t c: false =
 
 fn addFile f mode: #merge =
 (								
-	if(not doesFileExist f) do return false
+	if(not doesFileExist f) do return messageBox "Error: File not exist!" title: "Warning!"
 	
 	showStatusPaste "Downloading..."
 	p = (getFilenamePath f)

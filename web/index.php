@@ -16,7 +16,7 @@
 <meta http-equiv="Cache-Control" content="no-cache">
 <meta http-equiv="Expires" content="Sat, 01 Dec 2001 00:00:00 GMT">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="icon" href="img/favicon.ico" type="image/x-icon">
+<link rel="icon" href="favicon.ico" type="image/x-icon">
 <title>Assets Library</title>
 <!--<link rel="stylesheet" type="text/css" href="css/template.css">-->
 <script src="js/jquery-latest.js"></script>
@@ -90,9 +90,10 @@
 	</div>
 </div>
 <br>
-<div class="hide">
+<div class="hidden">
 	<?php ECHO $USER; ?>
 </div>
+<iframe id="download" ng-src="{{download}}" iframe-onload="downloadMsg()" class="hidden"></iframe>
 </body>
 </html>
 
