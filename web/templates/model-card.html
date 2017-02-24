@@ -2,8 +2,10 @@
 			<div class="card-content col-xxs-12 col-xs-12 disable-hover-xxs">
 				<div class="text-center margin-bottom-5 relative"> <a href="#/{{products.productpage}}/{{prod.id}}"><img ng-src="{{getProdImages(prod.previews, 1, true)}}" class="text-center col-xxs-12"></a>
 					<button type="button" class="btn btn-default custom-button-gray button-fixed button-zoom" ng-click="showBigPreview($event, true, prod.previews)"> &nbsp;&nbsp;</button>
-					<a href="admin/#/models-edit/{{prod.id}}/1" class="btn btn-default btn-danger button-fixed button-admin-edit" uib-tooltip="Edit" ng-show="auth.rights>=1"> &nbsp;&nbsp;</a> </div>
-				<div class="text-center">{{prod.name}}</div>
+					<a href="admin/#/models-edit/{{prod.id}}/1" class="btn btn-default btn-danger button-fixed button-admin-edit" uib-tooltip="Edit" ng-show="auth.rights>=1"> &nbsp;&nbsp;</a> 
+					<button type="button" class="btn btn-warning button-fixed button-admin-pending" ng-click="checkPending(prod.id)" ng-show="prod.pending == 1" uib-tooltip="Pending"> &nbsp;&nbsp;</button>
+					</div>					
+				<div class="text-center capitalize">{{prod.name}}</div>
 				<div class="card-hidden visible-xxs">
 					<div class="text-left"><small><strong>Render</strong>: {{prod.render}}</small></div>
 					<div class="text-left margin-bottom-5"><small><strong>Format:</strong> {{prod.format}}</small></div>

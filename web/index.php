@@ -43,7 +43,7 @@
 <div class="header">
 	<div class="container">
 		<div class="padding-0-15">
-			<div class="navbar-header hidden-xxs"> <a href="#/"><img src="visco_logo.svg" class="logo"></a> <span class="head-title hidden-xs">Assets Library</span> </div>
+			<div class="navbar-header hidden-xxs"> <a href="#/"><img src="visco_logo.svg" class="logo"></a> <span class="head-title hidden-xs">Assets Library <sup>BETA</sup></span> </div>
 			<div id="navbar3" class="navbar-default float-left-xxs">
 				<ul class="nav nav-buttons margin-left-minus-15-xxs">					
 					<li ng-show="auth.rights > 0" class="hidden-xs"><a href="#/"><span class="glyphicon glyphicon-home"></span></a></li>					

@@ -40,6 +40,10 @@ a:focus {
 	color: #777 !important;	
 }
 
+.capitalize {
+	text-transform: capitalize;
+}
+
 .btn-primary {
     color: #fff;
     background-color: #7BC144;
@@ -127,6 +131,7 @@ a:focus {
 .side-menu  li {
 	position: relative;
 	display: block;
+	text-transform: capitalize;
 }
 
 .side-menu > li {
@@ -955,6 +960,16 @@ a:focus {
     left: 0;
     background-image: url(../img/edit.svg);
     background-size: 60%;
+}
+
+.button-admin-pending,
+.button-admin-pending:active
+{
+    position: absolute;
+    top: 0;
+    right: 0;
+    background-image: url(../img/pending.svg);
+    background-size: 73%;
 }
 
 .button-heart, 

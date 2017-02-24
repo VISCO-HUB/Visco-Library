@@ -82,7 +82,7 @@
 			RETURN $RESULT;
 		}
 		
-		PUBLIC STATIC FUNCTION SELECTLIKE($TABLE, $COL = [], $FIND = [], $LIMIT = NULL, $WHERE = NULL, $CNT = NULL) {		
+		PUBLIC STATIC FUNCTION SELECTLIKE($TABLE, $COL = [], $FIND = [], $LIMIT = NULL, $WHERE = NULL, $CNT = NULL, $FILTER = NULL) {		
 			
 			$MYSQLI = $GLOBALS['MYSQLI'];
 			
@@ -113,10 +113,19 @@
 					$ATTACHWAND .= ' AND ' . SELF::STRIP($K) . '=' . "'" . $V . "'";
 				}
 			}
-				
+			
+			// FILTER CAT
+			$ATTACH_FILTER_CAT = '';
+			IF(ISSET($FILTER['cat']['ids']) AND COUNT($FILTER['cat']['ids'])) {
+				$F_CAT = [];
+				FOREACH($FILTER['cat']['ids'] AS $V) $F_CAT[] = "catid='" . $V . "'";
+				$F_CAT = IMPLODE(' OR ', $F_CAT);
+				IF(COUNT($F_CAT)) $ATTACH_FILTER_CAT = " AND (" . $F_CAT . ")";
+			}
+							
 			$SEL = $CNT ? "SELECT COUNT(*) AS cnt " : "SELECT * ";
-			$QUERY = $SEL . " FROM `" . $TABLE . "` WHERE (" . $S . ")" . $ATTACHWAND . $ATTACHLIMIT  . ";";			
-		
+			$QUERY = $SEL . " FROM `" . $TABLE . "` WHERE (" . $S . ")" . $ATTACHWAND . $ATTACH_FILTER_CAT . $ATTACHLIMIT  . ";";			
+				
 			$RESULT = $MYSQLI->query($QUERY);
 
 			IF($CNT) {
@@ -638,6 +647,24 @@
 			RETURN NULL;
 		}
 		
+		PUBLIC STATIC FUNCTION CHECKPENDING($DATA) {
+			$ERROR = '{"responce": "PENDINGBAD"}';
+			$SUCCESS = '{"responce": "PENDINGOK"}';
+		
+			$AUTH = $GLOBALS['AUTH']['user'];
+
+			IF(!ISSET($DATA->id) OR !IS_NUMERIC($DATA->id)) RETURN $ERROR;
+			IF(!ISSET($DATA->type) OR !IS_NUMERIC($DATA->type)) RETURN $ERROR;
+			
+			$TABLE = SELF::TYPE($DATA->type);
+			
+			$SET['pending'] = 0;
+			$WHERE['id'] = $DATA->id;
+			DB::UPDATE($TABLE, $SET, $WHERE);
+			
+			RETURN $SUCCESS;
+		}
+		
 		PUBLIC STATIC FUNCTION GET($DATA) {
 			$ERROR = '{"responce": "PRODBAD"}';
 			
@@ -843,11 +870,86 @@
 			RETURN JSON_ENCODE($OUT);
 		}
 		
+		PUBLIC STATIC FUNCTION GETSUBIDS($CATEGORIES, $PARENT) {				
+			$IDS = [];
+			$IDS[] = $PARENT;
+			$SIDS = [];
+			
+			FOREACH($CATEGORIES AS $CATEGORY) {			
+				IF($CATEGORY->parent == $PARENT) {													
+					$SIDS = SELF::GETSUBIDS($CATEGORIES, $CATEGORY->id);
+					
+					$IDS[] = $CATEGORY->id;
+					$IDS = ARRAY_MERGE($IDS, $SIDS);
+				}								
+			}
+			
+			RETURN ARRAY_UNIQUE($IDS);
+		}
+		
+		PUBLIC STATIC FUNCTION GETACCESSID($CATEGORIES, $RULE, $COL, $ID) {																
+			$IDS = [];
+			$AUTH = $GLOBALS['AUTH']['user'];
+			
+			$SUBIDS = SELF::GETSUBIDS($CATEGORIES, $ID);
+			
+			IF($AUTH->rights > 0) RETURN ARRAY_UNIQUE($SUBIDS);
+				
+			FOREACH($CATEGORIES AS $CAT) {			
+				IF($CAT->parent == 0) {
+					$GRP = ARRAY_FILTER(EXPLODE(';', $CAT->{$COL}));
+					IF(IN_ARRAY($RULE, $GRP) OR !COUNT($GRP)) {										
+						$I = SELF::GETSUBIDS($CATEGORIES, $CAT->id);
+						$IDS = ARRAY_MERGE($IDS, $I);
+					}
+				}
+			}
+
+			$IDS = ARRAY_UNIQUE($IDS);
+			RETURN ARRAY_INTERSECT($IDS, $SUBIDS);
+		}
+		
+		PUBLIC STATIC FUNCTION GETCATINFO($CATEGORIES, $ID) {																		
+			FOREACH($CATEGORIES AS $CAT) {			
+				IF($CAT->id == $ID) RETURN $CAT;
+			}
+			
+			RETURN '';
+		}
+		
+		PUBLIC STATIC FUNCTION GETACCESS($ID = -1, $CATEGORIES) {
+			$AUTH = $GLOBALS['AUTH']['user'];
+			$FILTER = [];			
+			$NOACCESS = FALSE;
+			IF($ID == -1) $ID = 0;
+			
+			$FILTER['ids'] = SELF::GETACCESSID($CATEGORIES, $AUTH->grp, 'premissions', $ID);
+			$NOACCESS = !COUNT($FILTER['ids']);				
+			IF($NOACCESS) RETURN FALSE;						
+			
+			RETURN $FILTER['ids'];
+		}
+		
 		PUBLIC STATIC FUNCTION GLOBALSEARCH($DATA) {
 			IF(!ISSET($DATA->type) OR !ISSET($DATA->query))RETURN '{}';
 			IF(!ISSET($DATA->page)) RETURN '{}';
-			IF(!ISSET($DATA->perpage)) RETURN '{}';
+			IF(!ISSET($DATA->perpage)) RETURN '{}';			
+												
+			$FILTER = [];
 			
+			$RESULT = DB::SELECT('category', [],[], 'sort', NULL, TRUE);
+			$CATEGORIES = DB::TOARRAY($RESULT);
+			
+			$FILTERCATID = -1;
+			IF(ISSET($DATA->filter->cat->id)) $FILTERCATID = $DATA->filter->cat->id;
+			$FILTERGLOBAL = FALSE;
+			IF(ISSET($DATA->filter->global)) $FILTERCATID = $DATA->filter->global ? -1 : $FILTERCATID;
+			
+			// FILTER CATID
+			$ACCESS = SELF::GETACCESS($FILTERCATID, $CATEGORIES);
+			IF($ACCESS === FALSE) RETURN FALSE;
+			$FILTER['cat']['ids'] = $ACCESS ;
+	
 			$OUT = [];
 			
 			$TYPE = PRODUCTS::TYPE($DATA->type);
@@ -868,10 +970,10 @@
 			
 			$FIND = ARRAY_FILTER(EXPLODE(' ', $DATA->query));
 
-			$RESULT = DB::SELECTLIKE($TYPE, $COL, $FIND, $LIMIT, $WHERE);			
+			$RESULT = DB::SELECTLIKE($TYPE, $COL, $FIND, $LIMIT, $WHERE, NULL, $FILTER);			
 			$OUT['result'] = DB::TOARRAY($RESULT);
 			
-			$ROWS = DB::SELECTLIKE($TYPE, $COL, $FIND, NULL, $WHERE, TRUE);						
+			$ROWS = DB::SELECTLIKE($TYPE, $COL, $FIND, NULL, $WHERE, TRUE, $FILTER);						
 			$NUMPAGES = $ROWS;
 						
 			$OUT['productpage'] = $PRODPAGE;
@@ -879,6 +981,8 @@
 			$OUT['currpage'] = $CURPAGE;
 			$OUT['totalitems'] = $NUMPAGES;
 			$OUT['perpage'] = $DATA->perpage;
+			$OUT['filter']['cat'] = SELF::GETCATINFO($CATEGORIES, $FILTERCATID);
+			$OUT['filter']['global'] = $FILTERGLOBAL;
 			
 						
 			RETURN JSON_ENCODE($OUT);

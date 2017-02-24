@@ -140,6 +140,7 @@ fn getRender =
 
 	if matchpattern r pattern:"*Corona*" do return #Corona
 	if matchpattern r pattern:"*V_Ray_Adv*" do return #VRay
+	if matchpattern r pattern:"*Default_Scanline*" do return #Scanline
 	return #unknown
 )
 
@@ -147,6 +148,13 @@ fn getRender =
 fn deleteDomes =
 (
 	l = for i in lights where classOf i == VrayLight and i.type == 1 collect i
+				
+	try(delete l)catch()
+)
+
+fn deleteSkyLights =
+(
+	l = for i in lights where classOf i == Skylight collect i
 				
 	try(delete l)catch()
 )
@@ -171,7 +179,22 @@ fn setRenderQuality =
 	renderHeight = s
 		
 	case r of 
-	(				
+	(	
+		#Scanline: 		
+		(
+			rendForce2Side = true
+			scanlineRender.antiAliasFilter = Catmull_Rom()
+			LT = SceneRadiosity.radiosity
+			if(LT  != undefined and classOf LT == Light_Tracer) do
+			(
+				case q of 
+				(
+					2: LT.rays = 100
+					3: LT.rays = 250
+					default: LT.rays = 10
+				)
+			)
+		)
 		#Corona: 
 		(
 			renderSystem.denoise_filterType = 2
@@ -183,6 +206,8 @@ fn setRenderQuality =
 			renderSystem.bg_colorRefract = white
 			renderSystem.bg_overrideDirect = on
 			renderSystem.bg_colorDirect = white
+			renderSystem.image_prefilter_type = 3
+			renderSystem.image_prefilter_width  = 1.43
 		)
 		#Vray:
 		(						
@@ -216,9 +241,10 @@ fn setRenderQuality =
 					renderSystem.gi_primary_type = 2				
 					renderSystem.gi_secondary_type = 2
 					renderSystem.dmcgi_subdivs	= 4
+					renderSystem.filter_on  = off
 				)
 				2:
-				(
+				(					
 					renderSystem.imageSampler_type = 1
 					
 					renderSystem.imageSampler_shadingRate = 15				
@@ -228,6 +254,7 @@ fn setRenderQuality =
 					renderSystem.gi_primary_type = 2				
 					renderSystem.gi_secondary_type = 2
 					renderSystem.dmcgi_subdivs	= 12
+					renderSystem.filter_on  = off
 				)
 				default:
 				(
@@ -240,6 +267,8 @@ fn setRenderQuality =
 					renderSystem.gi_primary_type = 2				
 					renderSystem.gi_secondary_type = 2
 					renderSystem.dmcgi_subdivs	= 4
+					renderSystem.filter_on  = on
+					renderSystem.filter_kernel = Catmull_Rom()
 				)
 			)
 		)
@@ -251,9 +280,21 @@ fn setRenderQuality =
 
 fn renderChange =
 (	
-	_rStep0.qualitySet()	
+	try(fileIn (getThisScriptFileName()))catch()
+	/*_rStep0.qualitySet()	
 	setRenderQuality()
-	_rStep1.firstLoad()
+	_rStep1.firstLoad()*/
+)
+
+fn onStartRender =
+(
+	setRenderQuality()
+	try(_rStep3.checkDR type: #get)catch()
+)
+
+fn onSelectionChanged =
+(
+	_rStep2.autoSelectLight()
 )
 
 rollout _rStep0  "Basic Setup"
@@ -286,11 +327,16 @@ rollout _rStep0  "Basic Setup"
 		callbacks.removeScripts id:#renderChange
 		callbacks.removeScripts id:#postNew
 		callbacks.removeScripts id:#postReset
-		
+		callbacks.removeScripts id:#preRender
+		callbacks.removescripts id:#selectionSetChanged
+				
 		callbacks.addScript #postRendererChange "renderChange()" id:#renderChange
 		callbacks.addScript #systemPostNew "renderChange()" id:#postNew
 		callbacks.addScript #systemPostReset "renderChange()" id:#postReset
+		callbacks.addScript #preRender "onStartRender()" id:#preRender
 				
+		callbacks.addScript #selectionSetChanged "onSelectionChanged()" id:#selectionSetChanged persistent:false	
+						
 		qualitySet()
 	)
 	
@@ -298,7 +344,9 @@ rollout _rStep0  "Basic Setup"
 	(
 		callbacks.removeScripts id:#renderChange
 		callbacks.removeScripts id:#postNew
-		callbacks.removeScripts id:#postReset
+		callbacks.removeScripts id:#postReset		
+		callbacks.removeScripts id:#preRender		
+		callbacks.removescripts id:#selectionSetChanged
 	)
 		
 	on btnSetupScene pressed do
@@ -310,6 +358,7 @@ rollout _rStep0  "Basic Setup"
 		case r of
 		(
 			#VRay:  deleteDomes()			
+			#Scanline:  deleteSkyLights()			
 		)
 		
 		_rStep1.SetupScene()
@@ -321,7 +370,7 @@ rollout _rStep0  "Basic Setup"
 	)
 	
 	on sldQuality changed v do
-	(		
+	(	
 		useSettings "RENDER_QUALITY" v "w"
 				
 		setRenderQuality()
@@ -334,8 +383,8 @@ rollout _rStep1  "HDRI"
 	(		
 		spinner spnLightHDR "Angle:" across: 2 align: #left range: [0, 360, 0] type:#integer scale: 1.0 
 		spinner spnLightHDR_Mult "Mult.:" align: #right range: [0.0, 9999.0, 1.0]  type:#float scale: 0.1  
-		label lblStart "0°" align: #left across: 2
-		label lblStop "360°" align: #right
+		label lblStart "0 deg." align: #left across: 2
+		label lblStop "360 deg." align: #right
 		slider sldLightHDR "" ticks: 36 range:[0,360,0] type: #integer
 		button btnLightHDR "None"
 	)
@@ -345,8 +394,8 @@ rollout _rStep1  "HDRI"
 		checkbox cbxUseReflect "Use Reflect HDR"
 		spinner spnReflectHDR "Angle:" across: 2 align: #left range: [0, 360, 0] type: #integer scale: 1.0 		
 		spinner spnReflectHDR_Mult "Mult.:"align: #right range: [0.0, 9999.0, 1.0]  type:#float scale: 0.1  
-		label lblStart2 "0°" align: #left across: 2
-		label lblStop2 "360°" align: #right
+		label lblStart2 "0 deg." align: #left across: 2
+		label lblStop2 "360 deg." align: #right
 		slider sldReflectHDR "" ticks: 36 range:[0,360,0] type: #integer
 		button btnReflectHDR "None"
 	)
@@ -469,6 +518,13 @@ rollout _rStep1  "HDRI"
 	fn getDome =
 	(
 		domes = for l in lights where classOf l == VRayLight and l.type == 1 collect l
+		if(domes.count != 1) do return undefined
+		return domes[1]
+	)
+	
+	fn getSkylight =
+	(
+		domes = for l in lights where classOf l == Skylight collect l
 		if(domes.count != 1) do return undefined
 		return domes[1]
 	)
@@ -667,6 +723,20 @@ rollout _rStep1  "HDRI"
 					setMult renderSystem.bg_texmapReflect a			
 				)
 			)	
+			#Scanline:
+			(
+				backgroundColor = white	
+				dome = getSkylight()
+				if(dome == undefined) do dome = Skylight()
+				dome.sky_mode = 0
+				dome.multiplier = 0.9
+								
+				LT = Light_Tracer()
+				RadiosityPreferences.useAdvancedLighting = true
+				RadiosityPreferences.computeAdvancedLighting = true
+
+				SceneRadiosity.radiosity = LT
+			)
 			#VRay:
 			(								
 				if(doesFileExist lightHDRPath) do
@@ -782,8 +852,15 @@ rollout _rStep1  "HDRI"
 			closeRolloutFloater fFastRender
 			return messageBox "Please assign Corona or V-Ray Renderer!" title: "Warning!"
 		)
-						
+								
 		renderSystem = renderers.current 
+		
+		if(r == #Scanline) do
+		(
+			_rStep0.spnAOSize.enabled = false	
+			removeRollout _rStep1 
+			return false
+		)
 		
 		loadHDR()
 		enableReflections()
@@ -951,10 +1028,11 @@ rollout _rStep2  "Highlights"
 	
 	group "Light Settings"
 	(
-		spinner spnW "W:" range: [0, 99999999, (units.decodeValue "80.0cm")] fieldWidth: 60 type: #worldunits across: 2 align: #left
-		spinner spnH "H:" range: [0, 99999999, (units.decodeValue "50.0cm")] fieldWidth: 60 type: #worldunits  align: #left
-		spinner spnMult "Mult.:" range: [-100, 999999, 1.0] fieldWidth: 40 type: #float align: #left offset: [0, 10] across: 2
-		spinner spnDist "Dist.:" range: [0, 99999999, (units.decodeValue "150.0cm")] fieldWidth: 60 type: #worldunits  align: #left offset: [0, 10] scale: 1.0
+		spinner spnW "W:" range: [0, 99999999, (units.decodeValue "80.0cm")] fieldWidth: 60 type: #worldunits across: 2 align: #left offset: [14, 0]
+		spinner spnH "H:" range: [0, 99999999, (units.decodeValue "50.0cm")] fieldWidth: 60 type: #worldunits  align: #right
+		spinner spnMult "Mult.:" range: [0, 999999, 1.0] fieldWidth: 60 type: #float align: #left offset: [0, 10] across: 2 scale: 0.5
+		spinner spnDist "Dist.:" range: [0, 99999999, (units.decodeValue "150.0cm")] fieldWidth: 60 type: #worldunits  align: #right offset: [0, 10] scale: 1.0
+		spinner spnScale "Scale.:" range: [0, 99999999, 1.0] fieldWidth: 60 type: #float  scale: 0.05 offset: [0, 10] align: #right 
 	)
 	
 	button btnPlace "Place Highlight" width: 215 height: 30
@@ -982,6 +1060,7 @@ rollout _rStep2  "Highlights"
 		for i in _rStep2.controls do i.enabled = d
 		btnPlace.enabled = true
 	)
+
 	
 	fn trackRay ir placeObj =	
 	(		
@@ -1044,27 +1123,29 @@ rollout _rStep2  "Highlights"
 		r = getRender()
 		
 		if(l == undefined) do return false
-		
+				
 		case r of
 		(
 			#Corona:
 			(
-				spnW.value = l.width
-				spnH.value = l.height
-				spnMult.value = l.intensity
+				try(spnW.value = l.width)catch()
+				try(spnH.value = l.height)catch()
+				try(spnMult.value = l.intensity)catch()
 			)
 			#VRay:
 			(
-				spnW.value = l.size0
-				spnH.value = l.size1
-				spnMult.value = l.multiplier
+				try(spnW.value = l.size0)catch()
+				try(spnH.value = l.size1)catch()
+				try(spnMult.value = l.multiplier)catch()
 			)
 		)
 				
 		d = getUserProp l "HiglightDistance" 
 		if(d != undefined) do spnDist.value = d
+		
+		spnScale.value = l.scale.z
 	)
-	
+		
 	fn setParams =
 	(
 		l = getCurrentLight()		
@@ -1095,7 +1176,24 @@ rollout _rStep2  "Highlights"
 		m = d  + v
 		
 		in coordsys local move l [0, 0, v]
-		setUserProp l "HiglightDistance" m			
+		setUserProp l "HiglightDistance" m
+
+		s = spnScale.value
+		l.scale = [s, s, s]
+	)
+	
+	fn autoSelectLight =
+	(
+		s = selection
+		if(s.count == 0 or superClassOf s[1] != light) do return false
+		
+		l = lbxLights.items
+		i = findItem l s[1].name
+		if(i != 0) do 
+		(
+			getParams()	
+			lbxLights.selection = i
+		)
 	)
 	
 	fn buildList ev nd =
@@ -1118,8 +1216,9 @@ rollout _rStep2  "Highlights"
 			
 		case r of
 		(			
-			#Corona: l = CoronaLight targeted:off height: h width: w pos:[0, 0, 0] isSelected: off name: (uniqueName "HighLight_") visibleDirectly: off shape: 1
-			#VRay: l = VRayLight targeted:off size0: h size1: w pos:[0, 0, 0] isSelected: off name: (uniqueName "HighLight_") invisible: on type: 0
+			#Corona: l = CoronaLight targeted:off height: h width: w pos:[0, 0, 0] isSelected: off name: (uniqueName "HighLight_") visibleDirectly: off shape: 1 intensity: 25
+			#VRay: l = VRayLight targeted:off size0: h size1: w pos:[0, 0, 0] isSelected: off name: (uniqueName "HighLight_") invisible: on type: 0 multiplier: 25
+			#Scanline: l = OmniLight tpos:[0, 0, 0] isSelected: off name: (uniqueName "HighLight_") multiplier: 1
 		)
 		
 		setUserProp l "HiglightDistance" (units.decodeValue "150.0cm")
@@ -1163,12 +1262,21 @@ rollout _rStep2  "Highlights"
 	on spnH changed v do setParams()
 	on spnMult changed v do setParams()
 	on spnDist changed v do setParams()
+	on spnScale changed v do setParams()
 		
 	on btnAdd pressed do addLight()
 	on btnRemove pressed do removeLight()
 	
 	on _rStep2 open do
 	(
+		r = getRender()
+		if(r == #Scanline) do
+		(
+			_rStep2.spnW.visible = false
+			_rStep2.spnH.visible = false
+			_rStep2.spnScale.visible = false
+		)
+		
 		buildList undefined undefined
 		
 		callbackLight = NodeEventCallback mouseUp:true delay:1000 deleted:buildList added:buildList nameChanged:buildList
@@ -1198,6 +1306,13 @@ rollout _rStep2  "Highlights"
 				
 		disableUI true
 	)
+	
+	on lbxLights doubleClicked v do
+	(
+		n = lbxLights.selected 
+		l = getNodeByName n exact: true ignoreCase: false
+		try(if(superClassOf l == light) do select l)catch()
+	)
 )
 
 fn postProcess =
@@ -1217,7 +1332,7 @@ fn postProcess =
 		
 		timer tmrShowRender "" active: false
 				
-		fn preRender = renderMap outputMap size:[800, 800] filter: true scale: 1.0
+		fn preRender = renderMap outputMap size:[800, 800] filter: false scale: 1.0
 		
 		fn clearRender = 
 		(
@@ -1293,15 +1408,15 @@ fn postProcess =
 		o = outputMap.opacity[i] as string 
 		s = i as string
 		en = if(i == 1) then "false" else "true"
-		/* -- Save Settings
-		
-			blendMode = _rStep0.useSettings ("BLENDMODE" + s) "string" "r"
+		-- Save Settings
+		/*
+			blendMode = useSettings ("BLENDMODE" + s) "string" "r"
 			if(blendMode != "") do b = blendMode as integer - 1
 			
-			opacityMode = _rStep0.useSettings ("OPACITY" + s) "string" "r"
+			opacityMode = useSettings ("OPACITY" + s) "string" "r"
 			if(opacityMode != "") do o = opacityMode
 			
-			enableMode = _rStep0.useSettings ("EFFECT" + s) "string" "r"
+			enableMode = useSettings ("EFFECT" + s) "string" "r"
 			if(enableMode == "") do enableMode = "true"
 			
 			outputMap.blendMode[i] = b
@@ -1375,6 +1490,7 @@ rollout _rStep3  "Render / Post Process"
 	(
 		--button btnStartInteractive "Start Interactive"
 		button btnStartRender "Start Render" height: 30 width: 215		
+		checkbox cbxDR "Distributed rendering"
 	)
 	group "Post Process"
 	(
@@ -1570,6 +1686,29 @@ rollout _rStep3  "Render / Post Process"
 		)				
 	)
 	
+	fn checkDR type: #get =
+	(		
+		r = getRender()
+		
+		if(type == #set) do
+		(
+			case r of
+			(
+				#Corona: renderSystem.dr_enable = cbxDR.checked
+				#VRay: renderSystem.system_distributedRender = cbxDR.checked
+			)		
+		)	
+		
+		if(type == #get) do		
+		(
+			case r of
+			(
+				#Corona: cbxDR.checked = renderSystem.dr_enable
+				#VRay: cbxDR.checked = renderSystem.system_distributedRender
+			)	
+		)
+	)
+
 	global isRendering = true
 	
 	
@@ -1611,6 +1750,20 @@ rollout _rStep3  "Render / Post Process"
 	on _rStep3 open do
 	(
 		r = getRender()
+		
+		if(r == #Scanline) do
+		(
+			_rStep3.cbxDR.enabled = false
+			_rStep3.btnOpenEditor.enabled = false
+			return false
+		)
+		
+		checkDR type: #get				
+	)
+	
+	on cbxDR changed v do
+	(
+		checkDR type: #set
 	)
 )
 

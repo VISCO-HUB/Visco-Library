@@ -49,7 +49,7 @@ app.config(function($routeProvider) {
         templateUrl : 'templates/models.php',
 		controller: 'modelsCtrl'
     })
-	.when('/search/:query/:page', {
+	.when('/search/:query/:catid/:global/:page', {
         templateUrl : 'templates/search.php',
 		controller: 'searchCtrl'
     })
@@ -186,8 +186,11 @@ app.controller("msgCtrl", function ($scope, $rootScope, vault) {
 
 	// SEARCH
 
-app.controller("fastSearchCtrl", function ($scope, $rootScope, $location, vault) {
+app.controller("fastSearchCtrl", function ($scope, $rootScope, $location, $routeParams, vault) {
 	$rootScope.msg = {};
+	$scope.catid = $routeParams.catid;
+	$scope.global = $routeParams.global;
+	
 
 	//$rootScope.globalQuery = '';
 });
@@ -196,13 +199,24 @@ app.controller("searchCtrl", function ($scope, vault, $rootScope, $location, $ro
 	$rootScope.isHome = false;
 	
 	$scope.page = $routeParams.page;
+	$scope.catid = $routeParams.catid;
+	$scope.global = $routeParams.global;
+	$rootScope.searchIn.cattype = $scope.catid ? 1 : 2;
 	$rootScope.globalQuery = atob($routeParams.query);
+	
 	
 	$rootScope.breadcrumbs = [];
 	$rootScope.addCrumb('Search', '#/search/');
 			
-	$scope.searchProducts = function(page, perpage, query, filter){				
-		var type = $rootScope.libType;
+	$scope.searchProducts = function(page, perpage, global, query){				
+		var type = $rootScope.libType;	
+		if(!$scope.catid) {$scope.catid = -1}
+	
+		var filter = {};
+		if($rootScope.searchFilter != undefined) {filter = $rootScope.searchFilter};
+		filter.cat = {'id': $scope.catid};
+		filter.global = global;
+			
 		vault.searchProducts(type, page, perpage, query, filter);
 	};
 		
@@ -216,17 +230,18 @@ app.controller("searchCtrl", function ($scope, vault, $rootScope, $location, $ro
 	
 	$rootScope.perpage = $cookieStore.get('perpage-home');
 	
-	$scope.searchProducts($scope.page, $rootScope.perpage, $rootScope.globalQuery, $rootScope.searchFilter);
+	$scope.searchProducts($scope.page, $rootScope.perpage, $scope.global, $rootScope.globalQuery);
 	
 	$scope.changePage = function() {							
-		$location.path('/search/' + btoa($rootScope.globalQuery) + '/' + $scope.currentPage);		
+		$rootScope.goSearch($scope.catid, $scope.currentPage)
+		//$location.path('/search/' + btoa($rootScope.globalQuery) + '/' + $scope.currentPage);		
 	}
 	
 	$scope.changePerPage = function(p) {		
 		$cookieStore.put('perpage-home', p);
 		$rootScope.perpage = p;		
 		
-		$scope.searchProducts($scope.page, $rootScope.perpage, $rootScope.globalQuery, $rootScope.searchFilter);
+		$scope.searchProducts($scope.page, $rootScope.perpage, $scope.global, $rootScope.globalQuery);
 	}	
 });
 
@@ -261,6 +276,10 @@ app.controller("loginCtrl", function($scope, $rootScope, vault){
 	// HOME
 app.controller("homeCtrl", function ($scope, $rootScope, vault, $interval) {
 	$rootScope.isHome = true;
+	$rootScope.searchFilter = {};
+	$rootScope.searchIn.cattype = 1;
+	$rootScope.searchHolder = 'Search in all libraries...';
+	
 	$scope.getHomeProd = function(type, id){
 		vault.getHomeProd(type);
 	}
@@ -300,7 +319,7 @@ app.controller("homeCtrl", function ($scope, $rootScope, vault, $interval) {
 
 app.controller("modelsCtrl", function ($scope, vault, $rootScope, $location, $routeParams, $timeout, $cookieStore) {
 	$rootScope.isHome = false;
-	
+		
 	$scope.page = $routeParams.page;
 	$scope.catid = $routeParams.catid;
 			
@@ -337,16 +356,18 @@ app.controller("modelsCtrl", function ($scope, vault, $rootScope, $location, $ro
 	};
 	
 	
-	$scope.downloadModel = function(id) {
-		vault.downloadModel(id);
+	$scope.checkPending = function(id) {		
+		vault.checkPending(id, $scope.page, $rootScope.perpage, $rootScope.catFilter, 1, $scope.catid);
 	}
-	
 });
 
 // AUTO RUN
 app.run(function($rootScope, $location, $routeParams, $timeout, $cookieStore, vault) {
       
    $rootScope.menuItemActive = [];
+   $rootScope.searchFilter = {};
+   $rootScope.searchIn = {};
+   $rootScope.searchIn.cattype = 2;
    
    $rootScope.goLogin = function() {
 		window.location = hostname + 'login/';
@@ -474,8 +495,8 @@ app.run(function($rootScope, $location, $routeParams, $timeout, $cookieStore, va
 		
 		$rootScope.download = hostname + 'vault/download.php?id=' + id +'&type=' + type;
 		
-		$timeout(function() {
-			$rootScope.download = '';
+		$timeout(function() {			
+			$rootScope.$apply(function(){$rootScope.download = ''});
 		}, 1000);
 	}
 	
@@ -566,9 +587,11 @@ app.run(function($rootScope, $location, $routeParams, $timeout, $cookieStore, va
 		}		
 	}
 	
-	$rootScope.goSearch = function() {
+	$rootScope.goSearch = function(catid, page) {
 		$rootScope.bindSearchEvent();
-
+				
+		if(!$rootScope.globalQuery.length) return alert('Please enter search query!');
+		
 		if($rootScope.showResults == true) {
 			if($(".fast-result a.active").length != 0) {
 				var href = $('.fast-result').find("a.active").attr('href');
@@ -578,7 +601,12 @@ app.run(function($rootScope, $location, $routeParams, $timeout, $cookieStore, va
 			}						
 		}
 		
-		$location.path('/search/' + btoa($rootScope.globalQuery) + '/1');
+		
+		if(!catid) {catid = -1;}
+		if(!page) {page = 1;}
+		var global = 0;
+		if($rootScope.searchIn.cattype == 1) {global = 1;}
+		$location.path('/search/' + btoa($rootScope.globalQuery) + '/' + catid + '/' + global + '/' + page);
 	}
 
 	
@@ -596,12 +624,15 @@ app.run(function($rootScope, $location, $routeParams, $timeout, $cookieStore, va
 		$rootScope.breadcrumbs = [];
 		$rootScope.menuItem = [];				
 		$rootScope.activeMenuId = [];
+		$rootScope.activeMenuName = [];
 		$rootScope.globalQuery = '';
 		$rootScope.download = '';		
 		$rootScope.fastSearch = {};	
 		$rootScope.listEnter = false;
 		$rootScope.showResults = false;
 		$rootScope.prodError = {};
+		$rootScope.searchHolder = 'Search for...';
+		
 
 		$rootScope.bindSearchEvent();
     });
@@ -741,12 +772,19 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 			$rootScope.products = r.data;									
 						
 			$rootScope.activeMenuId = [];
+			$rootScope.activeMenuName = [];
 			$rootScope.breadcrumbs = [];
 						
 			if(r.data.pathway) {
-				angular.forEach(r.data.pathway, function(item) {
+				angular.forEach(r.data.pathway, function(item, key) {
 					$rootScope.addCrumb(item.name, ('#/models/' + item.id + '/1'));
 					$rootScope.activeMenuId.push(item.id);
+					$rootScope.activeMenuName.push(item.name);
+					
+					if(key == r.data.pathway.length - 1) {
+						$rootScope.searchHolder = 'Search in ' + item.name + '...';				
+						$rootScope.searchFilter['cat'] = {'id': item.id, 'name': item.name};
+					}
 				});				
 			}
 			
@@ -765,6 +803,12 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		
 		HttpPost('GLOBALSEARCH', json).then(function(r){						
 			$rootScope.products = r.data;									
+						
+			var c = r.data.filter.cat.name;
+			if(c) {$rootScope.searchHolder = 'Search in ' + c + '...'};
+			
+			$rootScope.searchFilter = r.data.filter;
+			$rootScope.searchIn.cattype = r.data.filter.global ? 1 : 2;
 			
 			responceMessage(r.data);
 		},
@@ -776,6 +820,19 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 	var sendCommandMXS = function(cmd, value) {
 		if(!value) {value = '';}
 		window.external.text = cmd + '=' + value + '#' + new Date().getTime();
+	}
+	
+	var checkPending = function(id, page, perpage, filter, type, catid) {
+		var json = {'id': id, 'type': type};
+		
+		HttpPost('CHECKPENDING', json).then(function(r){						
+			
+			if(r.data.responce = "PENDINGOK") {getProducts(page, perpage, catid, filter);};
+			responceMessage(r.data);
+		},
+		function(r){
+			responceMessage(r);
+		});
 	}
 	
 	var placeModel = function(id, mode) {
@@ -815,19 +872,7 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 			responceMessage(r);
 		});
 	}
-	
-	var downloadModel = function(id) {
-		var json = {'id': id};
 		
-		HttpPost('DOWNLOADMODEL', json).then(function(r){						
-				
-			responceMessage(r.data);
-		},
-		function(r){
-			responceMessage(r);
-		});
-	}
-	
 	var fastSearch = function(query, type)
 	{		
 		var json = {'query': query, 'type': type};
@@ -847,9 +892,9 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		getHomeProd: getHomeProd,
 		getProducts: getProducts,
 		placeModel: placeModel,
-		downloadModel: downloadModel,
 		fastSearch: fastSearch,
-		searchProducts: searchProducts
+		searchProducts: searchProducts,
+		checkPending: checkPending
 	};
 });
 

@@ -1,14 +1,18 @@
 <?php	
+	SESSION_START();
+	
 	GLOBAL $GLOBS;
 	GLOBAL $MYSQLI;
 	INCLUDE '../../vault/config.php';
 	INCLUDE 'lib.php';
 	$ISREPLACE = ISSET($_GET['replace']);
 	$DATE = DATE('d.m.Y');
-		
+			
 	$MYSQLI = DB::CONNECT();
 	$GLOBS = GLOBS::GET();	
 	
+	$AUTH = AUTH::CHECK();
+		
 	$FTMP = $_FILES['file']['tmp_name'];
 	$ONAME = $_FILES['file']['name'];
 	
@@ -16,6 +20,7 @@
 	$SUCCESS = '{"response": "DONE", "name": "' . $ONAME . '"}';
 	$REPLASE = '{"response": "REPLACEFILE", "name": "' . $ONAME . '"}';
 	$BADZIP = '{"response": "BADZIP", "name": "' . $ONAME . '"}';
+	$BADUSER = '{"response": "BADUSER", "name": "' . $ONAME . '"}';
 	
 	$TMP = '\\tmp\\' . $DATE . '\\';
 	FS::CREATEDIR($TMP);
@@ -23,6 +28,8 @@
 	
 	$FNAME = $TMP . $ONAME;		
 	$EXTRACTTO = $TMP . TIME();
+	
+	IF(!$AUTH['exist'] OR $AUTH['user']->rights < 1) DIE($BADUSER);
 	
 	//!!!!!!!!!! CREATE BUTTON CLEAR CACHE!
 	
@@ -37,8 +44,9 @@
 	
 	IF(!IS_FILE($INI)) DIE($BADZIP);
 	
-	$INI_UTF8 = MB_CONVERT_ENCODING(FILE_GET_CONTENTS($INI), 'UTF-8', 'UCS-2LE');
-	$PARSEDINI = PARSE_INI_STRING($INI_UTF8, TRUE);
+	$CONTENT = FILE_GET_CONTENTS($INI);	
+	$PARSEDINI = PARSE_INI_STRING($CONTENT, TRUE);
+	
 	
 	$INFO = $PARSEDINI['INFO'];	
 	IF(($INFO['TYPE'] != 'model') AND ($INFO['TYPE'] != 'texture')) DIE($BADZIP);
@@ -74,6 +82,8 @@
 		$SET['rigged'] = $INFO['RIGGED'];		
 		$SET['lods'] = $INFO['LODS'];		
 		$SET['unwrap'] = $INFO['UNWRAP'];
+		$SET['baked'] = $INFO['BAKED'];
+		$SET['gameengine'] = $INFO['GAMEENGINE'];
 		$SET['lights'] = $INFO['LIGHTS'];
 		$SET['project'] = $INFO['PROJECT'];
 		$SET['modeller'] = $INFO['MODELLER'];
@@ -82,9 +92,11 @@
 		$SET['overview'] = $INFO['OVERVIEW'];
 		$SET['custom1'] = $INFO['CUSTOM1'];
 		$SET['client'] = $INFO['CLIENT'];
-		$SET['status'] = 0;
+		$SET['status'] = 1;
 		$SET['pending'] = 1;
 		$SET['date'] = TIME();
+		$SET['uploadedby'] = $AUTH['user']->user;
+		
 		
 		$IMG_CNT = 0;
 		$N = $INFO['CATID'] . '-' . CAT::CLEAR($NAME) . '-' . $INFO['RENDER'];
@@ -120,6 +132,7 @@
 		IF($ISREPLACE) FS::CLEAR($MOVETO);
 		FS::MOVE($EXTRACTTO, $MOVETO);
 		
+		// Move arhive with product
 		$BACKUP_FILE_PATH = $MOVETO . $ONAME;		
 		RENAME($FNAME,  $BACKUP_FILE_PATH);
 	}

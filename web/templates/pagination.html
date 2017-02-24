@@ -1,4 +1,4 @@
-<div class="row text-center">
+<div class="row text-center" ng-show="products.totalitems-products.perpage > 0">
 	<ul uib-pagination total-items="products.totalitems" ng-model="currentPage" max-size="5" class="pagination-sm" items-per-page="products.perpage" boundary-links="true" force-ellipses="true" ng-click="changePage()">
 	</ul>
 </div>

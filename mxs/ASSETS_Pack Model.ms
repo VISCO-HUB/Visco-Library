@@ -2,7 +2,7 @@
 [INFO] 
 
 NAME = Pack Model
-VERSION = 1.0.2
+VERSION = 1.0.3
 AUTHOR = Vasily Lukyanenko
 DEV = VISCO
 HELP = 
@@ -26,6 +26,19 @@ ICON=#("PhysX_Main", 30)
 
 + Added: Custom attribut 1=
 
+[1.0.3]
+
++ Added: Geometry Fix - Snapshot=
++ Added: Geometry Fix - Detach Trick=
++ Added: Baloon messages=
++ Added: Tags editor=
++ Added: Model Properties - Game Engine Ready option=
++ Added: Options for rename Textures, Materials and Objects=
+* Now any fix geometry converts to Editable Mesh for minimize scene size=
+* Scaled buttons sizes=
+* Display open dialog when click on preview=
+* Step1 and Step2 swapped=
+
 [ABOUT]
 
 This script helps to prepare model to upload=
@@ -43,7 +56,7 @@ global _URL = "http://svg-web-003/"
 global _SAVEPATH = @"C:\temp\Assets Library\"
 
 try(closeRolloutFloater rAssetsLibraryModelPack)catch()
-global rAssetsLibraryModelPack = newRolloutFloater "Pack Model" 280 720
+global rAssetsLibraryModelPack = newRolloutFloater "Pack Model" 280 760
 
 /* GLOBALS */
 
@@ -53,9 +66,11 @@ global _STEP3
 global _STEP4
 global _STEP5
 global _rAbout
+global _RelTagsList
 
 global Keys = dotNetClass "System.Windows.Forms.Keys"
-global szGoodChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890&$%#()!_-+ " 
+global szChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890"
+global szGoodChars = szChars + "&$%#()!_-+ " 
 global BitmapTypes = #(Bitmaptexture, CoronaBitmap)
 
 global catID = -1
@@ -84,6 +99,7 @@ global sTags = ""
 global bRigged = false
 global bAnimated = false
 global bBakedTextures = false
+global bGameEngineReady = false
 global bLods = false
 global bUnwrap = false
 global bLights = false
@@ -146,6 +162,7 @@ struct zip
 		join files f
 		for i in c do getRecusive i
 	),
+	
 	fn writeFile f t =
 	(
 		local tmp
@@ -167,7 +184,20 @@ struct zip
 		cmd = "RMDIR " + (br d) + " /S /Q"
 		hiddendosCommand cmd 				
 	),
-	
+	fn packFile  source: "" target: "" name: "tmpzip" del: false = 
+	(	
+		out = name + ".zip"
+		
+		curDir = sysInfo.currentDir
+		sysInfo.currentDir = getFilenamePath  source
+		
+		maz  out (filenameFromPath source)
+		
+		sysInfo.currentDir = curDir 
+		
+		if(del == true) do deleteFile source
+		return true
+	),
 	fn packFiles source: "" target: "" name: "tmpzip" del: false =
 	(
 		dirs = #()
@@ -211,6 +241,53 @@ struct zip
 
 /* MAIN FUNCTIONS */
 
+fn trim s c: " " = trimRight (trimLeft s c) c
+
+fn setPosRelTagsList =
+(
+	p = rAssetsLibraryModelPack.pos				
+	p.x += _STEP2.width + 20
+	SetDialogPos _RelTagsList p
+)
+
+fn conversion s = 
+(
+	 dncConvert = dotNetClass "System.Convert"
+	 dnvStringIn = (dotNetObject "System.String" "Dave")
+	 dnoASCII = dotNetObject "System.Text.ASCIIEncoding"
+	 dnvByteArrayIn = dnoASCII.getBytes dnvStringIn
+	 arry = dotnetobject "System.Byte[]" dnvByteArrayIn.count
+	 for i = 1 to dnvByteArrayIn.count do ( ByteArrayTools.SetValue arry (i - 1) dnvByteArrayIn[i] )
+	 dnvB64String = dncConvert.ToBase64String arry
+	 dnvByteArrayOut = dncConvert.FromBase64String dnvB64String
+	 dnoUTF8 = dotNetObject "System.Text.UTF8Encoding"
+	 arry = dotnetobject "System.Byte[]" dnvByteArrayOut.count
+	 for i = 1 to dnvByteArrayOut.count do ( ByteArrayTools.SetValue arry (i - 1) dnvByteArrayOut[i] )
+	 dnvStringOut = dnoUTF8.getString arry
+	 return dnvStringOut
+)
+
+fn convertFileToUTF8 o n  =
+(
+	f = openFile o
+	buffer = #()
+	while (not eof f) do
+	(
+		szLine = readline f		
+		szLine = trimRight (trimLeft szLine)		
+		append buffer szLine
+	)
+	flush f
+	close f	
+	
+	deleteFile o
+	
+	s = dotNetObject "System.IO.StreamWriter" (n) true ((dotNetClass "System.Text.Encoding").GetEncoding("UTF-8"))
+	
+	for l in buffer where  l.count > 0 do s.WriteLine(dotNetObject "System.String" l)			
+	s.Close()		
+)
+
 fn getScriptInfo s releaseInfo: "" =
 (		
 	if(releaseInfo != "") do
@@ -236,11 +313,11 @@ fn showTooltip c t =
 (
 	toolTip = dotnetobject "System.Windows.Forms.ToolTip"
 	toolTip.SetToolTip c t   
-	toolTip.Active = true    
+	--toolTip.Active = true    
 	toolTip.isBalloon = true
-	toolTip.InitialDelay = 0
+	toolTip.InitialDelay = 100
 	toolTip.AutoPopDelay = 500
-	toolTip.ReshowDelay = 0
+	toolTip.ReshowDelay = 50
 	toolTip.ToolTipTitle = "Warning!"
 	toolTip.Show t c 3000	
 	toolTip.ToolTipIcon = (dotnetclass "System.Windows.Forms.ToolTipIcon").Warning
@@ -275,6 +352,14 @@ fn getUnits =
 fn stripName n =
 (
 	n = substituteString n " " "-"
+)
+
+fn replaceBadChars s rule: szChars =
+(
+	badChars = for i in 1 to s.count where findString rule s[i] == undefined collect s[i]
+	for c in badChars do s = substituteString s c ""
+		
+	return s
 )
 
 fn getDim s =
@@ -460,6 +545,13 @@ fn polyCount s  =
 	return (trimLeft r " ")
 )
 
+fn saveMtlLib p =
+(
+	for i in 1 to currentMaterialLibrary.count do deleteItem currentMaterialLibrary 1
+	for i in objects where i.material != undefined do append currentMaterialLibrary i.material
+	saveMaterialLibrary p
+)
+
 fn ungroupRecursive s = for i in s where isGroupHead i and isValidNode i do explodeGroup i
 	
 fn getColor r g b = (dotnetclass "System.Drawing.Color").FromArgb r g b
@@ -524,6 +616,7 @@ fn saveAllProp =
 	saveProp "cbxRigged" bRigged
 	saveProp "cbxAnimated" bAnimated
 	saveProp "cbxBakedTextures" bBakedTextures
+	saveProp "cbxGameEngineReady" bGameEngineReady
 	saveProp "cbxLods" bLods
 	saveProp "cbxUnwrap" bUnwrap
 	saveProp "cbxLights" bLights
@@ -545,28 +638,31 @@ rollout _STEP1 "STEP 1: Model Transform"
 (
 	group "1. Geometry Fix"
 	(
-		button btnResetXForm "Reset XForm" width: 80 across: 2 tooltip: "Collaps modifier stack and reset objects transformation."
-		button btnBoxTrick "Box Trick" width: 80 tooltip: "Fix broken geometry.\nAttach  selected objects to box then remove generated faces of box."
+		button btnResetXForm "Reset XForm" width: 80 height: 28 across: 2 tooltip: "Collaps modifier stack and reset objects transformation."
+		button btnBoxTrick "Box Trick" width: 80 height: 28 tooltip: "Fix broken geometry.\nAttach  selected objects to box then remove generated faces of box."
+		
+		button btnSnapshot "Snapshot" width: 80 height: 28 across: 2 tooltip: "Standart 3ds max snaphot tool."
+		button btnDetachTrick "Detach Trick" width: 80 height: 28 tooltip: "Recreates the object by detaching all its sub-objects.\nIt helps to fix vertex normal issues."
 	)
 
 	group "2. Group"
 	(
-		button btnGroup "Group All" width: 80 tooltip: "Make group from selected objects." across: 2
-		button btnUngroup "Ungroup All" width: 80 tooltip: "Recursive explode all groups."
+		button btnGroup "Group All" width: 80 height: 28 tooltip: "Make group from selected objects." across: 2
+		button btnUngroup "Ungroup All" width: 80 height: 28 tooltip: "Recursive explode all groups."
 	)
 	
 	group "3. Set Pivot"
 	(
-		button btnSetPivotBotton "Bottom" across: 5 tooltip: "Set pivot point in center and bottom of objects." align: #right offset: [15,0] width: 50
-		label lblOr "or" width: 10 offset: [10,3] 
-		button btnSetPivotCenter "Center" tooltip: "Set pivot point in center of objects." align: #left width: 50
-		label lblOr2 "or" width: 10 offset: [-6,3]
-		button btnSetPivotTop "Top" tooltip: "Set pivot point in center and top of objects." align: #left offset: [-15,0] width: 50
+		button btnSetPivotBotton "Bottom" across: 5 tooltip: "Set pivot point in center and bottom of objects." align: #right offset: [15,0] width: 50 height: 28
+		label lblOr "or" width: 10 offset: [10,6] 
+		button btnSetPivotCenter "Center" tooltip: "Set pivot point in center of objects." align: #left width: 50 height: 28
+		label lblOr2 "or" width: 10 offset: [-6,6]
+		button btnSetPivotTop "Top" tooltip: "Set pivot point in center and top of objects." align: #left offset: [-15,0] width: 50 height: 28
 	)
 	
 	group "4. Position"
 	(
-		button btnPostiton "Position in Center Scene" tooltip: "Move objects in to center of scene."
+		button btnPostiton "Position in Center Scene" tooltip: "Move objects in to center of scene." height: 28
 	)
 	
 	Timer tmrBoxTrick "" pos:[0,0] width:24 height:24 interval:100 active:false
@@ -594,7 +690,7 @@ rollout _STEP1 "STEP 1: Model Transform"
 			g = isGroup	hObj[i]
 			
 			convertToMesh hObj[i]
-			convertToPoly hObj[i]
+			convertToPoly hObj[i]			
 			
 			b = convertToPoly(box())				
 			b.rotation = hObj[i].rotation
@@ -606,7 +702,8 @@ rollout _STEP1 "STEP 1: Model Transform"
 			b.EditablePoly.SetSelection #Face #{1..6}
 			b.EditablePoly.delete #Face		
 			
-			polyop.attach b hObj[i]						
+			polyop.attach b hObj[i]		
+			convertToMesh b
 			
 			progressUpdate (100.0 * i / hObj.count)	
 						
@@ -614,7 +711,6 @@ rollout _STEP1 "STEP 1: Model Transform"
 
 				
 			append forSelect b
-			setUserProp b "boxtrick" true
 		)
 		
 		progressEnd()
@@ -638,20 +734,89 @@ rollout _STEP1 "STEP 1: Model Transform"
 	on btnResetXForm pressed do
 	(
 		if(not isSelected()) do return false
-		
+			
 		for i in selection where superClassOf i == GeometryClass do
 		(			
 			ResetXForm i
-			collapseStack i
+			if(canConvertTo i Editable_Mesh) do convertToMesh i
+		)	
+	)
+	
+	on btnSnapshot pressed do
+	(
+		if(not isSelected()) do return false
+		
+		forSelect = #()	
+		s = selection as array
 			
-			setUserProp i "xform" true
+		for i in s where superClassOf i == GeometryClass and not isDeleted i and isValidNode i do
+		(		
+			a = snapShot i
+			update a
+			append forSelect a	
+		
+			a.rotation = i.rotation
+			a.name = i.name
+			a.pos = i.pos
+			a.wirecolor = i.wirecolor
+			setUserPropBuffer a (getUserPropBuffer i)
+					
+			try(delete i) catch()			
 		)
+		
+		select forSelect
+	)
+	
+	on btnDetachTrick pressed do
+	(
+		if(not isSelected()) do return false
+		
+		clearListener()
+		progressStart "Detach Trick"
+		escapeEnable	
+			
+		forSelect = #()	
+		iCnt = 0
+		s = selection as array	
+			
+		for i in 1 to s.count where superClassOf s[i] == GeometryClass and not isDeleted s[i] and isValidNode s[i] do
+		(	
+			nn = "__DetachTrick_000000" + i as string
+			
+			convertToPoly s[i]
+			f = polyop.getNumFaces s[i]
+			if(f == 0) do 
+			(
+				try(delete s[i]) catch()
+				continue
+			)
+			
+			p = #{1..f} 
+			polyop.detachFaces s[i] p asNode:true name: nn
+			newObj = getNodeByName nn
+			newObj.name =  s[i].name
+			newObj.rotation = s[i].rotation
+			newObj.name = s[i].name
+			newObj.pos = s[i].pos
+			newObj.wirecolor = s[i].wirecolor
+			setUserPropBuffer newObj (getUserPropBuffer s[i])
+			convertToMesh newObj
+						
+			try(delete s[i]) catch()
+						
+			append forSelect newObj	
+			
+			progressUpdate (100.0 * i / s.count)							
+			if(getProgressCancel() == true) do exit	
+		)
+		
+		progressEnd()
+		select forSelect
 	)
 	
 	on btnGroup pressed do
 	(
 		if(not isSelected()) do return false
-	--	if(sModelName.count < 1) do return messageBox "Please do STEP 1" title: "Warning!"
 			
 		ungroupRecursive selection
 			
@@ -699,7 +864,7 @@ rollout _STEP1 "STEP 1: Model Transform"
 	)
 	
 	progressBar hr "" height: 3 offset:[0,15]
-	button btnNext "Next >>" align: #right  enabled: true	
+	button btnNext "Next >>" align: #right  enabled: true width: 75 height: 28 
 	dotnetcontrol nextWarn "System.Windows.Forms.Button" height:0 width:0 align: #right
 	
 	on btnNext pressed do 
@@ -716,22 +881,22 @@ rollout _STEP2 "STEP 2: Model Info"
 	group "Category"
 	(
 		label lbl6 "Library:" align: #left across: 2 
-		dotNetControl lblWarn3 "System.Windows.Forms.Label" text: "*" offset: [-84, 0] 		
+		dotNetControl lblWarn3 "System.Windows.Forms.Label" text: "*" offset: [-84, 0] width: 10		
 		dropdownlist ddlLib "" 
 		
 		label lbl7 "Category:" align: #left across: 2 
-		dotNetControl lblWarn4 "System.Windows.Forms.Label" text: "*" offset: [-72, 0] 
+		dotNetControl lblWarn4 "System.Windows.Forms.Label" text: "*" offset: [-72, 0] width: 10	
 		dropdownlist ddlCat ""
 		
 		label lbl8 "Sub Category:" align: #left across: 2 
-		dotNetControl lblWarn5 "System.Windows.Forms.Label" text: "*" offset: [-51, 0] 
+		dotNetControl lblWarn5 "System.Windows.Forms.Label" text: "*" offset: [-51, 0] width: 10	
 		dropdownlist ddlSubCat ""		
 	)
 	
 	group "Model Info"
 	(
 		label lbl1 "Model Name:" align: #left across: 2  	
-		dotNetControl lblWarn1 "System.Windows.Forms.Label" text: "*" offset: [-59, 0] 
+		dotNetControl lblWarn1 "System.Windows.Forms.Label" text: "*" offset: [-59, 0] width: 10	
 		dotNetControl edtModelName "System.Windows.Forms.TextBox" height: 25 tabstop: true
 		label lbl2 "Manufacturer:" align: #left		
 		dotNetControl edtManufacturer "System.Windows.Forms.TextBox" height: 25 tabstop: true
@@ -740,32 +905,29 @@ rollout _STEP2 "STEP 2: Model Info"
 		label lbl4 "Project:" align: #left		
 		dotNetControl edtProject "System.Windows.Forms.TextBox" height: 25 tabstop: true
 		label lbl5 "Tags:" align: #left across: 2 	
-		dotNetControl lblWarn2 "System.Windows.Forms.Label" text: "*" offset: [-94, 0]
-		dotNetControl edtTags "System.Windows.Forms.TextBox" height: 25 tabstop: true
-		
-		button btnTag1 "" across: 4 visible: false width: 60 border: false
-		button btnTag2 ""  visible: false width: 60 border: false
-		button btnTag3 "" visible: false width: 60 border: false
-		button btnTag4 "" visible: false width: 60 border: false
+		dotNetControl lblWarn2 "System.Windows.Forms.Label" text: "*" offset: [-94, 0] width: 10	
+		dotNetControl edtTags "System.Windows.Forms.TextBox" height: 60 tabstop: true across: 2 width: 180 readOnly: true
+		button btnShowRelTags "Edit" align: #right offset: [0, 0] tooltip: "Select tags actual for current category." height: 60 width: 60
 	)
 	
 	group "Model Properties"
 	(
-		checkbox cbxUnwrap "Unwrap"
-		checkbox cbxLights "Lights"
-		checkbox cbxRigged "Rigged"
-		checkbox cbxAnimated "Animated"
-		checkbox cbxBakedTextures "Baked Textures"
-		checkbox cbxLods "Lods"
+		checkbox cbxUnwrap "  Unwrapped"
+		checkbox cbxLights "  Lights"
+		checkbox cbxRigged "  Rigged"
+		checkbox cbxAnimated "  Animated"
+		checkbox cbxGameEngineReady "  Game Engine Ready"
+		checkbox cbxBakedTextures "  Baked Textures"
+		checkbox cbxLods "  Lods"
 		
 	)
 		
 	timer tmr1 "Tmr1" active: false interval: 300
 	progressBar hr "" height: 3 offset:[0,15]
-	button btnPrev "<< Back" align: #left  across: 2
-	button btnNext "Next >>" align: #right  enabled: true 
+	button btnPrev "<< Back" align: #left  across: 2 width: 75 height: 28
+	button btnNext "Next >>" align: #right  enabled: true width: 75 height: 28
 	dotnetcontrol nextWarn "System.Windows.Forms.Button" height:0 width:0 align: #right
-	
+		
 	global bgErrorColor = getColor 255 229 153
 	global fgErrorColor = getColor 215 144 0
 	
@@ -775,6 +937,10 @@ rollout _STEP2 "STEP 2: Model Info"
 	on edtManufacturer KeyUp s e do switchControl e edtModeller
 	on edtModeller KeyUp s e do switchControl e edtProject
 	on edtProject KeyUp s e do switchControl e edtTags
+	on _STEP2 moved p do
+	(
+		setPosRelTagsList()
+	)
 		
 	fn initDotNet = 
 	(			
@@ -790,6 +956,10 @@ rollout _STEP2 "STEP 2: Model Info"
 		edtProject.AutoCompleteMode = edtProject.AutoCompleteMode.SuggestAppend
 		edtProject.AutoCompleteSource = edtProject.AutoCompleteSource.CustomSource	
 		
+		edtTags.readOnly = true
+		edtTags.ScrollBars = (dotNetClass "System.Windows.Forms.ScrollBars").Vertical
+		edtTags.MultiLine = true
+		edtTags.WordWrap = true
 	
 		warnLabels = #(lblWarn1, lblWarn2, lblWarn3, lblWarn4, lblWarn5)
 		bg = getBgColor()
@@ -802,42 +972,197 @@ rollout _STEP2 "STEP 2: Model Info"
 		)				
 	)
 	
-	
-	fn trim t = trimLeft (trimRight t " ") " "
-	
 	fn setTagText t = 
 	(
-		c = for i in _STEP2.controls where isProperty i "name" and matchPattern i.name pattern: "btnTag*" collect i
+		c = for i in _RelTagsList.controls where isProperty i "name" and matchPattern (i.name as string) pattern: "btnTag*" collect i
 		for i in c do i.visible = false
 		
-		for i in 1 to t.count where i <= 4 do
+		for i in 1 to t.count where i <= 7 do
 		(
 			c[i].caption = t[i] 
 			c[i].visible = true
 		)
 	)
-	
-	fn addTag a b =
-	(
-		t = b.text			
-		t = filterString t ","
-		t = for i in t collect trim i
-		if(findItem t a.caption == 0) then
-		(
-			n = ""
-			for i in 1 to t.count - 1 do n += t[i] + ", "
-			n = trimLeft n ", "
-			n += a.caption + ", "		
-			b.text = n
-			b.SelectionStart = (b.text.count)
-		)
-		else
-		(			
-			showTooltip edtTags "Tag already exist!"
-		)
 		
-		setFocus b
+	fn getRelTagsList id =
+	(
+		--catID = -1
+		url = _URL + "vault/mxs/mxsGetRelTags.php?id=" + id as string + "&time=" + timeStamp() as string
+		r = httpGet url
+		
+		return filterString r ";"
 	)
+		
+	
+	fn relTagsList =
+	(
+		if(catID == -1) do return showTooltip lblWarn5 "Please select the category!"
+		
+		global relTags = #()
+		try(destroyDialog _RelTagsList)catch()
+		
+		
+		rollout _RelTagsList "Tags Editor"
+		(		
+			multilistbox lbxTags "Tags:" height: 23 across: 2 width: 180 align: #left
+			multilistbox lbxTagsActual "Recommended Tags:" height: 23 width: 180 align: #right						
+			dotNetControl edtAddTag"System.Windows.Forms.TextBox" height: 25 tabstop: true width: 180 across: e
+			label lblTagStatus "Start typing to view tips..." align: #left offset: [-25, 4]
+			
+			button btnTag1 "" visible: false width: 60 border: true align: #right across: 7
+			button btnTag2 "" visible: false width: 60 border: false align: #right
+			button btnTag3 "" visible: false width: 60 border: false align: #right
+			button btnTag4 "" visible: false width: 60 border: false align: #right
+			button btnTag5 "" visible: false width: 60 border: false align: #right
+			button btnTag6 "" visible: false width: 60 border: false align: #right
+			button btnTag7 "" visible: false width: 60 border: false align: #right
+			label lblEmpty ""			
+			button btnAddNewTag "Add" align: #left height: 28 width: 80 across: 3
+			button btnDeleteTag "Delete" align: #left height: 28 width: 80 offset: [-44, 0]
+			button btnCloseWind "Close" align: #right height: 28 width: 80 
+			button btnAddTag "<<" width: 60 height: 28 pos: [200, 145]			
+			timer tmrSetPos "" active: false interval: 300			
+						
+			fn strToTags t =
+			(
+				o = filterString t ","
+				o = for i in o collect trim i
+				o = for i in o where i.count > 0 and i != " " collect i
+					
+				return o
+			)
+			
+			fn addRelTags t showError: false =
+			(
+				o = strToTags edtTags.text
+				c1 = o.count
+				
+				join o t
+				o = makeUniqueArray o
+				
+				c2 = o.count
+				
+				lbxTags.items = o
+				
+				s = (implode o tag: ", ")
+				
+				edtTags.text = s	
+				setTagText	#()
+				
+				lblTagStatus.caption = "Tag added successfully!"
+				if(showError and c1 == c2) do lblTagStatus.caption = "Duplicated tag was found and removed!"
+			)
+			
+			fn addTag a b =
+			(		
+				t = for i in filterString b.text "," collect toLower (trim i)
+				t = for i in 1 to t.count - 1 where t[i].count > 0 and t[i] != " " collect t[i]
+				o1 = t.count 
+				append t a.caption
+				t = makeUniqueArray t
+				o2 = t.count 
+				b.text = (implode t tag: ", ")
+				
+				if(o1 == o2) do
+				(
+					lblTagStatus.caption = "Duplicated tag was found and removed!"
+					setTagText #()	
+				)
+
+				setFocus b	
+				b.SelectionStart = (b.text.count)			
+			)
+			
+			on btnCloseWind pressed do try(destroyDialog _RelTagsList)catch()
+			on _RelTagsList open do 
+			(	
+				setPosRelTagsList()		
+				relTags = getRelTagsList catID
+								
+				if(relTags.count == 0) do 
+				(				
+					lbxTagsActual.enabled = false
+					
+					relTags = #("No tags yet!")
+				)
+				
+				lbxTagsActual.items = relTags
+				lbxTags.items = strToTags edtTags.text 
+			)
+			
+			on btnDeleteTag pressed do
+			(
+				s = lbxTags.items
+				items = lbxTags.selection as array
+				for i in items.count to 1 by -1 do try(deleteItem s items[i]) catch()
+				lbxTags.items = s
+				lbxTags.selection = #{}
+				
+				t = (implode s tag: ", ")
+				edtTags.text = t				
+			)
+			
+			on _RelTagsList close do 
+			(
+			)
+			on _RelTagsList moved p do
+			(
+				tmrSetPos.active = false
+				tmrSetPos.active = true
+				
+				setFocus edtAddTag
+			)
+			on tmrSetPos tick do
+			(
+				setPosRelTagsList()	
+				tmrSetPos.active = false
+			)
+			on btnAddTag pressed do
+			(
+				t = for i in lbxTagsActual.selection where  lbxTagsActual.items[i].count > 0 collect lbxTagsActual.items[i]
+				addRelTags t showError: true
+			)
+			
+			fn addNewTag = 
+			(
+				t = toLower (edtAddTag.text)
+				t = replaceBadChars t
+				
+				if(t.count == 0) do return false	
+				
+				addRelTags #(t) showError: true
+				edtAddTag.text = ""				
+			)
+			
+			on edtAddTag KeyUp s e do
+			(							
+				if(e.KeyCode == Keys.Enter) do (			
+					if(btnTag1.visible == true and btnTag1.caption.count > 0) do addTag btnTag1 edtAddTag	
+					addNewTag()
+				)
+			)
+			
+			on btnAddNewTag pressed do addNewTag()	
+			
+			on btnTag1 pressed do addTag btnTag1 edtAddTag
+			on btnTag2 pressed do addTag btnTag2 edtAddTag
+			on btnTag3 pressed do addTag btnTag3 edtAddTag
+			on btnTag4 pressed do addTag btnTag4 edtAddTag
+			on btnTag5 pressed do addTag btnTag5 edtAddTag
+			on btnTag6 pressed do addTag btnTag6 edtAddTag
+			on btnTag7 pressed do addTag btnTag7 edtAddTag
+		
+			on edtAddTag TextChanged s a do
+			(		
+				t = findTag edtAddTag.text		
+				if(t.count == 0) do return setTagText #()
+				setTagText t	
+			)
+			
+		)
+		createDialog _RelTagsList 460 445 escapeEnable: true style: #(#style_titlebar, #style_border, #style_sysmenu) parent: _STEP2.hwnd
+	)
+		
 	
 	fn getList s = 
 	(
@@ -894,6 +1219,8 @@ rollout _STEP2 "STEP 2: Model Info"
 		useSettings "CAT1"	category1[v][1] "w"	
 		
 		ddlCat.items = for i in category2 collect i[2]
+			
+		try(destroyDialog _RelTagsList)catch()
 	)
 	
 	fn ddlCat_selected v =
@@ -905,12 +1232,16 @@ rollout _STEP2 "STEP 2: Model Info"
 		useSettings "CAT2"	category2[v][1] "w"	
 				
 		ddlSubCat.items = for i in category3 collect i[2]
+			
+		try(destroyDialog _RelTagsList)catch()
 	)
 	
 	fn ddlSubCat_selected v = 
 	(
 		useSettings "CAT3"	category3[v][1] "w"	
 		catID = category3[v][1] as integer
+		
+		try(destroyDialog _RelTagsList)catch()
 	)
 	
 	fn loadCategories =
@@ -974,6 +1305,7 @@ rollout _STEP2 "STEP 2: Model Info"
 		bRigged = cbxRigged.checked
 		bAnimated = cbxAnimated.checked
 		bBakedTextures = cbxBakedTextures.checked
+		bGameEngineReady = cbxGameEngineReady.checked
 		bLods = cbxLods.checked
 		bUnwrap = cbxUnwrap.checked
 		bLights = cbxLights.checked
@@ -997,26 +1329,23 @@ rollout _STEP2 "STEP 2: Model Info"
 		if(not isSelected()) do return showTooltip nextWarn "Please select model!"
 			
 		saveAllProp()
+			
+		try(destroyDialog _RelTagsList)catch()
 		
 		goStep 3	
 	)
 	
 	on btnPrev pressed do
 	(
-		goStep 1
+		try(destroyDialog _RelTagsList)catch()
+		
+		goStep 1				
 	)
-	
-	on edtTags TextChanged s a do
-	(		
-		t = findTag edtTags.text		
-		if(t.count == 0) do return false
-		setTagText t	
-	)
-	
+
 	on edtTags KeyUp s e do
-	(
+	(		
 		if(e.KeyCode == Keys.Enter) do (			
-			if(btnTag1.visible == true) do addTag btnTag1 edtTags	
+			if(btnTag1.visible == true and btnTag1.caption.count > 0) do addTag btnTag1 edtTags				
 		)
 	)
 	
@@ -1055,16 +1384,16 @@ rollout _STEP2 "STEP 2: Model Info"
 		
 		tmr1.active = true	
 	
-		zipper = zip()
-
 		detectLights()
-		detectAnimation()		
+		detectAnimation()						
 	)
 		
 	on _STEP2 close do
 	(
 	
 	)
+	
+	on btnShowRelTags pressed do relTagsList()
 		
 	on tmr1 tick do
 	(		
@@ -1072,7 +1401,7 @@ rollout _STEP2 "STEP 2: Model Info"
 		
 		tags = getTagsList()			
 		modellers = getModellerList()
-		
+				
 		edtModeller.AutoCompleteCustomSource.AddRange modellers
 		
 		for i in getModels() do 
@@ -1107,18 +1436,11 @@ rollout _STEP2 "STEP 2: Model Info"
 		ddlCat_selected v
 	)
 	on ddlSubCat selected v do ddlSubCat_selected v
-
-	
-	on btnTag1 pressed do addTag btnTag1 edtTags
-	on btnTag2 pressed do addTag btnTag2 edtTags
-	on btnTag3 pressed do addTag btnTag3 edtTags
-	on btnTag4 pressed do addTag btnTag4 edtTags
-	
 )
 
-rollout _STEP3 "STEP 3: Model Overview" 
+rollout _STEP3 "STEP 3: Model Review" 
 (
-	group "Overview"
+	group "Description"
 	(
 		dotNetControl edtOverview "System.Windows.Forms.TextBox"  height: 250
 	)
@@ -1159,8 +1481,8 @@ rollout _STEP3 "STEP 3: Model Overview"
 	)
 	
 	progressBar hr "" height: 3 offset:[0,15]
-	button btnPrev "<< Back" align: #left  across: 2
-	button btnNext "Next >>" align: #right  enabled: true	
+	button btnPrev "<< Back" align: #left  across: 2 width: 75 height: 28
+	button btnNext "Next >>" align: #right  enabled: true width: 75 height: 28	
 	dotnetcontrol nextWarn "System.Windows.Forms.Button" height:0 width:0 align: #right
 	
 	on btnPrev pressed do 
@@ -1204,11 +1526,11 @@ rollout _STEP4 "STEP 4: Preview"
 		checkbox cbxMainPreview "Main Preview"
 	)
 
-	button btnPreviewAdd "Add New Picture" offset: [0, 12]
+	button btnPreviewAdd "Add New Picture" offset: [0, 12] height: 28
 		
 	progressBar hr "" height: 3 offset:[0,15]
-	button btnPrev "<< Back" align: #left  across: 2
-	button btnNext "Next >>" align: #right  enabled: true	
+	button btnPrev "<< Back" align: #left  across: 2 width: 75 height: 28
+	button btnNext "Next >>" align: #right  enabled: true	width: 75 height: 28
 	dotnetcontrol nextWarn "System.Windows.Forms.Button" height:0 width:0 align: #right
 	
 	on btnPrev pressed do goStep 3		
@@ -1283,7 +1605,7 @@ rollout _STEP4 "STEP 4: Preview"
 		showPreview sPreviewPath[x]
 	)
 	
-	on btnPreviewAdd pressed do
+	fn addPreview =
 	(
 		f = getOpenImage()
 				
@@ -1305,6 +1627,8 @@ rollout _STEP4 "STEP 4: Preview"
 		)
 	)
 	
+	on btnPreviewAdd pressed do addPreview()
+	
 	on btnDelPreview pressed do
 	(
 		s = ddlPreview.selection
@@ -1323,6 +1647,8 @@ rollout _STEP4 "STEP 4: Preview"
 		
 	)
 	
+	on btmPreview Click s a do addPreview()
+
 	on cbxMainPreview changed x do 
 	(	
 		s = ddlPreview.selection
@@ -1399,21 +1725,30 @@ rollout _STEP5 "STEP 5: Pack Model"
 		dotNetControl lbl14 "System.Windows.Forms.Label" text: "Baked:" across: 2 
 		dotNetControl _lblBaked "System.Windows.Forms.Label" text: "" 
 		
-		dotNetControl lbl15 "System.Windows.Forms.Label" text: "Unwrap:" across: 2 
+		dotNetControl lbl15 "System.Windows.Forms.Label" text: "Game Engine:" across: 2 
+		dotNetControl _lblGameEngineReady "System.Windows.Forms.Label" text: "" 
+		
+		dotNetControl lbl16 "System.Windows.Forms.Label" text: "Unwrap:" across: 2 
 		dotNetControl _lblUnwrap "System.Windows.Forms.Label" text: "" 	
 		
-		dotNetControl lbl16 "System.Windows.Forms.Label" text: "Lights:" across: 2 
+		dotNetControl lbl17 "System.Windows.Forms.Label" text: "Lights:" across: 2 
 		dotNetControl _lblLights "System.Windows.Forms.Label" text: "" 
 		
-		dotNetControl lbl17 "System.Windows.Forms.Label" text: "Lods:" across: 2 
+		dotNetControl lbl18 "System.Windows.Forms.Label" text: "Lods:" across: 2 
 		dotNetControl _lblLods "System.Windows.Forms.Label" text: "" 
 		
 
-		dotNetControl lbl18 "System.Windows.Forms.Label" text: "Client:" across: 2 offset: [0, 20]
+		dotNetControl lbl19 "System.Windows.Forms.Label" text: "Client:" across: 2 offset: [0, 20]
 		dotNetControl _lblClient "System.Windows.Forms.Label" text: "" offset: [0, 20]	
 
-		dotNetControl lbl19 "System.Windows.Forms.Label" text: "Custom 1:" across: 2 
+		dotNetControl lbl20 "System.Windows.Forms.Label" text: "Custom 1:" across: 2 
 		dotNetControl _lblCustom1 "System.Windows.Forms.Label" text: "" 
+	)
+	group "Settings" 
+	(
+		checkbox cbxRenameTextures "Rename Textures" checked: true
+		checkbox cbxRenameMaterials "Rename Materials" checked: true
+		checkbox cbxRenameObjects "Rename Objects" checked: true
 	)
 	
 	button btnPackModel "Pack Model" width: 244 height: 45 align: #left across: 2
@@ -1468,8 +1803,8 @@ rollout _STEP5 "STEP 5: Pack Model"
 		_lblManufacturer.text = getNA sManufacturer
 		_lblModeller.text = getNA sModeller
 		_lblProject.text = getNA sProject
-		_lblTags.text = getNA sTags
-		_lblPreview.text = getYesNo (sPreviewPath.count > 0)
+		_lblTags.text = (explode sTags tag: ",").count as string
+		_lblPreview.text = sPreviewPath.count as string
 		_lblUnits.text = getUnits()
 		_lblDim.text = getDim selection
 		_lblPolys.text = polyCount selection
@@ -1478,12 +1813,23 @@ rollout _STEP5 "STEP 5: Pack Model"
 		_lblRigged.text = getYesNo bRigged
 		_lblAnimated.text = getYesNo bAnimated
 		_lblBaked.text = getYesNo bBakedTextures
+		_lblGameEngineReady.text = getYesNo bGameEngineReady
 		_lblUnwrap.text = getYesNo bUnwrap
 		_lblLights.text = getYesNo bLights
 		_lblLods.text = getYesNo bLods
 		_lblFormat.text = (getMaxVersion())[1]
 		_lblCustom1.text = getNA sCustom1
 		_lblClient.text = getNA sClient
+			
+			
+		v = useSettings "RENTEX" "bool" "r"	
+		cbxRenameTextures.checked = if(v == false) then false else true
+			
+		v = useSettings "RENOBJ" "bool" "r"	
+		cbxRenameObjects.checked = if(v == false) then false else true	
+			
+		v = useSettings "RENMAT" "bool" "r"	
+		cbxRenameMaterials.checked = if(v == false) then false else true
 	)
 		
 	fn checkTexturesError =
@@ -1556,14 +1902,14 @@ rollout _STEP5 "STEP 5: Pack Model"
 		return out
 	)
 		
-	fn copyMaps szMaps szName = 
+	fn copyMaps _selection szMaps szName = 
 	(
 		oldTex = #()
 		oldTexPaths = #()
 		toRename = #()
 		iCnt = 1
 				
-		for i in selection where i.material != undefined do
+		for i in _selection where i.material != undefined do
 		(
 			for type in BitmapTypes where classOf type == textureMap do 
 			(	
@@ -1574,8 +1920,8 @@ rollout _STEP5 "STEP 5: Pack Model"
 					n = filenameFromPath f
 					p = getFilenamePath f
 					ext = getFilenameType f
-							
-					n = szName + "-" + (getNum iCnt) + ext
+										
+					if(cbxRenameTextures.checked) do n = szName + "-" + (getNum iCnt) + ext
 										
 					if(doesFileExist f) do
 					( 
@@ -1604,11 +1950,24 @@ rollout _STEP5 "STEP 5: Pack Model"
 	
 	fn renameObjects szName = 
 	(
-		g = objects
+		r = cbxRenameObjects.checked
+		
+		iCnt = 0
 				
-		for i in 1 to g.count where isValidNode g[i] do
+		for g in objects where isValidNode g do
 		(
-			g[i].name = szName + "-" + (getNum i) 
+			n = g.name
+			if(isGroupHead g not (isGroupMember g)) then 
+			(	
+				n = szName + "-Group-001" 
+			)
+			else 
+			(
+				if(r) do n = szName + "-" + (getNum iCnt) 
+			)
+			
+			g.name = n
+			iCnt += 1
 		)
 	)
 	
@@ -1632,6 +1991,8 @@ rollout _STEP5 "STEP 5: Pack Model"
 	
 	fn renameMaterials szName = 
 	(
+		if(not cbxRenameMaterials.checked) do return false
+		
 		oldMtl = #()
 		iCnt = 1
 						
@@ -1655,7 +2016,7 @@ rollout _STEP5 "STEP 5: Pack Model"
 		for i in objects do layer0.addNode i
 	)
 	
-	fn copyIESfiles szAssets szName = 
+	fn copyIESfiles _selection szAssets szName = 
 	(	
 		global iIesCnt = 1
 		
@@ -1679,7 +2040,7 @@ rollout _STEP5 "STEP 5: Pack Model"
 			return f
 		)
 				
-		for l in lights where l.isSelected == true do
+		for l in _selection where superClassOf l == light do
 		(
 			if(isProperty l #ies_file) do l.ies_file = copyIes (l.ies_file) szAssets szName
 			if(isProperty l #webFile) do l.webFile = copyIes (l.webFile) szAssets szName
@@ -1687,9 +2048,17 @@ rollout _STEP5 "STEP 5: Pack Model"
 		)		
 	)
 	
+	fn setIniInfo f s k v = 
+	(	
+		-- Set correct ini setting for PHP
+		v = substituteString v "\"" "'"
+		setIniSetting f s k ("\"" + v + "\"") 
+	)
+	
 	fn createInfo szDir previewList =
 	(
-		f = szDir + "info.ini"
+		f = szDir + "info.tmp"
+		n = szDir + "info.ini"
 		v = getMaxVersion()
 		r = getRender()
 		p = polyCount geometry
@@ -1697,36 +2066,46 @@ rollout _STEP5 "STEP 5: Pack Model"
 		u = getUnits()
 		
 		o = substituteString sOverview "\r\n" "|"
-		
-		setIniSetting f "INFO" "TYPE" "model"
-		setIniSetting f "INFO" "CATID" (catID as string)
-		setIniSetting f "INFO" "NAME" sModelName
-		setIniSetting f "INFO" "FORMAT" v[1]
-		setIniSetting f "INFO" "RENDER" r[2]
-		setIniSetting f "INFO" "POLYS" p
-		setIniSetting f "INFO" "UNITS" u
-		setIniSetting f "INFO" "DIMENSION" d
-		setIniSetting f "INFO" "PROJECT" (getNA sProject)
-		setIniSetting f "INFO" "CUSTOM1" sCustom1
-		setIniSetting f "INFO" "CLIENT" sClient
-		setIniSetting f "INFO" "RIGGED" (getYesNo bRigged)
-		setIniSetting f "INFO" "LODS" (getYesNo bLods)
-		setIniSetting f "INFO" "MODELLER" (getNA sModeller)
-		setIniSetting f "INFO" "TAGS" sTags
-		setIniSetting f "INFO" "MANUFACTURER" (getNA sManufacturer)
-		setIniSetting f "INFO" "OVERVIEW" o
-		setIniSetting f "INFO" "UNWRAP" (getYesNo bUnwrap)
-		setIniSetting f "INFO" "LIGHTS" (getYesNo bLights)
-		setIniSetting f "INFO" "PREVIEW" (getYesNo (sPreviewPath.count > 0))
+						
+		setIniInfo f "INFO" "TYPE" "model" 
+		setIniInfo f "INFO" "CATID" (catID as string) 
+		setIniInfo f "INFO" "NAME" sModelName 
+		setIniInfo f "INFO" "FORMAT" v[1] 
+		setIniInfo f "INFO" "RENDER" r[2] 
+		setIniInfo f "INFO" "POLYS" p 
+		setIniInfo f "INFO" "UNITS" u 
+		setIniInfo f "INFO" "DIMENSION" d 
+		setIniInfo f "INFO" "PROJECT" (getNA sProject) 
+		setIniInfo f "INFO" "CUSTOM1" (getNA sCustom1)
+		setIniInfo f "INFO" "CLIENT" (getNA sClient)
+		setIniInfo f "INFO" "RIGGED" (getYesNo bRigged) 
+		setIniInfo f "INFO" "LODS" (getYesNo bLods) 
+		setIniInfo f "INFO" "MODELLER" (getNA sModeller) 
+		setIniInfo f "INFO" "TAGS" sTags 
+		setIniInfo f "INFO" "MANUFACTURER" (getNA sManufacturer) 
+		setIniInfo f "INFO" "OVERVIEW" o 
+		setIniInfo f "INFO" "UNWRAP" (getYesNo bUnwrap) 
+		setIniInfo f "INFO" "LIGHTS" (getYesNo bLights) 
+		setIniInfo f "INFO" "BAKED" (getYesNo bBakedTextures) 
+		setIniInfo f "INFO" "GAMEENGINE" (getYesNo bGameEngineReady) 
+		setIniInfo f "INFO" "PREVIEW" (getYesNo (sPreviewPath.count > 0)) 
 				
 		iCnt = 0	
 		for i in previewList do 
 		(
 			j = substituteString i szDir ""
-			setIniSetting f "PREVIEW" (iCnt as string) j
+			setIniInfo f "PREVIEW" (iCnt as string) j 
 			iCnt += 1
 		)
+		
+
+		convertFileToUTF8 f	n
 	)
+	
+	on cbxRenameTextures changed v do useSettings "RENTEX"	v "w"	
+	on cbxRenameObjects changed v do useSettings "RENOBJ"	v "w"	
+	on cbxRenameMaterials changed v do useSettings "RENMAT"	v "w"	
+
 	
 	on btnPackModel pressed do
 	(
@@ -1734,10 +2113,15 @@ rollout _STEP5 "STEP 5: Pack Model"
 		fileToLoad = maxFilePath + maxFileName
 		if(fileToLoad.count < 1) do  return showTooltip warnMsg "Please save scene!"
 		if(sModelName.count < 1) do return showTooltip warnMsg "Please specify Model Name in STEP 1!" 
-		if(sTags.count < 1) do return showTooltip warnMsg "Please specify Tags in STEP 1!" 
-		if(catID == -1) do return showTooltip warnMsg "Please select the category in STEP 1!"
+		if(sTags.count < 1) do return showTooltip warnMsg "Please specify Tags in STEP 2!" 
+		if(catID == -1) do return showTooltip warnMsg "Please select the category in STEP 2!"
 		max file save
 		
+		_selection = selection as array 	
+			
+		v = getMaxVersion()
+		r = getRender()	
+			
 		-- Set paths
 		
 		szName = stripName sModelName
@@ -1747,10 +2131,12 @@ rollout _STEP5 "STEP 5: Pack Model"
 		szAssets = szDir + @"assets\"
 		szPreview = szDir + @"preview\"
 		szExport = szDir + @"export\"
+		szMtl = szDir + @"matlib\"	
 		szInfo = szDir  + "info.ini"
 		
 		-- Set out zip
-		szZip = _SAVEPATH + szName + ".zip"		 
+		szZip = _SAVEPATH + szName + ".zip"
+		szMatLib = (szMtl + szName + " (" +  r[2] + ").mat")		
 				
 		-- Make dirs
 		
@@ -1759,38 +2145,43 @@ rollout _STEP5 "STEP 5: Pack Model"
 		makeDir szAssets
 		makeDir szPreview	
 		makeDir szExport	
+		makeDir szMtl	
 		
 		-- Check tex errors	
 		if(checkTexturesError()) do return false
 		
 		-- Copy previews
 		previewList = copyPreview szPreview szDir
-			
+					
 		-- Copy maps		
-		copyMaps szMaps szName
-			
-			
+		-- Some maps not copied in row (maxscript bug)	
+		for i in 1 to 3 do copyMaps _selection szMaps szName
+				
 		-- Copy IES
-		copyIESfiles szAssets szName	
+		copyIESfiles _selection szAssets szName	
 			
 		-- Save render
 		currentRender = renderers.current
-	
+
 		-- Save units
 		SystemType = units.SystemType
 		SystemScale = units.SystemScale 
-		DisplayType = units.DisplayType		
+		DisplayType = units.DisplayType	
+		MetricType = units.MetricType
 			
 		-- Add Versions
-				
-		saveNodes selection (szDir + "_tmp.max") quiet:true
+		
+		saveNodes _selection (szDir + "_tmp.max") quiet:true
 		resetMaxFile #noPrompt
 		try(
 			units.SystemType = SystemType
 			units.SystemScale = SystemScale
 			units.DisplayType	= DisplayType
+			units.MetricType = MetricType
 		)catch()
-		
+			
+		-- Delete objects from default scene
+		try(for o in objects where isValidNode o do delete o)catch()
 		
 		mergeMAXFile (szDir + "_tmp.max") #select #mergedups #renameMtlDups #noRedraw quiet:true			
 		deleteFile (szDir + "_tmp.max")
@@ -1798,28 +2189,36 @@ rollout _STEP5 "STEP 5: Pack Model"
 		try(renderers.current = currentRender)catch()
 					
 		select objects
+		max tool zoomextents all
 			
 		renameObjects szName
 		renameMaterials szName 
 		removeLayers()
-		
-		v = getMaxVersion()
-		r = getRender()
-		
+			
 		-- Save file properties
 		saveAllProp()
 		
 		f = szDir + szName + r[1] + ".max"
 		saveMaxFile f saveAsVersion:(v[1] as integer) quiet:true
 		
+		-- Save material library
+		saveMtlLib szMatLib	
+		
 		f = szExport + szName + r[1] + ".fbx"
 		FBXExporterSetParam "FileVersion" "FBX201200"	-- Warning!! This option important!!
 		ungroupRecursive objects
 		exportFile f #noPrompt  --selectedOnly:true
 		
+		szOutName = szName + " (" + r[2] + ")"
+		deleteFile (_SAVEPATH + szOutName + ".zip")
+		
+		zipper = zip()
+		zipper.packFile source: f target: szExport name: (szOutName + ".fbx") del: true
+		
 		createInfo szDir previewList
 				
-		zipper.packFiles source: szDir target: _SAVEPATH name: (szName + " (" + r[2] + ")") del: true
+		zipper = zip()
+		zipper.packFiles source: szDir target: _SAVEPATH name: szOutName del: true
 		
 		resetMaxFile #noPrompt
 		loadMaxFile fileToLoad useFileUnits: true quiet:true		
@@ -1829,7 +2228,7 @@ rollout _STEP5 "STEP 5: Pack Model"
 	)
 	
 	progressBar hr "" height: 3 offset:[0,15]
-	button btnPrev "<< Back" align: #left 
+	button btnPrev "<< Back" align: #left  width: 75 height: 28
 	on btnPrev pressed do goStep 4	
 )
 

@@ -293,8 +293,8 @@ fn addFile f mode: #merge =
 			resetMaxFile #noPrompt
 			loadMaxFile f useFileUnits: true quiet:true	
 			
-			setTexturesPath path: p geom: objects type: BitmapTex
-			try(setTexturesPath path: p geom: objects type: CoronaBitmap)catch()
+			--setTexturesPath path: p geom: objects type: BitmapTex
+			--try(setTexturesPath path: p geom: objects type: CoronaBitmap)catch()
 			setIesPath path: p geom: objects			
 		)
 		#xref:
@@ -305,7 +305,7 @@ fn addFile f mode: #merge =
 		)
 		default: 
 		(
-			mergeMaxFile f #select #mergeDups  #renameMtlDups  quiet:true
+			mergeMaxFile f #select #promptDups  #promptMtlDups  quiet:true
 	
 			setTexturesPath path: p geom: selection type: BitmapTex
 			try(setTexturesPath path: p geom: selection type: CoronaBitmap)catch()

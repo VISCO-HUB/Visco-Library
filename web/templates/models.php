@@ -8,4 +8,3 @@
 	</div>
 </div>
 <div pagination></div>
-<iframe id="download" ng-src="{{download}}" iframe-onload="downloadMsg()" class="hidden"></iframe>

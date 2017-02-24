@@ -353,19 +353,22 @@
 		
 		PUBLIC STATIC FUNCTION CHECK() {							
 			
-			IF(!ISSET($_SESSION['token'])) RETURN [FALSE];
+			$AUTH = [];
+			$AUTH['exist'] = FALSE;
+			
+			IF(!ISSET($_SESSION['token'])) RETURN $AUTH;
 			$WHERE = [];
 			$WHERE['token'] = $_SESSION['token'];
 			$RESULT = DB::SELECT('users', $WHERE);
 			
 			$ROWS = MYSQLI_NUM_ROWS($RESULT);
-			
-			IF($ROWS != 1) RETURN [FALSE];			
+
+			IF($ROWS != 1) RETURN $AUTH;			
 			$ROW = $RESULT->fetch_object();
-			
-			$AUTH = [];
+						
 			$AUTH['exist'] = TRUE;
 			$AUTH['user'] = $ROW;
+			$AUTH['user']->browser = $_SESSION['browser'];
 			
 			RETURN $AUTH;
 		}
@@ -1000,7 +1003,21 @@
 			$PARTS = 0;
 			$INTERVALS = ARRAY();
 			
-			FOREACH($TEMP AS $K => $V) {
+			FOR($I = 0; $I < COUNT($TEMP); $I++) {
+				IF($TEMP[$I] == 1) {
+					$INTERVALS['start'] = $I;
+					BREAK;
+				}				
+			}
+			
+			FOR($I = COUNT($TEMP); $I >= 0 ; $I--) {
+				IF($TEMP[$I] == 1) {
+					$INTERVALS['end'] = $I;
+					BREAK;
+				}				
+			}
+			
+			/*FOREACH($TEMP AS $K => $V) {
 				IF($V == 1 AND !$START) {
 					$INTERVALS[$PARTS]['start'] = $K;
 					$START = TRUE;
@@ -1011,17 +1028,20 @@
 					$START = FALSE;
 					$PARTS++;
 				}
-			}
+			}*/
 			
-			$W = 1;
-			$S = 1;
+			/*$W = 1;
+			$S = 0;
 			
 			FOREACH($INTERVALS AS $K => $V) {
 				IF($V['end'] - $V['start'] > 35) {
 					$W = $V['end'] - $V['start'];
 					$S = $V['start'];
 				}
-			}
+			}*/
+			
+			$W = $INTERVALS['end'] - $INTERVALS['start'];
+			$S = $INTERVALS['start'];
 			
 			RETURN ARRAY('size' => $W, 'padding' => $S);
 		}
@@ -1047,11 +1067,13 @@
 					}
 					
 					LIST($R, $G, $B) = ARRAY_VALUES(IMAGECOLORSFORINDEX($IMG, $RGB));
-					 
+										 
 					IF($I == 0 AND $J == 0)  $BG = $R;
 					$SENS = 15;
 					
+					
 					$BIN[$I][$J] = ($R > $BG - $SENS) ? 0 : 1;
+					//IF($BG != 0) $BIN[$I][$J] = 1;
 				}
 			}
 			

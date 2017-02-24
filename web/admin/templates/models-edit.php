@@ -50,9 +50,9 @@
 	</ul>
 </div>
 <hr>
-<h2><small>Overview:</small></h2>
+<h2><small>Description:</small></h2>
 <div class="form-group">
-	<textarea class="form-control" cols="20" rows="5" disabled>{{product.info.overview}}</textarea>
+	<textarea class="form-control" cols="20" rows="5" disabled ng-bind-html="product.info.overview.split('|').join('\n')"></textarea>
 	<br>
 	<button type="submit" class="btn btn-primary" ng-click="productChangeOverview()">Change</button>
 </div>
@@ -69,6 +69,10 @@
 		<td>{{product.info.format}}</td>
 	</tr>
 	<tr>
+		<td>Date: </td>
+		<td>{{tm(product.info.date)}}</td>
+	</tr>
+	<tr>
 		<td>Units: </td>
 		<td>{{product.info.units}}</td>
 	</tr>
@@ -81,12 +85,40 @@
 		<td>{{product.info.polys}}</td>
 	</tr>
 	<tr>
+		<td>Modeller: </td>
+		<td>{{product.info.modeller}}</td>
+	</tr>
+	<tr>
+		<td>Manufacturer:</td>
+		<td>{{product.info.manufacturer}}</td>
+	</tr>
+	<tr>
+		<td>Client:</td>
+		<td>{{product.info.client}}</td>
+	</tr>
+	<tr>
+		<td>Project: </td>
+		<td>{{product.info.project}}</td>
+	</tr>
+	<tr>
 		<td>Render: </td>
 		<td>{{product.info.render}}</td>
 	</tr>
 	<tr>
 		<td>Unwrap: </td>
 		<td>{{yesno(product.info.unwrap)}}</td>
+	</tr>
+	<tr>
+		<td>Game Engine Ready: </td>
+		<td>{{yesno(product.info.gameengine)}}</td>
+	</tr>
+	<tr>
+		<td>Custom1: </td>
+		<td>{{product.info.custom1}}</td>
+	</tr>
+	<tr>
+		<td>Lights: </td>
+		<td>{{yesno(product.info.lights)}}</td>
 	</tr>
 	<tr>
 		<td>Lods: </td>
@@ -99,5 +131,9 @@
 	<tr>
 		<td>Rigged: </td>
 		<td>{{yesno(product.info.rigged)}}</td>
+	</tr>
+	<tr>
+		<td>Uploaded By: </td>
+		<td>{{product.info.uploadedby}}</td>
 	</tr>
 </table>

@@ -551,7 +551,6 @@ app.controller("modelsEditCtrl", function ($scope, $rootScope, $routeParams, vau
 		
 	vault.catGet();
 	
-	$scope.tm = function(time) {return vault.tm(time)};
 	
 	$scope.changePage = function() {							
 		$location.path('/models/' + $scope.currentPage);		
@@ -769,6 +768,9 @@ app.run(function($rootScope, $location, $routeParams, vault) {
 		$rootScope.section = a;
 			
 		// INIT
+		
+		$rootScope.tm = function(time) {return vault.tm(time)};
+		
 		$rootScope.goLogin = function() {
 			$location.path("/login");
 		}
