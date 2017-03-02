@@ -3,7 +3,7 @@
 	DEFINE('ROOT', $_SERVER['DOCUMENT_ROOT'] . '\\');
 	
 	//SERVER
-	DEFINE('HOSTNAME', ($_SERVER['HTTPS'] ?  'https' : 'http') . '://' . $_SERVER['HTTP_HOST'] . '/');
+	DEFINE('HOSTNAME', ($_SERVER['HTTPS'] == off ?  'http' : 'https') . '://' . $_SERVER['HTTP_HOST'] . '/');
 	
 	// MYSQL DATA
 	DEFINE('MYSQL_DB', 'assets_library');
