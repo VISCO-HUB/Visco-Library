@@ -740,7 +740,7 @@ app.controller("msgCtrl", function ($scope, $rootScope, vault) {
 app.controller("settingsCtrl", function ($scope, $rootScope, vault) {
 	vault.getGlobal();
 	
-	$scope.show = 'tab1';
+	$scope.show = 'tabGlobal';
 	
 	$rootScope.addCrumb('Settings', '');
 	
@@ -754,6 +754,18 @@ app.controller("settingsCtrl", function ($scope, $rootScope, vault) {
 		}
 		
 		vault.globalsChange(n);		
+	}
+	
+	$scope.tagsRefresh = function(t) {
+		if(!confirm('Do you really want to refresh tags?\n\nWARNING!\nThis action will recalculate all tags for all models and textures!\nThis operation can be carried out within 20 minutes!')){
+			return false;
+		}		
+		
+		if(!confirm('After you click OK to begin the update. Do not close this page!')){
+			return false;
+		}
+	
+		vault.tagsRefresh(t);		
 	}
 });
 
@@ -901,7 +913,11 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 			break;
 			case 'TAGSEXIST': s.error = 'The same tag already exist! Enter another tag name!';
 			break;
-			case 'TAGSWRONGFORMAT': s.warning = 'Tag has wrong format!';
+			case 'TAGSEXIST': s.error = 'The same tag already exist! Enter another tag name!';
+			break;
+			case 'TAGSREFRESHOK': s.success = 'Tags updated!';
+			break;
+			case 'TAGSREFRESHBAD': s.error = 'Error when updating tags!';
 			break;
 		}
 		
@@ -1365,6 +1381,21 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		function(r){
 			responceMessage(r);
 		});
+	}
+
+	var tagsRefresh = function(t) {
+					
+		var json = {'type': t};
+		
+		HttpPost('TAGSREFRESH', json).then(function(r){									
+			getGlobal();
+			
+				console.log(r.data)
+			responceMessage(r.data);			
+		},
+		function(r){
+			responceMessage(r);
+		});
 	}	
 	
 	var catChangeName = function(name, id) {
@@ -1430,6 +1461,7 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		usersGet: usersGet,
 		usersSetParam: usersSetParam,
 		usersGetFilter: usersGetFilter,
+		tagsRefresh: tagsRefresh,
 		tm: tm
 	};
 });

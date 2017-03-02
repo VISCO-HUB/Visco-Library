@@ -82,6 +82,61 @@
 			RETURN $RESULT;
 		}
 		
+		PUBLIC STATIC FUNCTION SEARCH($TABLE, $FIND = [], $COL = [], $FILTER = NULL, $LIMIT = NULL, $CNT = NULL) {
+			
+			$MYSQLI = $GLOBALS['MYSQLI'];
+				
+			// FILTER 
+			$ATTACH_FILTER_CAT = '';
+			IF(ISSET($FILTER['cat']['ids']) AND COUNT($FILTER['cat']['ids'])) {
+				$F_CAT = [];
+				FOREACH($FILTER['cat']['ids'] AS $V) $F_CAT[] = "catid='" . $V . "'";
+				$F_CAT = IMPLODE(' OR ', $F_CAT);
+				IF(COUNT($F_CAT)) $ATTACH_FILTER_CAT = " (" . $F_CAT . ") AND ";
+			}
+			
+			$F = '';
+			
+			$SPECIALS = ['-', '"', '+', '~', '*'];
+			FOREACH($FIND AS $V) {				
+				$PREFIX = IN_ARRAY($V[0], $SPECIALS) ? $V[0] : '+';
+				$POSTFIX = '* ';
+				
+				//$V = STR_REPLACE($SPECIALS, '', $V);
+				$F .= $PREFIX . SELF::STRIP($V) . $POSTFIX;
+			}
+			
+			$M = [];
+			$PRIORITY = 0;
+			FOREACH($COL AS $V) {
+				$P = COUNT($COL) - $PRIORITY;
+				$M[] = $V . '_match * ' . ($P ? $P : '');
+				$PRIORITY++;
+			}
+			
+			$MATCH = [];
+			FOREACH($COL AS $V){								
+				$VAL = SELF::STRIP($V);
+				$MATCH [] = "MATCH (`" . $VAL . "`) AGAINST ('" . $F . "' IN BOOLEAN MODE) AS " . $VAL . "_match";
+			}
+				
+			$ATTACHLIMIT = '';
+			IF($LIMIT) $ATTACHLIMIT = ' LIMIT ' . SELF::STRIP($LIMIT['start']) . ", " . SELF::STRIP($LIMIT['end']);
+			
+			$SEL = $CNT ? "SELECT COUNT(*) AS cnt " : "SELECT * ";			
+			$QUERY = $SEL . " ," . IMPLODE(',', $MATCH) . " FROM `" . $TABLE . "` WHERE " . $ATTACH_FILTER_CAT . " MATCH (" . IMPLODE(',', $COL) . ") AGAINST ('" . $F . "' IN BOOLEAN MODE) ORDER BY (" . IMPLODE(' + ', $M) . ") DESC " . $ATTACHLIMIT . " ;";
+						
+			$RESULT = $MYSQLI->query($QUERY);
+						
+			IF($CNT) {
+				$ROW = MYSQLI_FETCH_ASSOC($RESULT);
+				RETURN $ROW['cnt'];				
+			}
+			
+			RETURN $RESULT;
+		}
+		
+		
 		PUBLIC STATIC FUNCTION SELECTLIKE($TABLE, $COL = [], $FIND = [], $LIMIT = NULL, $WHERE = NULL, $CNT = NULL, $FILTER = NULL) {		
 			
 			$MYSQLI = $GLOBALS['MYSQLI'];
@@ -129,7 +184,7 @@
 			$RESULT = $MYSQLI->query($QUERY);
 
 			IF($CNT) {
-				$ROW = mysqli_fetch_assoc($RESULT);
+				$ROW = MYSQLI_FETCH_ASSOC($RESULT);
 				RETURN $ROW['cnt'];
 			}
 			
@@ -153,7 +208,7 @@
 			$QUERY = "SELECT COUNT(*) AS cnt FROM " . $TABLE . ' ' . $ATTACHWHERE .";";			
 			
 			$RESULT = $MYSQLI->query($QUERY);
-			$ROW = mysqli_fetch_assoc($RESULT);
+			$ROW = MYSQLI_FETCH_ASSOC($RESULT);
 		
 			RETURN $ROW['cnt'];
 		}
@@ -471,7 +526,14 @@
 			$S = PREG_REPLACE('/[^A-Za-z0-9\-]/', '', $S); 
 			RETURN $S;
 		}
-				
+		
+		PUBLIC STATIC FUNCTION GETCATINFO($CATEGORIES, $ID) {																		
+			FOREACH($CATEGORIES AS $CAT) {			
+				IF($CAT->id == $ID) RETURN $CAT;
+			}
+			
+			RETURN '';
+		}		
 		
 		PUBLIC STATIC FUNCTION GET($DATA) {			
 			IF(!ISSET($DATA->parentid)) RETURN '[]';
@@ -665,6 +727,50 @@
 			RETURN $SUCCESS;
 		}
 		
+		PUBLIC STATIC FUNCTION INFO($DATA) {
+			$ERROR = '{"responce": "PRODINFOBAD"}';
+			$NOACCESS = '{"responce": "PRODINFONOACCESS"}';
+			$STATUSOFF = '{"responce": "PRODINFOOFF"}';
+			$AUTH = $GLOBALS['AUTH']['user'];
+			$ISNOADMIN = $AUTH->rights < 1 OR $AUTH->status == 0;
+			
+			IF(!ISSET($DATA->id) OR !IS_NUMERIC($DATA->id)) RETURN $ERROR;
+			IF(!ISSET($DATA->type)) RETURN $ERROR;
+			
+			$RESULT = DB::SELECT('category');
+			$CATEGORIES = DB::TOARRAY($RESULT);
+			
+			$WHERE['id'] = $DATA->id;
+			
+			$TABLE = SELF::TYPE($DATA->type);
+			IF(!$TABLE) RETURN $ERROR;
+			
+			$RESULT = DB::SELECT($TABLE, $WHERE);	
+			IF(!$RESULT) RETURN $ERROR;
+			$INFO = $RESULT->fetch_object();
+						
+			// PATHWAY
+			$PATHWAY = CAT::GETPATHWAY($INFO->catid, $CATEGORIES);			
+			$PATHWAY = ARRAY_REVERSE($PATHWAY);
+			$PATHWAY[] = ARRAY('name' => $INFO->name, 'id' => $INFO->id);
+			
+			// ACCESS
+			$ID = $PATHWAY[0]['id'];
+			$CAT = CAT::GETCATINFO($CATEGORIES, $ID);			
+			IF($CAT->parent = 0) RETURN $ERROR;	
+			IF($CAT->status == 0 AND $ISNOADMIN) RETURN $NOACCESS;
+			$GRP = ARRAY_FILTER(EXPLODE(';', $CAT->premissions));
+			IF(!IN_ARRAY($AUTH->grp, $GRP) AND COUNT($GRP) AND $AUTH->rights < 1) RETURN $NOACCESS;
+			IF($INFO->status == 0 AND $ISNOADMIN) RETURN $STATUSOFF;
+				
+			
+			$OUT['pathway'] = $PATHWAY;
+			$OUT['type'] = $TABLE;
+			$OUT['product'] = $INFO;
+			
+			RETURN JSON_ENCODE($OUT);
+		}
+		
 		PUBLIC STATIC FUNCTION GET($DATA) {
 			$ERROR = '{"responce": "PRODBAD"}';
 			
@@ -844,9 +950,8 @@
 	
 	CLASS SEARCH {
 		PUBLIC STATIC FUNCTION FASTSEARCH($DATA) {
-			IF(!ISSET($DATA->type) OR !ISSET($DATA->query))RETURN '{}';
-						
-			$OUT = [];
+									
+			/*$OUT = [];
 			
 			$TYPE = PRODUCTS::TYPE($DATA->type);
 			$PRODPAGE = PRODUCTS::TYPE($DATA->type, PRODUCTPAGE);
@@ -867,7 +972,9 @@
 			$OUT['result'] = DB::TOARRAY($RESULT);
 			$OUT['productpage'] = $PRODPAGE;
 			
-			RETURN JSON_ENCODE($OUT);
+			RETURN JSON_ENCODE($OUT);*/
+			
+			RETURN SELF::GLOBALSEARCH($DATA, TRUE);
 		}
 		
 		PUBLIC STATIC FUNCTION GETSUBIDS($CATEGORIES, $PARENT) {				
@@ -909,13 +1016,7 @@
 			RETURN ARRAY_INTERSECT($IDS, $SUBIDS);
 		}
 		
-		PUBLIC STATIC FUNCTION GETCATINFO($CATEGORIES, $ID) {																		
-			FOREACH($CATEGORIES AS $CAT) {			
-				IF($CAT->id == $ID) RETURN $CAT;
-			}
-			
-			RETURN '';
-		}
+		
 		
 		PUBLIC STATIC FUNCTION GETACCESS($ID = -1, $CATEGORIES) {
 			$AUTH = $GLOBALS['AUTH']['user'];
@@ -929,8 +1030,109 @@
 			
 			RETURN $FILTER['ids'];
 		}
+						
+		PUBLIC STATIC FUNCTION GLOBALSEARCH($DATA, $FASTSEARCH = NULL) {
+			
+			IF(!ISSET($DATA->type) OR !ISSET($DATA->query))RETURN '{}';
+			IF(!ISSET($DATA->page) AND !$FASTSEARCH) RETURN '{}';
+			IF(!ISSET($DATA->perpage) AND !$FASTSEARCH) RETURN '{}';			
+			
+			$AUTH = $GLOBALS['AUTH']['user'];			
+						
+			$FILTER = [];
+			
+			$RESULT = DB::SELECT('category', [],[], 'sort', NULL, TRUE);
+			$CATEGORIES = DB::TOARRAY($RESULT);
+			
+			$FILTERCATID = -1;
+			IF(ISSET($DATA->filter->cat->id)) $FILTERCATID = $DATA->filter->cat->id;
+			$FILTERGLOBAL = FALSE;
+			IF(ISSET($DATA->filter->global)) 
+			{	
+				$FILTERCATID = $DATA->filter->global < 1 ? -1 : $FILTERCATID;
+				//$FILTERGLOBAL = $DATA->filter->global;
+			}
+						
+			// FILTER CATID
+			$ACCESS = SELF::GETACCESS($FILTERCATID, $CATEGORIES);
+			IF($ACCESS === FALSE) RETURN FALSE;
+			$FILTER['cat']['ids'] = $ACCESS;
+	
+			$OUT = [];
+			
+			$TYPE = PRODUCTS::TYPE($DATA->type);
+			$PRODPAGE = PRODUCTS::TYPE($DATA->type, PRODUCTPAGE);
+						
+			$COL = [];
+			$COL[] = 'name';
+			$COL[] = 'tags';
+			
+			$CURPAGE = 1;
+						
+			IF($DATA->page > 0) $CURPAGE = $DATA->page;
+			$LIMIT['start'] = ($CURPAGE - 1) * $DATA->perpage;
+			$LIMIT['end'] = $DATA->perpage;
+			
+			IF($FASTSEARCH) {
+				$LIMIT['start'] = 0;
+				$LIMIT['end'] = 7;
+			}
+			
+			$WHERE['status'] = 1;
+			$WHERE['pending'] = 0;
+			
+			$FIND = ARRAY_FILTER(EXPLODE(' ', $DATA->query));
+			
+			$RESULT = DB::SEARCH($TYPE, $FIND, $COL, $FILTER, $LIMIT);
+			
+			//$RESULT = DB::SELECTLIKE($TYPE, $COL, $FIND, $LIMIT, $WHERE, NULL, $FILTER);			
+			$OUT['result'] = DB::TOARRAY($RESULT);
+						
+			// STATISTIC				
+			IF(!$FASTSEARCH) {
+				$WHERE = [];
+				$SET = [];
+				
+				$WHERE['query'] = $SET['query'] = TRIM($DATA->query);
+				$RES = DB::SELECT('statistic_search', $WHERE);
+				$QUERIES = DB::TOARRAY($RES);
+				
+				$SET['date'] = TIME();
+				$SET['user'] = $AUTH->user;	
+								
+				IF(COUNT($QUERIES) == 1) {									
+					$SET['count'] = $QUERIES[0]->count + 1;													
+					$WHERE = [];
+					$WHERE['id'] = $QUERIES[0]->id;		
+	
+					DB::UPDATE('statistic_search', $SET, $WHERE);					
+				} ELSE
+				{
+					$SET['count'] = 1;
+					DB::INSERT('statistic_search', $SET);
+				}								
+			}
+			
+			$NUMPAGES = 0;
+			
+			IF(!$FASTSEARCH) {
+				$ROWS = DB::SEARCH($TYPE, $FIND, $COL, $FILTER, NULL, TRUE);			
+				$NUMPAGES = $ROWS;
+			}
+						
+			$OUT['productpage'] = $PRODPAGE;
+			
+			$OUT['currpage'] = $CURPAGE;
+			$OUT['totalitems'] = $NUMPAGES;
+			$OUT['perpage'] = $DATA->perpage;
+			$OUT['filter']['cat'] = CAT::GETCATINFO($CATEGORIES, $FILTERCATID);
+			$OUT['filter']['global'] = $FILTERGLOBAL;
+			
+						
+			RETURN JSON_ENCODE($OUT);
+		}
 		
-		PUBLIC STATIC FUNCTION GLOBALSEARCH($DATA) {
+		/*PUBLIC STATIC FUNCTION GLOBALSEARCH($DATA) {
 			IF(!ISSET($DATA->type) OR !ISSET($DATA->query))RETURN '{}';
 			IF(!ISSET($DATA->page)) RETURN '{}';
 			IF(!ISSET($DATA->perpage)) RETURN '{}';			
@@ -986,7 +1188,7 @@
 			
 						
 			RETURN JSON_ENCODE($OUT);
-		}
+		}*/
 	}
 	
 	///////////////////////////////////////////////////////

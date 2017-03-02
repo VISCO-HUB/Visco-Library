@@ -7,6 +7,6 @@
 		<div modelcard></div>
 	</div>
 </div>
-<h3 ng-show="!products.result.length" class="text-center">Sorry. Nothing found...</h3>
+<h3 ng-show="!products.result.length" class="text-center">Sorry. Nothing found{{searchFilter.cat.name.length ? ' in ' + searchFilter.cat.name : '...'}}</h3>
 <div pagination></div>
 

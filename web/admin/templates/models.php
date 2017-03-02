@@ -43,7 +43,7 @@
 			<td> {{tm(prod.date)}} </td>
 			<td><a href="#/models-edit/{{prod.id}}/{{currentPage}}">Edit</a> 
 				|
-				<span ng-show="auth.rights == 2"><a href="" ng-click="prodDelete(prod.id, prod.name)" >Delete</a>
+				<span ng-show="auth.rights >= 1"><a href="" ng-click="prodDelete(prod.id, prod.name)" >Delete</a>
 				|</span>
 				<a href="/#/model/{{prod.id}}}" target="_blank">View</a></td>
 			</td>

@@ -49,6 +49,10 @@ app.config(function($routeProvider) {
         templateUrl : 'templates/models.php',
 		controller: 'modelsCtrl'
     })
+	.when('/model/:id', {
+        templateUrl : 'templates/model.php',
+		controller: 'modelCtrl'
+    })
 	.when('/search/:query/:catid/:global/:page', {
         templateUrl : 'templates/search.php',
 		controller: 'searchCtrl'
@@ -201,9 +205,10 @@ app.controller("searchCtrl", function ($scope, vault, $rootScope, $location, $ro
 	$scope.page = $routeParams.page;
 	$scope.catid = $routeParams.catid;
 	$scope.global = $routeParams.global;
-	$rootScope.searchIn.cattype = $scope.catid ? 1 : 2;
+	$rootScope.searchIn.cattype = $scope.catid > 0 ? 2 : 1;
 	$rootScope.globalQuery = atob($routeParams.query);
 	
+	$rootScope.menuItemActive = {};
 	
 	$rootScope.breadcrumbs = [];
 	$rootScope.addCrumb('Search', '#/search/');
@@ -278,7 +283,8 @@ app.controller("homeCtrl", function ($scope, $rootScope, vault, $interval) {
 	$rootScope.isHome = true;
 	$rootScope.searchFilter = {};
 	$rootScope.searchIn.cattype = 1;
-	$rootScope.searchHolder = 'Search in all libraries...';
+	$rootScope.searchHolder = 'Search in All Libraries...';
+	$rootScope.globalQuery = '';
 	
 	$scope.getHomeProd = function(type, id){
 		vault.getHomeProd(type);
@@ -317,8 +323,36 @@ app.controller("homeCtrl", function ($scope, $rootScope, vault, $interval) {
 
 });
 
+app.controller("modelCtrl", function ($scope, vault, $rootScope, $location, $routeParams, $timeout, $cookieStore) {
+	$rootScope.isHome = false;
+	$scope.id = $routeParams.id;
+	$rootScope.productGalleryPreviews = [];
+	$rootScope.productGallery = [];
+	
+	$scope.getProduct = function(id, type){				
+		vault.getProduct(id, type);
+	};
+		
+	$scope.showItem = function(x){
+		$rootScope.currItem = x;
+	};
+	
+	$scope.getProduct($scope.id, 1);
+	
+	$scope.tabinfo = 'desc';
+	$scope.changeTabInfo = function(s) {
+		$scope.tabinfo = s;
+	}
+	
+	$scope.tabinfo2 = 'info';
+	$scope.changeTabInfo2 = function(s) {
+		$scope.tabinfo2 = s;
+	}
+});
+
 app.controller("modelsCtrl", function ($scope, vault, $rootScope, $location, $routeParams, $timeout, $cookieStore) {
 	$rootScope.isHome = false;
+	$rootScope.globalQuery = '';
 		
 	$scope.page = $routeParams.page;
 	$scope.catid = $routeParams.catid;
@@ -367,7 +401,23 @@ app.run(function($rootScope, $location, $routeParams, $timeout, $cookieStore, va
    $rootScope.menuItemActive = [];
    $rootScope.searchFilter = {};
    $rootScope.searchIn = {};
-   $rootScope.searchIn.cattype = 2;
+  
+	$rootScope.yesNo = function(s) {
+		if(s == 0 || !s || s == undefined || s == null) {return 'No';}
+		return 'Yes';
+	}
+	
+	$rootScope.isNA = function(s) {
+		if(s == 0 || !s || s == undefined || s == null || s == '' || s.length == 0) {return 'N/A';}
+		return s;
+	}
+	
+	$rootScope.tm = function(time) {
+		var d = new Date(time * 1000);
+		var s = d.getDate() + '.' + (d.getMonth()+1) + '.' + d.getFullYear();
+		
+		return s;
+    }
    
    $rootScope.goLogin = function() {
 		window.location = hostname + 'login/';
@@ -529,7 +579,13 @@ app.run(function($rootScope, $location, $routeParams, $timeout, $cookieStore, va
 		}
 		
 		$rootScope.showResults = true;
-		vault.fastSearch(q, $rootScope.libType);
+		var filter = {};
+		var id = $routeParams.catid ? $routeParams.catid : -1;
+		filter.cat = {'id': id};
+		console.log(filter)
+		vault.fastSearch(q, $rootScope.libType, filter);
+		
+		$rootScope.bindSearchEvent();
 	}
 	
 	$rootScope.onListEnter = function(s) {
@@ -605,7 +661,8 @@ app.run(function($rootScope, $location, $routeParams, $timeout, $cookieStore, va
 		if(!catid) {catid = -1;}
 		if(!page) {page = 1;}
 		var global = 0;
-		if($rootScope.searchIn.cattype == 1) {global = 1;}
+		if($rootScope.searchIn.cattype == 2) {global = 1;}	
+		if(global == 0) {catid = -1;}
 		$location.path('/search/' + btoa($rootScope.globalQuery) + '/' + catid + '/' + global + '/' + page);
 	}
 
@@ -630,9 +687,9 @@ app.run(function($rootScope, $location, $routeParams, $timeout, $cookieStore, va
 		$rootScope.fastSearch = {};	
 		$rootScope.listEnter = false;
 		$rootScope.showResults = false;
-		$rootScope.prodError = {};
-		$rootScope.searchHolder = 'Search for...';
-		
+		$rootScope.prodError = {};		
+		$rootScope.searchIn.cattype = 2;
+		$rootScope.currItem = 0;
 
 		$rootScope.bindSearchEvent();
     });
@@ -800,15 +857,23 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 	var searchProducts = function(type, page, perpage, query, filter) {
 			
 		var json = {'page': page, 'perpage': perpage, 'filter': filter, 'query': query, 'type': type};
-		
+		console.log(json)
 		HttpPost('GLOBALSEARCH', json).then(function(r){						
 			$rootScope.products = r.data;									
-						
+				
+			$rootScope.breadcrumbs = [];
+			$rootScope.addCrumb('Search in All Libraries ', '#/search/');
+				
 			var c = r.data.filter.cat.name;
-			if(c) {$rootScope.searchHolder = 'Search in ' + c + '...'};
+			if(c) {
+				$rootScope.searchHolder = 'Search in ' + c + '...'
+				
+				$rootScope.breadcrumbs = [];
+				$rootScope.addCrumb($rootScope.searchHolder, '#/search/');
+			};
 			
 			$rootScope.searchFilter = r.data.filter;
-			$rootScope.searchIn.cattype = r.data.filter.global ? 1 : 2;
+			$rootScope.searchIn.cattype = r.data.filter.global == true ? 1 : 2;
 			
 			responceMessage(r.data);
 		},
@@ -873,11 +938,41 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		});
 	}
 		
-	var fastSearch = function(query, type)
+	var fastSearch = function(query, type, filter)
 	{		
-		var json = {'query': query, 'type': type};
+		var json = {'query': query, 'type': type, 'filter': filter};
+		
 		HttpPost('FASTSEARCH', json).then(function(r){
 			$rootScope.fastSearch = r.data;
+		});
+	};
+	
+	var getProduct = function(id, type)
+	{		
+		var json = {'id': id, 'type': type};
+			
+		HttpPost('PRODINFO', json).then(function(r){						
+			$rootScope.product = r.data;
+			$rootScope.activeMenuId = [];
+			$rootScope.activeMenuName = [];
+			$rootScope.breadcrumbs = [];
+			
+			if(r.data.pathway) {
+				angular.forEach(r.data.pathway, function(item, key) {
+					$rootScope.addCrumb(item.name, ('#/' +  r.data.type + '/' + item.id + '/1'));
+					$rootScope.activeMenuId.push(item.id);
+					$rootScope.activeMenuName.push(item.name);									
+				});				
+			}
+			if(r.data.product) {
+				$rootScope.productGallery = $rootScope.getProdImages(r.data.product.previews, 2);
+				$rootScope.productGalleryPreviews = $rootScope.getProdImages(r.data.product.previews, 0);
+			}
+			
+			responceMessage(r.data);
+		},
+		function(r){
+			responceMessage(r);
 		});
 	};
 	
@@ -894,7 +989,8 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		placeModel: placeModel,
 		fastSearch: fastSearch,
 		searchProducts: searchProducts,
-		checkPending: checkPending
+		checkPending: checkPending,
+		getProduct: getProduct
 	};
 });
 

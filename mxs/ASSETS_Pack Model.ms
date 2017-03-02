@@ -69,8 +69,8 @@ global _rAbout
 global _RelTagsList
 
 global Keys = dotNetClass "System.Windows.Forms.Keys"
-global szChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890"
-global szGoodChars = szChars + "&$%#()!_-+ " 
+global szChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890-"
+global szGoodChars = szChars + "&$%#()!_+ " 
 global BitmapTypes = #(Bitmaptexture, CoronaBitmap)
 
 global catID = -1
@@ -247,7 +247,7 @@ fn setPosRelTagsList =
 (
 	p = rAssetsLibraryModelPack.pos				
 	p.x += _STEP2.width + 20
-	SetDialogPos _RelTagsList p
+	try(SetDialogPos _RelTagsList p)catch()
 )
 
 fn conversion s = 
@@ -485,7 +485,7 @@ fn getMaxVersion =
 	return (for i in o collect i as string)
 )
 
-fn getRender =
+fn getCurrRender =
 (
 	r = renderers.current as string
 
@@ -599,7 +599,7 @@ fn findTag t =
 	if(s.count == 0) do return #()
 	tag = trimLeft (trimRight s[s.count] " ") " "
 	
-	find = for i in tags where tag.count > 0 and matchPattern i pattern: (tag + "*") collect i
+	find = for i in tags where tag.count > 0 and matchPattern i pattern: (tag + "*") collect toLower i
 		
 	return find
 )
@@ -643,6 +643,9 @@ rollout _STEP1 "STEP 1: Model Transform"
 		
 		button btnSnapshot "Snapshot" width: 80 height: 28 across: 2 tooltip: "Standart 3ds max snaphot tool."
 		button btnDetachTrick "Detach Trick" width: 80 height: 28 tooltip: "Recreates the object by detaching all its sub-objects.\nIt helps to fix vertex normal issues."
+		
+		checkbox cbxConvertToMesh "Convert to Mesh" checked: true
+		button btnRemoveIsolatedVerts "Remove Isolated/Unused vertices" width: 200 height: 28  tooltip: "Delete floating vertices."
 	)
 
 	group "2. Group"
@@ -662,7 +665,7 @@ rollout _STEP1 "STEP 1: Model Transform"
 	
 	group "4. Position"
 	(
-		button btnPostiton "Position in Center Scene" tooltip: "Move objects in to center of scene." height: 28
+		button btnPostiton "Set to Scene Center" tooltip: "Move objects in to center of scene." height: 28
 	)
 	
 	Timer tmrBoxTrick "" pos:[0,0] width:24 height:24 interval:100 active:false
@@ -673,6 +676,35 @@ rollout _STEP1 "STEP 1: Model Transform"
 		if(zpos != undefined) do selection.pivot.z = zpos
 			
 		ForceCompleteRedraw()
+	)
+	
+	on cbxConvertToMesh changed v do useSettings "CONVERTTOMESH"	v "w"	
+	
+	on _STEP1 open do
+	(
+		v = useSettings "CONVERTTOMESH" "bool" "r"	
+		cbxConvertToMesh.checked = if(v == false) then false else true
+	)
+	
+	on btnRemoveIsolatedVerts pressed do
+	(
+		s = selection as array
+		for o in s do
+		(
+			case (classOf o) of
+			(
+				Editable_Poly:
+				(
+					o.deleteIsoVerts()
+					o.DeleteIsoMapVerts()
+				)
+				Editable_Mesh:
+				(
+					meshOp.deleteIsoVerts o
+					meshOp.deleteIsoMapVertsAll o
+				)
+			)
+		)
 	)
 	
 	on tmrBoxTrick tick do
@@ -703,7 +735,7 @@ rollout _STEP1 "STEP 1: Model Transform"
 			b.EditablePoly.delete #Face		
 			
 			polyop.attach b hObj[i]		
-			convertToMesh b
+			if(cbxConvertToMesh.checked) do convertToMesh b
 			
 			progressUpdate (100.0 * i / hObj.count)	
 						
@@ -738,7 +770,8 @@ rollout _STEP1 "STEP 1: Model Transform"
 		for i in selection where superClassOf i == GeometryClass do
 		(			
 			ResetXForm i
-			if(canConvertTo i Editable_Mesh) do convertToMesh i
+			if(not cbxConvertToMesh.checked and canConvertTo i Editable_Poly) do convertToPoly i
+			if(cbxConvertToMesh.checked and canConvertTo i Editable_Mesh) do convertToMesh i
 		)	
 	)
 	
@@ -760,7 +793,8 @@ rollout _STEP1 "STEP 1: Model Transform"
 			a.pos = i.pos
 			a.wirecolor = i.wirecolor
 			setUserPropBuffer a (getUserPropBuffer i)
-					
+			if(not cbxConvertToMesh.checked and canConvertTo a Editable_Poly) do convertToPoly a				
+			
 			try(delete i) catch()			
 		)
 		
@@ -800,7 +834,7 @@ rollout _STEP1 "STEP 1: Model Transform"
 			newObj.pos = s[i].pos
 			newObj.wirecolor = s[i].wirecolor
 			setUserPropBuffer newObj (getUserPropBuffer s[i])
-			convertToMesh newObj
+			if(cbxConvertToMesh.checked) do convertToMesh newObj
 						
 			try(delete s[i]) catch()
 						
@@ -989,8 +1023,8 @@ rollout _STEP2 "STEP 2: Model Info"
 		--catID = -1
 		url = _URL + "vault/mxs/mxsGetRelTags.php?id=" + id as string + "&time=" + timeStamp() as string
 		r = httpGet url
-		
-		return filterString r ";"
+		t = for i in filterString r ";" collect trim i
+		return t
 	)
 		
 	
@@ -1030,6 +1064,16 @@ rollout _STEP2 "STEP 2: Model Info"
 				o = for i in o where i.count > 0 and i != " " collect i
 					
 				return o
+			)
+			
+			fn findRelTag =
+			(
+				t = edtAddTag.text
+				lbxTagsActual.items = relTags				
+				
+				if(t.count == 0) do return false
+				t2 = for i in relTags where matchPattern i pattern: (t + "*") collect i
+				lbxTagsActual.items = t2
 			)
 			
 			fn addRelTags t showError: false =
@@ -1078,6 +1122,7 @@ rollout _STEP2 "STEP 2: Model Info"
 			(	
 				setPosRelTagsList()		
 				relTags = getRelTagsList catID
+				sort relTags
 								
 				if(relTags.count == 0) do 
 				(				
@@ -1131,7 +1176,9 @@ rollout _STEP2 "STEP 2: Model Info"
 				if(t.count == 0) do return false	
 				
 				addRelTags #(t) showError: true
-				edtAddTag.text = ""				
+				edtAddTag.text = ""	
+
+				lbxTagsActual.items = relTags				
 			)
 			
 			on edtAddTag KeyUp s e do
@@ -1140,6 +1187,8 @@ rollout _STEP2 "STEP 2: Model Info"
 					if(btnTag1.visible == true and btnTag1.caption.count > 0) do addTag btnTag1 edtAddTag	
 					addNewTag()
 				)
+				
+				findRelTag()
 			)
 			
 			on btnAddNewTag pressed do addNewTag()	
@@ -1156,7 +1205,7 @@ rollout _STEP2 "STEP 2: Model Info"
 			(		
 				t = findTag edtAddTag.text		
 				if(t.count == 0) do return setTagText #()
-				setTagText t	
+				setTagText t									
 			)
 			
 		)
@@ -1808,7 +1857,7 @@ rollout _STEP5 "STEP 5: Pack Model"
 		_lblUnits.text = getUnits()
 		_lblDim.text = getDim selection
 		_lblPolys.text = polyCount selection
-		_lblRender.text = (getRender())[2]
+		_lblRender.text = (getCurrRender())[2]
 		_lblOverview.text = getYesNo (sOverview.count > 0)
 		_lblRigged.text = getYesNo bRigged
 		_lblAnimated.text = getYesNo bAnimated
@@ -1952,12 +2001,12 @@ rollout _STEP5 "STEP 5: Pack Model"
 	(
 		r = cbxRenameObjects.checked
 		
-		iCnt = 0
+		iCnt = 1
 				
 		for g in objects where isValidNode g do
 		(
 			n = g.name
-			if(isGroupHead g not (isGroupMember g)) then 
+			if(isGroupHead g and not (isGroupMember g)) then 
 			(	
 				n = szName + "-Group-001" 
 			)
@@ -2060,7 +2109,7 @@ rollout _STEP5 "STEP 5: Pack Model"
 		f = szDir + "info.tmp"
 		n = szDir + "info.ini"
 		v = getMaxVersion()
-		r = getRender()
+		r = getCurrRender()
 		p = polyCount geometry
 		d = getDim geometry
 		u = getUnits()
@@ -2120,7 +2169,7 @@ rollout _STEP5 "STEP 5: Pack Model"
 		_selection = selection as array 	
 			
 		v = getMaxVersion()
-		r = getRender()	
+		r = getCurrRender()	
 			
 		-- Set paths
 		

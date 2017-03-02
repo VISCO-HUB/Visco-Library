@@ -51,6 +51,10 @@
 	$INFO = $PARSEDINI['INFO'];	
 	IF(($INFO['TYPE'] != 'model') AND ($INFO['TYPE'] != 'texture')) DIE($BADZIP);
 	
+	// GET CATEGORIES
+	$RESULT = DB::SELECT('category');
+	$CATEGORIES = DB::TOARRAY($RESULT);
+	
 	// !!!! MUST ADD CHEK FOR ALL FILES!
 	$ID = $INFO['CATID'];
 	$NAME = $INFO['NAME'];
@@ -59,11 +63,15 @@
 	FS::CREATEDIR($MOVETO);
 	$MOVETO .= CAT::CLEAR($INFO['RENDER']) . '\\';
 	FS::CREATEDIR($MOVETO);
+
+	$CATNAMES  = [];
+	$CATNAMES = CAT::GETPRODCAT($CATEGORIES, $ID);
 		
 	IF(!FS::ISDIREMPTY($MOVETO) AND !$ISREPLACE) DIE($REPLASE);
 	
 		
 	IF($INFO['TYPE'] == 'model') {
+		
 		$WHERE['name'] = $NAME;
 		$WHERE['render'] = $INFO['RENDER'];
 		$WHERE['catid'] = $ID;
@@ -86,8 +94,7 @@
 		$SET['gameengine'] = $INFO['GAMEENGINE'];
 		$SET['lights'] = $INFO['LIGHTS'];
 		$SET['project'] = $INFO['PROJECT'];
-		$SET['modeller'] = $INFO['MODELLER'];
-		$SET['tags'] = TRIM(STR_REPLACE(' ', '', $INFO['TAGS']), ',') . ',';
+		$SET['modeller'] = $INFO['MODELLER'];		
 		$SET['manufacturer'] = $INFO['MANUFACTURER'];
 		$SET['overview'] = $INFO['OVERVIEW'];
 		$SET['custom1'] = $INFO['CUSTOM1'];
@@ -96,7 +103,14 @@
 		$SET['pending'] = 1;
 		$SET['date'] = TIME();
 		$SET['uploadedby'] = $AUTH['user']->user;
+		$SET['tags'] = '';
+		$T = [];
 		
+		$T = TAGS::PROCESSTAGS($INFO['TAGS'], $CATNAMES);
+				
+		$SET['tags'] = IMPLODE(', ', $T);
+		$T2 = [];
+		FOREACH($T AS $V) $T2[]['name'] = $V;
 		
 		$IMG_CNT = 0;
 		$N = $INFO['CATID'] . '-' . CAT::CLEAR($NAME) . '-' . $INFO['RENDER'];
@@ -120,15 +134,8 @@
 			$RESULT = DB::UPDATE('models', $SET, $WHERE, TRUE);
 		}
 		
-		IF($SET['tags']) {
-			$TAGS = EXPLODE(',', $SET['tags']);
-			
-			FOREACH($TAGS AS $TAG) {
-				IF(STRLEN($TAG) > 2) $T[]['name'] = TRIM($TAG);
-			}
-			DB::MULTIINSERT('tags', $T);
-		}
-				
+		IF(COUNT($T)) DB::MULTIINSERT('tags', $T2);
+						
 		IF($ISREPLACE) FS::CLEAR($MOVETO);
 		FS::MOVE($EXTRACTTO, $MOVETO);
 		

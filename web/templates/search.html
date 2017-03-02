@@ -1,12 +1,12 @@
 <div ng-controller="fastSearchCtrl">
-	<form ng-submit="goSearch()" class="input-group" autocomplete="off">
+	<form ng-submit="goSearch(catid, page)" class="input-group" autocomplete="off">
 		<span><input id="fast-search" type="text" class="form-control input-lg search-form" ng-model="globalQuery" placeholder="{{searchHolder}}" ng-click="showHideResults(true)" ng-blur="showHideResults(false)">
 			<div class="fast-result" ng-show="showResults" ng-click="showHideResults(true)">
 		<a ng-href="#/{{fastSearch.productpage}}/{{r.id}}" class="search-item" ng-mousemove="onListEnter(true)" ng-mouseleave="onListEnter(false)"   ng-repeat="r in fastSearch.result"><img ng-src="{{getProdImages(r.previews, 0, true)}}">{{r.name}}</a>
 	</div>	
 		</span>
 		<span class="input-group-btn">
-		<a ng-click="goSearch(catid)" class="btn btn-default btn-lg custom-button search-button" type="button">&nbsp;<span class="glyphicon glyphicon-search text-muted" aria-hidden="true"></span>		
+		<a ng-click="goSearch(catid, page)" class="btn btn-default btn-lg custom-button search-button" type="button">&nbsp;<span class="glyphicon glyphicon-search text-muted" aria-hidden="true"></span>		
 		</a>
 		</span>		
 	</form><br>

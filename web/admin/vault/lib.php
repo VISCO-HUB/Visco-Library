@@ -283,7 +283,7 @@
 	
 	CLASS AUTH {
 		PUBLIC STATIC FUNCTION TOKEN($USER, $PW) {
-			RETURN MD5(AUTH_SALT . $USER . $PW . time());
+			RETURN MD5(AUTH_SALT . $USER . $PW . TIME());
 		}
 		
 		PUBLIC STATIC FUNCTION GETINFO($ENTRIES) {
@@ -730,6 +730,20 @@
 			RETURN $ERROR;
 		}
 		
+		PUBLIC STATIC FUNCTION GETPRODCAT($CATEGORIES, $ID = NULL) {
+			$PRODCAT = [];
+			FOREACH($CATEGORIES AS $CATEGORY) {							
+				IF($CATEGORY->id == $ID) {													
+					$NPC = SELF::GETPRODCAT($CATEGORIES, $CATEGORY->parent);
+					
+					$PRODCAT[$CATEGORY->id] = $CATEGORY->name;
+					$PRODCAT = ARRAY_MERGE($PRODCAT, $NPC);
+				}								
+			}
+			
+			RETURN $PRODCAT;
+		}
+				
 		PUBLIC STATIC FUNCTION BUILDTREE($CATEGORIES, $PARENT = 0) {
 			$TREE = [];
 			
@@ -1394,6 +1408,41 @@
 			RETURN $ERROR;
 		}
 		
+		PUBLIC STATIC FUNCTION PRODPATH($ID, $CATEGORIES, $PROD = NULL, $MAIN = TRUE) {
+			$P = '';
+			IF($ID == 0) RETURN $P;
+						
+			FOREACH($CATEGORIES AS $CATEGORY) {			
+				IF($CATEGORY->id == $ID) {
+			
+					$P .= $CATEGORY->path . ';';
+										
+					FOREACH($CATEGORIES AS $SUBCAT) {
+						IF($SUBCAT->id == $CATEGORY->parent)
+						{
+							$FLAG = TRUE;
+							BREAK;
+						}
+					}
+					
+					IF($FLAG) $P .= SELF::PRODPATH($CATEGORY->parent, $CATEGORIES, NULL, FALSE);
+				}
+			}
+			
+			IF($MAIN AND $PROD != NULL) {
+				$O = EXPLODE(';', $P);
+				$O = ARRAY_REVERSE($O);
+				$P = IMPLODE('\\', $O);
+				$P = LTRIM($P, '\\');
+				
+				$GLOBS = GLOBS::PARSE();
+				
+				RETURN $GLOBS->path . $P . '\\' . CAT::CLEAR($PROD->name) . '\\' . $PROD->render . '\\';
+			}
+			
+			RETURN $P;
+		}
+		
 		PUBLIC STATIC FUNCTION PRODDELETE($DATA) {			
 			$ERROR = '{"responce": "PRODDELBAD"}';
 			$SUCCESS = '{"responce": "PRODDELOK"}';
@@ -1641,6 +1690,45 @@
 			RETURN JSON_ENCODE($OUT);
 		}
 		
+		PUBLIC STATIC FUNCTION REFRESH($DATA) {
+			$ERROR = '{"responce": "TAGSREFRESHBAD"}';
+			$SUCCESS = '{"responce": "TAGSREFRESHOK"}';
+			
+			IF(!ISSET($DATA->type)) RETURN $ERROR;
+			
+			$TYPE  = '';
+			IF($DATA->type == 'models') $TYPE = 'models';
+			IF(!COUNT($TYPE)) RETURN $ERROR;
+			
+			$RESULT = DB::SELECT('category');
+			$CATEGORIES = DB::TOARRAY($RESULT);
+			
+			$RESULT = DB::SELECT('models');
+			$MODELS = DB::TOARRAY($RESULT);
+					
+			FOREACH($MODELS AS $MODEL) {
+				$P = PRODUCTS::PRODPATH($MODEL->catid, $CATEGORIES, $MODEL);
+				$INI = $P . 'info.ini';
+				IF(!FILE_EXISTS($INI)) CONTINUE;
+				
+				$CONTENT = FILE_GET_CONTENTS($INI);	
+				$PARSEDINI = PARSE_INI_STRING($CONTENT, TRUE);
+				$INFO = $PARSEDINI['INFO'];
+				
+				$SET['tags'] = '';
+				$WHERE['id'] = $MODEL->id;	
+				
+				$ACTUALTAGS = COUNT($INFO['TAGS']) ? $INFO['TAGS'] : $MODEL->tags;
+				
+				$CATNAMES = CAT::GETPRODCAT($CATEGORIES, $MODEL->catid);
+				$T = TAGS::PROCESSTAGS($ACTUALTAGS, $CATNAMES);					
+				$SET['tags'] = IMPLODE(', ', $T);
+				DB::UPDATE($TYPE, $SET, $WHERE, TRUE);
+			}
+			
+			RETURN $SUCCESS;
+		}
+		
 		PUBLIC STATIC FUNCTION DEL($DATA) {			
 			$ERROR = '{"responce": "TAGSDELBAD"}';
 			$SUCCESS = '{"responce": "TAGSDELOK"}';
@@ -1670,6 +1758,32 @@
 			}		
 			
 			RETURN $SUCCESS;
+		}
+		
+		PUBLIC STATIC FUNCTION PROCESSTAGS($STR, $ADDITIONAL = []) {
+			// EXCLUDE THIS SYMBOLS
+			$SPECIALS = ['and', 'by', 'of', 'for', 'on', 'upon', 'the', 'off', 'in', 'into'];
+			
+			$T = [];
+			IF(COUNT($STR)) {
+				$TAGS = EXPLODE(',', $STR);
+							
+				FOREACH($TAGS AS $TAG) {
+					$TAG = STRTOLOWER(TRIM($TAG));
+					IF(STRLEN($TAG) > 2) $T[] = $TAG;
+				}
+				// ADD ADDITIONAL TAGS
+				FOREACH($ADDITIONAL AS $V) 
+				{
+					$A = ARRAY_FILTER(EXPLODE(' ', $V));
+					FOREACH($A AS $V2) $T[] = STRTOLOWER(TRIM($V2));															
+				}
+				$T = ARRAY_FILTER(ARRAY_UNIQUE($T));
+
+				$T = ARRAY_DIFF($T, $SPECIALS);
+			}
+			
+			RETURN $T;
 		}
 		
 		PUBLIC STATIC FUNCTION CHANGE($DATA) {			

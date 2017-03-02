@@ -1,4 +1,4 @@
-/* TEMPLARE CSS */
+/* TEMPLATE CSS */
 
 
 *, body {
@@ -44,10 +44,32 @@ a:focus {
 	text-transform: capitalize;
 }
 
+.text-center {
+	text-align: center;
+}
+
+hr {
+    margin-top: 15px;
+    margin-bottom: 15px;
+    border: 0;
+    border-top: 1px solid #eee;
+}
+
+.fontsize-13 {
+	font-size: 13px;
+}
+
 .btn-primary {
     color: #fff;
     background-color: #7BC144;
     border-color: #6DB13B;
+}
+
+.first-capitalize {
+	display:inline-block;
+}
+.first-capitalize:first-letter {
+	text-transform: capitalize;
 }
 
 .btn-primary:active, .btn-primary:active:focus, .btn-primary:focus, .btn-primary.active, .open > .dropdown-toggle.btn-primary {
@@ -578,6 +600,7 @@ a:focus {
 	background-color: transparent;
 	margin: 0;
 	padding: 5px 0;
+	text-transform: capitalize;	
 }
 .navbar-header {
 	margin: 0 !important;
@@ -1059,6 +1082,11 @@ a:focus {
 .fast-result > a {
     padding: 8px 16px;
 	display: block;
+	text-transform: capitalize;
+	text-overflow: ellipsis;
+    word-wrap: break-word;
+    white-space: nowrap;
+    overflow: hidden;
 }
 
 .fast-result a:focus,
@@ -1082,4 +1110,69 @@ a:focus {
 	width: 50px !important;
 	margin-left: 0 !important;
 	border-left: none;
+}
+
+/* PROD GALLERY */
+
+.margin-auto {
+	margin: auto;
+}
+
+.prod-gallery {
+	margin: 0;
+	padding: 0;
+	text-align: center;	
+}
+
+.prod-gallery li {
+	display: inline-block;
+	padding: 0;
+	width: 60px;
+	height: 60px;
+	background-repeat: no-repeat;
+	background-position: center;
+	border: 1px solid #EEE;
+	opacity: 0.5;
+	cursor: pointer;
+	margin-right: 5px;
+	transition: all 0.3s linear;	
+}
+
+.prod-gallery-frame {
+	border: 1px solid #EEE;
+	transition: all 0.3s linear;
+}
+
+.prod-gallery-frame:hover {
+	border: 1px solid #8EC961;
+}
+
+.prod-gallery li.active,
+.prod-gallery li:hover
+{
+	opacity: 1.0;
+	border: 1px solid #8EC961;	
+}
+
+/* PROD INFO */
+
+.button-heart,
+.button-heart:active
+{
+    background-image: url(../img/heart.svg);
+    background-size: 60%;
+}
+
+.button-rating,
+.button-rating:active
+{
+    background-image: url(../img/rating.svg);
+    background-size: 68%;
+}
+
+.button-download,
+.button-download:active
+{
+    background-image: url(../img/download.svg);
+    background-size: 50%;
 }
