@@ -3,7 +3,6 @@
 	///////////////////////////////////////////////////////
 	// MYSQLI CLASS
 	///////////////////////////////////////////////////////
-
 	
 	CLASS DB {
 		PUBLIC STATIC FUNCTION STRIP($S) {																		
@@ -23,7 +22,7 @@
 			$MYSQLI->CLOSE();	
 		}
 			
-		PUBLIC STATIC FUNCTION SELECT($TABLE, $WHERE = [], $SORT = NULL, $AND = NULL, $LIMIT = NULL, $ACCESS = []) {		
+		PUBLIC STATIC FUNCTION SELECT($TABLE, $WHERE = [], $SORT = NULL, $AND = NULL, $LIMIT = NULL, $ACCESS = [], $REVERSE = NULL) {		
 			$MYSQLI = $GLOBALS['MYSQLI'];
 						
 			$W = [];
@@ -57,7 +56,7 @@
 			$ATTACHLIMIT = '';
 			IF($LIMIT) $ATTACHLIMIT = ' LIMIT ' . SELF::STRIP($LIMIT['start']) . ", " . SELF::STRIP($LIMIT['end']);
 			
-			$QUERY = "SELECT * FROM " . $TABLE . $ATTACHWHERE . $ATTACHACCESS . $ATTACHSORT . $ATTACHLIMIT . ";";			
+			$QUERY = "SELECT * FROM " . $TABLE . $ATTACHWHERE . $ATTACHACCESS . $ATTACHSORT . " " . ($REVERSE ? 'DESC' : '') . " " . $ATTACHLIMIT . ";";			
 		
 			$RESULT = $MYSQLI->query($QUERY);
 		
@@ -462,7 +461,36 @@
 		PUBLIC STATIC FUNCTION CREATEDIR($DIR) {			
 			RETURN @MKDIR($DIR, 0777, TRUE);			
 		}
-				
+		
+		PUBLIC STATIC FUNCTION UPDATEINI($INI, $SEC, $KEY, $VAL) {			
+			IF(!FILE_EXISTS($INI)) RETURN FALSE;
+			$INIFILE = NEW INIFILE($INI);
+			$INIFILE->read($INI);
+			$INIFILE->data[$SEC][$KEY] = $VAL;
+			RETURN $INIFILE->write($INI);		
+		}
+			
+		PUBLIC STATIC FUNCTION UPDATEZIP($PATH, $FILE, $NAME = NULL) {
+			
+			// !!! THIS FUNCTION NOT WORK. IMPOSSIBLE PACK FILES IN LAN. TRY TO FIND ANOTHER WAY!
+			RETURN FALSE;
+			$FILES = (GLOB($PATH . '*.zip'));
+			$FNAME = $FILES[0];		
+			IF(!$FNAME) RETURN FALSE;
+			
+			$ZIP = NEW ZipArchive;
+			//$CONTENT = FILE_GET_CONTENTS($FILE);
+					
+			//IF($ZIP->open(REALPATH($FNAME), ZipArchive::OVERWRITE) !== TRUE) RETURN FALSE;	
+			//$ZIP->addFromString($NAME, $CONTENT);
+			
+			//ECHO $ZIP->status;
+			
+			//$ZIP->addFile($FILE, $NAME);
+			//$ZIP->close();			
+			RETURN TRUE;
+		}
+			
 		PUBLIC STATIC FUNCTION ISDIREMPTY($DIR) {
 			//IF (!IS_READABLE($DIR)) RETURN NULL; 
 			RETURN (COUNT(SCANDIR($DIR)) == 2);		  
@@ -558,6 +586,7 @@
 			$SET['parent'] = $PARENTID;
 			$SET['type'] = $DATA->type;
 			$SET['path'] = SELF::CLEAR($DATA->name);
+			$SET['candl'] = 1;
 	
 			$RESULT = DB::INSERT('category', $SET);
 			$ID = $GLOBALS['MYSQLI']->insert_id;
@@ -688,7 +717,7 @@
 		
 			$RESULT = DB::SELECT('category', $WHERE);
 			$RESULT = DB::TOARRAY($RESULT);
-			
+		
 			RETURN JSON_ENCODE($RESULT);
 		}
 		
@@ -760,6 +789,7 @@
 					$I['sort'] = $CATEGORY->sort;
 					$I['editors'] = $CATEGORY->editors;
 					$I['premissions'] = $CATEGORY->premissions;
+					$I['candl'] = $CATEGORY->candl;
 										
 					FOREACH($CATEGORIES AS $SUBCAT) {
 						IF($SUBCAT->parent == $CATEGORY->id)
@@ -1708,7 +1738,7 @@
 					
 			FOREACH($MODELS AS $MODEL) {
 				$P = PRODUCTS::PRODPATH($MODEL->catid, $CATEGORIES, $MODEL);
-				$INI = $P . 'info.ini';
+				$INI = $P . INFOINI;
 				IF(!FILE_EXISTS($INI)) CONTINUE;
 				
 				$CONTENT = FILE_GET_CONTENTS($INI);	
@@ -1787,21 +1817,24 @@
 		}
 		
 		PUBLIC STATIC FUNCTION CHANGE($DATA) {			
-			$ERROR = '{"responce": "TAGSDELBAD"}';
-			$SUCCESS = '{"responce": "TAGSDELOK"}';
+			$ERROR = '{"responce": "TAGSRENBAD"}';
+			$SUCCESS = '{"responce": "TAGSRENOK"}';
 			$WRONG = '{"responce": "TAGSWRONGFORMAT"}';
 			$EXIST = '{"responce": "TAGSEXIST"}';
 			
 			IF(!ISSET($DATA->tag)) RETURN $ERROR;
 			IF(!ISSET($DATA->newtag)) RETURN $ERROR;
 			IF(STRLEN($DATA->newtag) < 2) RETURN $WRONG;
-						
+			/*			
 			$SET['name'] = TRIM($DATA->newtag);						
 			$CNT = DB::INSERT('tags', $SET);
 			IF($CNT == 0) RETURN $EXIST;
 							
 			$DEL[] = $DATA->tag;
-			DB::DEL('tags', $DEL, 'name');
+			DB::DEL('tags', $DEL, 'name');*/
+			
+			$RESULT = DB::SELECT('category');
+			$CATEGORIES = DB::TOARRAY($RESULT);
 						
 			FOREACH(LIBTYPES AS $TYPE) {			
 				$RESULT = DB::SELECTLIKE($TYPE, 'tags', $DATA->tag);
@@ -1821,11 +1854,280 @@
 					$SET['tags'] = $TAGSROW;
 					$WHERE['id'] = $PROD->id;
 					
-					DB::UPDATE($TYPE, $SET, $WHERE);
+					// UPDATE INI
+					$P = PRODUCTS::PRODPATH($PROD->catid, $CATEGORIES, $PROD);
+					$INI = $P . INFOINI;
+					
+					FS::UPDATEINI($INI, 'INFO', 'TAGS', $SET['tags']);
+					FS::UPDATEZIP($P, $INI, INFOINI);									
+					//DB::UPDATE($TYPE, $SET, $WHERE);
 				}
 			}		
 			
 			RETURN $SUCCESS;
+		}
+	}
+	
+	///////////////////////////////////////////////////////
+	// STATISTIC CLASS
+	///////////////////////////////////////////////////////
+	
+	CLASS STATISTIC {
+		PUBLIC STATIC FUNCTION GETBYMONTH() {
+			// STATISTIC BY MONTH
+			
+			$SET = [];			
+			$Y = DATE('Y');
+	
+			$LIMIT['start'] = 0;
+			$LIMIT['end'] = 12;
+	
+			$RESULT = DB::SELECT('statistic_downloads', [], 'date', NULL, $LIMIT, [], TRUE);
+			$STAT = DB::TOARRAY($RESULT);
+						
+			RETURN ARRAY_REVERSE($STAT);
+		}
+		
+		PUBLIC STATIC FUNCTION GETTOP() {
+			// STATISTIC BY MONTH
+						
+			$LIMIT['start'] = 0;
+			$LIMIT['end'] = 50;
+	
+			$RESULT = DB::SELECT('models', [], 'downloads', NULL, $LIMIT, [], TRUE);
+			$STAT = DB::TOARRAY($RESULT);
+				
+			$T = [];	
+							
+			FOREACH($STAT AS $V) {
+				$J['id'] = $V->id;
+				$J['name'] = $V->name;
+				$J['dwl'] = $V->downloads;
+				$J['previews'] = $V->previews;
+				$J['type'] = 'model';
+				$T[] = $J;
+			}
+				
+			RETURN $T;
+		}
+		
+		PUBLIC STATIC FUNCTION GETTODAY() {
+			// STATISTIC USERS
+							
+			$WHERE['day'] = DATE("Y-m-d", TIME());							
+			RETURN DB::CNT('statistic_user_downloads', $WHERE);
+		}
+		
+		PUBLIC STATIC FUNCTION GETUSER() {
+			// STATISTIC USERS
+									
+			$LIMIT['start'] = 0;
+			$LIMIT['end'] = 10;
+	
+			$RESULT = DB::SELECT('users', [], 'downloads', NULL, $LIMIT, [], TRUE);
+			$STAT = DB::TOARRAY($RESULT);
+				
+			$T = [];
+				
+			FOREACH($STAT AS $V) {
+				$J['user'] = $V->user;
+				$J['dwl'] = $V->downloads;
+				$T[] = $J;
+			}
+				
+			RETURN $T;
+		}
+	}
+	
+	///////////////////////////////////////////////////////
+	// DASHBOARD CLASS
+	///////////////////////////////////////////////////////
+	
+	CLASS DASHBOARD {
+		
+		PUBLIC STATIC FUNCTION DISCSIZE($BYTES)
+		{
+			$TYPE = ARRAY("", "KB", "MG", "GB", "TB", "PB", "EB", "ZB", "YB");
+			$I = 0;
+			WHILE($BYTES >= 1024)
+			{
+				$BYTES /= 1024;
+				$I++;
+			  }
+			
+			RETURN(ROUND($BYTES, 2) . " " . $TYPE[$I]);
+		}
+		PUBLIC STATIC FUNCTION INFO() {
+			$GLOBS = GLOBS::PARSE();
+			$DIR = $GLOBS->path;
+			
+			$OUT = [];
+				
+						
+			$OUT['space'] = (FLOOR(100 * DISK_FREE_SPACE($DIR) / DISK_TOTAL_SPACE($DIR))) . '%';			
+			$OUT['free_space'] = SELF::DISCSIZE(DISK_FREE_SPACE($DIR));			
+			$OUT['total_space'] = SELF::DISCSIZE(DISK_TOTAL_SPACE($DIR));			
+			$OUT['mdl'] = DB::CNT('models');
+			$OUT['tex'] = DB::CNT('textures');
+			$OUT['urs'] = DB::CNT('users');
+			$OUT['cmt'] = DB::CNT('comments');
+			$OUT['today'] = STATISTIC::GETTODAY();
+			$OUT['graph_month'] = STATISTIC::GETBYMONTH();
+			$OUT['graph_top'] = STATISTIC::GETTOP();
+			$OUT['graph_user'] = STATISTIC::GETUSER();
+				
+			
+			RETURN JSON_ENCODE($OUT);
+		}
+
+		PUBLIC STATIC FUNCTION DOWNLOADLOG($DATA){						
+			IF(!ISSET($DATA->page)) RETURN '[]';
+			IF(!ISSET($DATA->perpage)) RETURN '[]';
+						
+			$CURPAGE = 1;
+						
+			IF($DATA->page > 0) $CURPAGE = $DATA->page;
+						
+			$LIMIT['start'] = ($CURPAGE - 1) * $DATA->perpage;
+			$LIMIT['end'] = $DATA->perpage;
+		
+			$RESULT = DB::SELECT('statistic_user_downloads', [], 'date', NULL, $LIMIT, [], TRUE);
+			$LOG = DB::TOARRAY($RESULT);
+						
+			$ROWS = DB::CNT('statistic_user_downloads', []);						
+			$NUMPAGES = $ROWS;
+			
+			$OUT['currpage'] = $CURPAGE;
+			$OUT['totalitems'] = $NUMPAGES;
+			$OUT['perpage'] = $DATA->perpage;					
+			$OUT['log'] = $LOG;		
+						
+			RETURN JSON_ENCODE($OUT);
+		}
+	}
+	
+	///////////////////////////////////////////////////////
+	// COMMENTS CLASS
+	///////////////////////////////////////////////////////
+	
+	CLASS COMMENTS {
+		PUBLIC STATIC FUNCTION GET($DATA) {					
+			IF(!ISSET($DATA->page)) RETURN '[]';
+			IF(!ISSET($DATA->perpage)) RETURN '[]';
+				
+			$CURPAGE = 1;
+						
+			IF($DATA->page > 0) $CURPAGE = $DATA->page;
+						
+			$LIMIT['start'] = ($CURPAGE - 1) * $DATA->perpage;
+			$LIMIT['end'] = $DATA->perpage;
+		
+			$RESULT = DB::SELECT('comments', [], 'date', NULL, $LIMIT, [], TRUE);
+			$COMMENTS = DB::TOARRAY($RESULT);
+						
+			$ROWS = DB::CNT('comments', []);						
+			$NUMPAGES = $ROWS;
+			
+			$OUT['currpage'] = $CURPAGE;
+			$OUT['totalitems'] = $NUMPAGES;
+			$OUT['perpage'] = $DATA->perpage;					
+			$OUT['comments'] = $COMMENTS;		
+			
+			RETURN JSON_ENCODE($OUT);
+		}
+		
+		PUBLIC STATIC FUNCTION DEL($DATA) {					
+			$ERROR = '{"responce": "CMTDELBAD"}';
+			$SUCCESS = '{"responce": "CMTDELOK"}';
+			
+			IF(!ISSET($DATA->id)) RETURN $ERROR;
+			
+			$DEL[] = $DATA->id;
+			DB::DEL('comments', $DEL, 'id');
+					
+			RETURN $SUCCESS;		
+		
+		}				
+	}
+	
+	///////////////////////////////////////////////////////
+	// MSGSYSTEM CLASS
+	///////////////////////////////////////////////////////
+	
+	CLASS MSGSYSTEM {
+		PUBLIC STATIC FUNCTION GETCNT() {
+					
+			$ROWS = DB::CNT('msg', ['viewed' => 0]);	
+			
+			$OUT['cnt'] = $ROWS;
+			
+			RETURN JSON_ENCODE($OUT);
+		}
+
+		PUBLIC STATIC FUNCTION GET($DATA) {
+							
+			$ERROR = '{"responce": "MSGBAD"}';
+			$WHERE = [];
+				
+			// GET USER
+			$AUTH = $GLOBALS['AUTH']['user'];
+								
+			IF(!ISSET($DATA->page)) RETURN '[]';
+			IF(!ISSET($DATA->perpage)) RETURN '[]';
+						
+			$CURPAGE = 1;
+						
+			IF($DATA->page > 0) $CURPAGE = $DATA->page;
+						
+			$LIMIT['start'] = ($CURPAGE - 1) * $DATA->perpage;
+			$LIMIT['end'] = $DATA->perpage;
+		
+			$RESULT = DB::SELECT('msg', $WHERE, 'date', TRUE, $LIMIT, [], TRUE);
+			$MESSAGES = DB::TOARRAY($RESULT);
+						
+			$ROWS = DB::CNT('msg', $WHERE, TRUE);						
+			$NUMPAGES = $ROWS;
+			
+			$ROWS = DB::CNT('msg', ['viewed' => 0]);						
+			$NOTVIEW = $ROWS;
+			
+			$OUT['currpage'] = $CURPAGE;
+			$OUT['totalitems'] = $NUMPAGES;
+			$OUT['perpage'] = $DATA->perpage;
+			$OUT['notview'] = $NOTVIEW;						
+			$OUT['messages'] = $MESSAGES;
+			
+						
+			RETURN JSON_ENCODE($OUT);
+		}
+
+		PUBLIC STATIC FUNCTION SETPARAM($DATA) {
+			$ERROR = '{"responce": "SETTINGBAD"}';
+			$SUCCESS = '{"responce": "SETTINGOK"}';
+			
+			IF(!ISSET($DATA->param) OR !ISSET($DATA->value) OR !ISSET($DATA->id)) RETURN $ERROR;
+					
+			$SET[$DATA->param] = $DATA->value;
+			$WHERE['id'] = $DATA->id;
+			
+			$RESULT = DB::UPDATE('msg', $SET, $WHERE);
+			
+			IF($RESULT > 0) RETURN $SUCCESS;
+			RETURN $ERROR ;
+		}
+		
+		PUBLIC STATIC FUNCTION DEL($DATA) {			
+			$ERROR = '{"responce": "MSGDELBAD"}';
+			$SUCCESS = '{"responce": "MSGDELOK"}';
+							
+			IF(!ISSET($DATA->id)) RETURN $ERROR;
+					
+			$DEL[] = $DATA->id;
+						
+			$RESULT = DB::DEL('msg', $DEL, 'id');
+			
+			IF($RESULT > 0) RETURN $SUCCESS; 						
+			RETURN $ERROR;
 		}
 	}
 ?>

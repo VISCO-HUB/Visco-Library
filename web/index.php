@@ -38,7 +38,7 @@
 	<![endif]-->
 </head>
 
-<body>
+<body ng-style="{'overflow': showLightBox ? 'hidden' : 'auto'}">
 <div preview></div>
 <div class="header">
 	<div class="container">
@@ -46,17 +46,21 @@
 			<div class="navbar-header hidden-xxs"> <a href="#/"><img src="visco_logo.svg" class="logo"></a> <span class="head-title hidden-xs">Assets Library <sup>BETA</sup></span> </div>
 			<div id="navbar3" class="navbar-default float-left-xxs">
 				<ul class="nav nav-buttons margin-left-minus-15-xxs">					
-					<li ng-show="auth.rights > 0" class="hidden-xs"><a href="#/"><span class="glyphicon glyphicon-home"></span></a></li>					
-					<li class="visible-xs-inline"><a href="" ng-click="toggleOverlayMenu()" ><span class="glyphicon glyphicon-menu-hamburger"></span></a></li>					
-					<li class=""><a href="#/"><span class="glyphicon glyphicon-heart"></span></a></li>					
-					<li class="dropdown" ng-show="auth.rights > 0"> <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false"><span class="glyphicon glyphicon-user"></span></a>
+					<li class="hidden-xs"><a href="#/"><span class="glyphicon glyphicon-home"></span></a></li>					
+					<li ng-show="auth.browser=='MXS'"><a href="" ng-click="mxsGoBack()"><span class="glyphicon glyphicon-arrow-left"></span></a></li>
+					<li ng-show="auth.browser=='MXS'"><a href="" ng-click="mxsGoForward()"><span class="glyphicon glyphicon-arrow-right"></span></a></li>
+					<li ng-show="auth.browser=='MXS'"><a href="" ng-click="mxsForceRefresh()"><span class="glyphicon glyphicon-refresh"></span></a></li>
+					<li class="visible-xs-inline"><a href="" ng-click="toggleOverlayMenu()" ><span class="glyphicon glyphicon-menu-hamburger"></span></a></li>										
+					<li class="dropdown" ng-show="auth.rights > 0"> <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false"><span class="glyphicon glyphicon-cog"></span></a>
 						<ul class="dropdown-menu" role="menu">
 							<li class="dropdown-header">Hi, {{auth.name || auth.user}}</li>
 							<li class="divider"></li>
+							<li ng-show="auth.rights > 0"><a href="/admin/">Admin Panel</a></li>
 							<li><a href="" ng-click="">Profile</a></li>
+							<li><a href="" ng-click="hideShowFeedback(true)">Send Feedback</a></li>
 						</ul>
 					</li>
-					<li class="" ng-show="auth.rights > 0"><a href="/admin/" ><span class="glyphicon glyphicon-cog"></span></a></li>
+					<li class=""><a href="#/"><span class="glyphicon glyphicon-heart"></span></a></li>					
 					<li class=""><a href="" ng-click="singOut()"><span class="glyphicon glyphicon-log-out"></span></a></li>
 				</ul>
 			</div>
@@ -82,10 +86,10 @@
 </div>
 
 <div class="container">
-	<div class="col-sm-4 col-md-4 col-lg-4 col-xlg-2" ng-controller="menuCtrl"  ng-class="isHome ? 'hidden visible-xs' : 'col-sm-4 col-md-4 col-lg-4 hidden-xs col-xlg-3 col-xxlg-2'">		
+	<div class="col-sm-4 col-md-4 col-lg-3 col-xlg-2" ng-controller="menuCtrl"  ng-class="isHome ? 'hidden visible-xs' : 'col-sm-4 col-md-4 col-lg-3 hidden-xs col-xlg-3 col-xxlg-2'">		
 		<div menu></div>
 	</div>
-	<div class="" ng-class="isHome ? 'col-sm-12 col-md-12 col-lg-12' : 'col-sm-8 col-md-8 col-lg-8 col-xs-12 col-xlg-9 col-xxlg-10'">
+	<div class="" ng-class="isHome ? 'col-sm-12 col-md-12 col-lg-12' : 'col-sm-8 col-md-8 col-lg-9 col-xs-12 col-xlg-9 col-xxlg-10'">
 		<div ng-view></div>
 	</div>
 </div>
@@ -94,6 +98,8 @@
 	<?php ECHO $USER; ?>
 </div>
 <iframe id="download" ng-src="{{download}}" iframe-onload="downloadMsg()" class="hidden"></iframe>
+<div lightbox></div>
+<div feedback></div>
 </body>
 </html>
 

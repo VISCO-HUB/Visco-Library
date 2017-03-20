@@ -227,6 +227,8 @@ fn setRenderQuality =
 			renderSystem.colorMapping_brightMult = 1.0
 			renderSystem.environment_gi_on = true
 			renderSystem.environment_gi_color = black
+			renderSystem.filter_on  = on
+			renderSystem.filter_kernel = Catmull_Rom()
 					
 			case q of 
 			(
@@ -253,8 +255,7 @@ fn setRenderQuality =
 					renderSystem.twoLevel_threshold = 0.001								
 					renderSystem.gi_primary_type = 2				
 					renderSystem.gi_secondary_type = 2
-					renderSystem.dmcgi_subdivs	= 12
-					renderSystem.filter_on  = off
+					renderSystem.dmcgi_subdivs	= 12				
 				)
 				default:
 				(
@@ -267,8 +268,6 @@ fn setRenderQuality =
 					renderSystem.gi_primary_type = 2				
 					renderSystem.gi_secondary_type = 2
 					renderSystem.dmcgi_subdivs	= 4
-					renderSystem.filter_on  = on
-					renderSystem.filter_kernel = Catmull_Rom()
 				)
 			)
 		)

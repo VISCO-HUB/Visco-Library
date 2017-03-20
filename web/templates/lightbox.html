@@ -1,0 +1,13 @@
+<div class="light-box"  ng-show="showLightBox">
+	<div class="close" ng-click="hideShowLightBox(false)" title="Close"></div>
+	<span class="light-box-control larr glyphicon glyphicon-chevron-left" aria-hidden="true" ng-click="slideLightBox(-1)" ng-show="productGallery.length > 1" title="Prev Image"></span>	
+	<span class="light-box-control rarr glyphicon glyphicon-chevron-right" aria-hidden="true" ng-click="slideLightBox(1)" ng-show="productGallery.length > 1" title="Next Image"></span>		
+	<span class="light-box-close glyphicon glyphicon-remove" aria-hidden="true" ng-click="hideShowLightBox(false)" title="Close"></span>		
+	
+	<img src="img/loading.gif" ng-src="{{productGallery[currItem]}}" title="Next Image" ng-click="slideLightBox(1)" class="image-responsive">
+	
+	<ul class="prod-gallery" style="z-index:1245;" ng-class="{'deploy': showLightBox && productGalleryPreviews.length > 1}">
+			<li ng-repeat="item in productGalleryPreviews" ng-style="{'background-image': 'url(' + item + ')'}" ng-click="showItem($index)" ng-class="{active: $index == currItem}"></li>
+	</ul>
+</div>
+<img ng-repeat="img in productGallery" src="{{img}}" class="hidden">

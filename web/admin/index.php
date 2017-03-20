@@ -25,7 +25,8 @@
 <script type="text/javascript" src="../js/angular-sanitize.min.js"></script>
 <script type="text/javascript" src="../js/angular-cookies.min.js"></script>
 <script type="text/javascript" src="../js/angular-file-upload.min.js"></script>
-<script type="text/javascript" src="../js/canvasjs.min.js"></script>
+<script type="text/javascript" src="../js/chart/Chart.min.js"></script>
+<script type="text/javascript" src="../js/angular-chart.min.js"></script>
 <script type="text/javascript" src="js/app.js"></script>
 <script type="text/javascript" src="../js/bootstrap.min.js"></script>
 <script type="text/javascript" src="../js/ui-bootstrap-tpls-2.1.3.min.js"></script>
@@ -47,7 +48,11 @@
 			<div id="navbar3" class="navbar-default">
 				<ul class="nav nav-buttons">
 					<li class="active"><a href="#/" tooltip-popup-delay="200" uib-tooltip="Home" tooltip-placement="bottom"><span class="glyphicon glyphicon-home"></span></a></li>
-					<li class="active"><a href="#/" tooltip-popup-delay="200" uib-tooltip="Messages" tooltip-placement="bottom"><span class="glyphicon glyphicon-envelope"></span><span class="badge badge-admin">5</span></a></li>
+					<li ng-show="auth.browser=='MXS'"><a href="" ng-click="mxsGoBack()" tooltip-popup-delay="200" uib-tooltip="Back"><span class="glyphicon glyphicon-arrow-left"></span></a></li>
+					<li ng-show="auth.browser=='MXS'"><a href="" ng-click="mxsGoForward()" tooltip-popup-delay="200" uib-tooltip="Forward"><span class="glyphicon glyphicon-arrow-right"></span></a></li>
+					<li ng-show="auth.browser=='MXS'"><a href="" ng-click="mxsForceRefresh()" tooltip-popup-delay="200" uib-tooltip="Refresh"><span class="glyphicon glyphicon-refresh"></span></a></li>
+					<li class="active"><a href="#/msg/1" tooltip-popup-delay="200" uib-tooltip="Messages" tooltip-placement="bottom">
+						<span class="glyphicon glyphicon-envelope"></span><span class="badge badge-admin" ng-show="msgCnt.cnt > 0">{{msgCnt.cnt}}</span></a></li>
 					<li class="dropdown" ng-show="auth.rights > 0 && auth.browser != 'MXS'"> <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false" tooltip-popup-delay="200" uib-tooltip="User" tooltip-placement="bottom"><span class="glyphicon glyphicon-user"></span></a>
 						<ul class="dropdown-menu" role="menu">
 							<li class="dropdown-header">Hi, {{auth.name || auth.user}}</li>
@@ -75,7 +80,7 @@
 <div class="container">
 	<div class="col-sm-3 col-md-3 col-lg-3"> <br>
 		<ul class="nav nav-pills nav-stacked">
-			<li ng-class="{active: section=='/dashboard'}"><a href="#/dashboard">Dashboard</a></li>
+			<li ng-class="{active: section=='/dashboard'}"><a href="#/dashboard/1">Dashboard</a></li>
 			<li ng-class="{active: section=='/category'}"><a href="#/category" >Libraries</a></li>
 			<li ng-class="{active: section=='/models'}"><a href="#/models/1" >Models</a></li>
 			<li ng-class="{active: section=='/textures'}"><a href="#/textures/1" >Textures</a></li>

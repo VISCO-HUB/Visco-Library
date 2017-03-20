@@ -1,4 +1,3 @@
-(
 --global siteUrl = @"http://assets.visco.no/"
 global siteUrl = @"http://svg-web-003/"
 global iconFile = @"\\visco.local\data\Instal_Sync\scripts\scripts\img\favicon.ico"
@@ -60,9 +59,9 @@ global _MODELBAD = "This model not exist in data base!\n\nPlease notify administ
 
 try(_ViscoAssetsForm.close())catch()	
 	
-_ViscoAssetsForm = dotNetObject "System.Windows.Forms.Form"
+_ViscoAssetsForm = dotNetObject "MaxCustomControls.MaxForm"
 _ViscoAssetsForm.size = dotNetObject "System.Drawing.Size" 1240 800
-_ViscoAssetsForm.MinimumSize = dotNetObject "System.Drawing.Size" 800 600
+_ViscoAssetsForm.MinimumSize = dotNetObject "System.Drawing.Size" 800 800
 _ViscoAssetsForm.ShowInTaskBar = true
 _ViscoAssetsForm.text = siteUrl
 _ViscoAssetsForm.StartPosition = _ViscoAssetsForm.StartPosition.Manual	
@@ -72,20 +71,22 @@ executeTimer.interval = 10
 
 	
 try(_ViscoAssetsForm.icon = dotNetObject "System.Drawing.Icon" iconFile)catch()
-_ViscoAssetsForm.topmost = true
+--_ViscoAssetsForm.topmost = true
+
 
 wbTrust = dotNetObject "System.Windows.Forms.WebBrowser"
 wbTrust.size =dotNetObject "System.Drawing.Size" 0 0
 wbTrust.location = dotNetObject "System.Drawing.Point" -100 -100
 wbTrust.url = dotNetObject "System.Uri" trustUrl
 
-httpGet trustUrl		
+httpGet trustUrl	
+sleep 0.2
 
 execCommand = dotNetObject "System.Windows.Forms.Textbox"			
 execCommand.size = dotNetObject "System.Drawing.Size" 0 0
 execCommand.location = dotNetObject "System.Drawing.Point" -100 -100
 	
-wb = dotNetObject "System.Windows.Forms.WebBrowser"
+global wb = dotNetObject "System.Windows.Forms.WebBrowser"
 wb.size = _ViscoAssetsForm.ClientSize
 --wb.AllowWebBrowserDrop  = true
 wb.location = dotNetObject "System.Drawing.Point" 0 0
@@ -164,7 +165,7 @@ fn setWindowPos =
 	
 	if(x != 0 and y != 0) do	
 	(
-		_ViscoAssetsForm.location = dotNetObject "System.Drawing.Point" x y
+		_ViscoAssetsForm.Location = dotNetObject "System.Drawing.Point" x y
 	)
 )
 
@@ -188,6 +189,9 @@ fn forceRefresh =
 		wb.refresh (dotnetclass "System.Windows.Forms.WebBrowserRefreshOption").Completely
 	)
 )
+
+fn goBack = wb.GoBack()
+fn goForward = wb.GoForward()
 
 fn onResize s e = 
 (
@@ -334,7 +338,7 @@ fn onExecuteCommand s e =
 	
 	t = filterString execCommand.text "="
 	p = if(t[2] != undefined) then (filterString t[2] "#")[1] else ""
-		
+	
 	case t[1] of
 	(
 		"MERGE_MODEL": addFile p mode: #merge
@@ -342,6 +346,9 @@ fn onExecuteCommand s e =
 		"OPEN_MODEL": addFile p mode: #open
 		"MODELNOTEXIST": messageBox _MODELNOTEXIST title: "Error!"
 		"MODELBAD": messageBox _MODELBAD title: "Error!"
+		"GOBACK": goBack()
+		"GOFORWARD": goForward()
+		"FORCEREFRESH": forceRefresh()
 	)
 	
 	execCommand.text = ""		
@@ -357,7 +364,8 @@ dotNet.addEventHandler wb "Navigating" onNavigating
 dotNet.addEventHandler execCommand "TextChanged" onExecute
 dotnet.addEventHandler executeTimer "tick" onExecuteCommand
 
-_ViscoAssetsForm.show()
+dotNet.setLifetimeControl _ViscoAssetsForm #dotnet
+--_ViscoAssetsForm.show()
+_ViscoAssetsForm.showmodeless()	
 --clearListener()
 
-)

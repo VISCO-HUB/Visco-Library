@@ -55,6 +55,14 @@ hr {
     border-top: 1px solid #eee;
 }
 
+label {
+	font-weight: normal;
+}
+
+.margin-left-20 {
+	margin-left: 20px;	
+}
+
 .fontsize-13 {
 	font-size: 13px;
 }
@@ -70,6 +78,10 @@ hr {
 }
 .first-capitalize:first-letter {
 	text-transform: capitalize;
+}
+
+.btn.highlight {
+	background-color: #7BC144;
 }
 
 .btn-primary:active, .btn-primary:active:focus, .btn-primary:focus, .btn-primary.active, .open > .dropdown-toggle.btn-primary {
@@ -278,35 +290,6 @@ hr {
 	cursor: pointer;
 }
 
-.lightbox {
-	position: absolute;
-	top: 0;
-	right: 0;
-	left: 0;
-	margin: 25px;
-	background: #FFF;
-	padding: 30px;
-	z-index: 110;
-	padding-top: 10px;
-}
-.lightbox .lightbox-close {
-	position: absolute;
-	top: 0;
-	right: 0;
-	padding: 20px;
-	content: '';
-	cursor: pointer;
-}
-.lightbox:before {
-	position: absolute;
-	top: -13px;
-	right: 10px;
-	content: '×';
-	font-size: 57px;
-	color: #333333;
-	display: block;
-	cursor: pointer;
-}
 .alert {
 	z-index: 101;
 }
@@ -748,7 +731,7 @@ hr {
 .alert-msg {
 	position: fixed;
     bottom: 0;
-    z-index: 800;
+    z-index: 1255;
     right: 0; 
 }
 
@@ -965,6 +948,17 @@ hr {
 	background-repeat: no-repeat;
 }
 
+
+.button-fixed.disabled {
+	opacity: 0.35;
+}
+
+.button-fixed.disabled:hover,
+.button-fixed.disabled:focus
+{
+	background-color: #CCC;
+}
+
 .button-zoom,
 .button-zoom:active
 {
@@ -1143,6 +1137,14 @@ hr {
 	transition: all 0.3s linear;
 }
 
+.prod-gallery-frame img {
+	opacity: 0.0;
+}
+
+.prod-gallery-frame img.show {
+	opacity: 1.0;
+}
+
 .prod-gallery-frame:hover {
 	border: 1px solid #8EC961;
 }
@@ -1175,4 +1177,168 @@ hr {
 {
     background-image: url(../img/download.svg);
     background-size: 50%;
+}
+
+.button-report,
+.button-report:active
+{
+    background-image: url(../img/report.svg);
+    background-size: 60%;
+}
+
+.decription {
+	margin: 0;
+	padding: 0;
+	background-color: transparent;
+	width: 100%;
+	display: block;
+	border: none;
+	font-family: inherit;
+    white-space: pre-wrap;
+	word-break: break-word;
+}
+
+/* LIGHTBOX */
+.light-box {
+	position: fixed;
+	background: rgba(0,0,0,0.9);
+	z-index: 1253;
+	opacity: 1.0;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	transition: all linear 0.3s;
+}
+.light-box.ng-hide {
+	opacity: 0;
+	transition: all linear 0.3s;
+}
+.light-box img {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	max-width: 100%;
+	transform: translate(-50%, -50%);
+	transition: all linear 0.3s;
+	transition-delay: 0.15s;
+	cursor: pointer;
+}
+.light-box .prod-gallery {
+	position: absolute;
+	margin: 0 auto;
+	bottom: 20px;
+	left: 0;
+	right: 0;
+	text-align: center;
+	opacity: 0.0;
+}
+.light-box .prod-gallery li {
+	width: 60px;
+	height: 60px;
+	padding-top: 0;
+}
+.light-box span {
+	font-size: 35px;
+	color: #FFF;
+	cursor: pointer;
+	opacity: 0.5;
+	text-shadow: #000 0 3px 0;
+}
+.light-box-close{
+	padding: 20px;
+	top: 0;
+	right: 0;
+	position: absolute;
+	z-index: 1000;
+}
+
+.light-box .deploy {
+	opacity: 1.0;
+	transition: all 1s;
+	transition-delay: 0.5s;	
+}
+
+.light-box .close {
+	display: block;
+	width: 100%;
+	height: 100%;
+	bottom: 0;
+	position: fixed;
+	cursor: pointer;
+}
+
+.light-box span:hover {
+	opacity: 1;
+}
+.light-box-control {
+	position: absolute !important;
+	top: 50% !important;
+	transform: translate(0, -50%);
+	font-size: 35px !important;
+	padding: 300px 20px;
+	display: table;
+	z-index: 1000;
+}
+.light-box-control.rarr {
+	right: 0px;
+}
+.light-box-control.larr {
+	left: 0px;
+}
+
+/* COMMENTS */
+
+.comment {
+	border: 1px solid #DDDDDD;
+	margin-top: 10px;
+	padding: 10px;
+}
+
+.comment.bug {
+	border: 1px solid #D1524C;
+	background-color: #FCF3F3;
+}
+
+.comment.bug a {
+	color: #D1524C;	
+}
+
+.comment.bug a:hover {
+	color: #BB3730;	
+}
+
+.icon-bug
+{ 
+	height: 14px;
+	margin-right: 5px;
+}
+
+.comment .date {
+	float: right;
+}
+
+.comment .txt {
+	margin-top: 10px;
+}
+
+.comment pre {
+	border: none;
+	background-color: transparent;
+	margin: 0;
+	padding: 0;
+	font-family: inherit;
+}
+
+/* REPORT */
+
+.feedback
+{
+	background-color: #FFF;
+    padding: 20px;
+    display: block;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
 }

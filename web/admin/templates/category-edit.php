@@ -60,7 +60,7 @@
 <button class="btn btn-warning" ng-class="{disabled: subCatEditID == catId}" ng-click="subCatRename(subCatEditID)">Rename</button>
 <div ng-show="auth.rights==2">
 	<hr>
-	<h2><small>Editors:</small></h2>	
+	<h2><small>Moderators:</small></h2>	
 	<span ng-repeat="editor in categories[catId].editors.split(';') track by $index" ng-include="'editors'">{{editor}}</span> 
 	<br>
 	<br>
@@ -95,4 +95,10 @@
 			<li ng-repeat="grp in userFilterList.grp" ><a href="" ng-click="addPermission(catId, grp.grp)" >{{grp.grp}}</a></li>        					
 		</ul>
 	</div>
+<h2><small>Allow Download:</small></h2>
+<mark class="text-muted">Note: If set "NO", download can only administrators!</mark><br><br>
+<div class="btn-group" data-toggle="buttons">
+	<button type="button" class="btn" ng-class="categories[catId].candl==1 ? 'btn-success' : 'btn-default'" ng-click="catSetParam('candl', '1', catId)">&nbsp;YES&nbsp;</button>
+	<button type="button" class="btn" ng-class="categories[catId].candl!=1 ? 'btn-danger' : 'btn-default'" ng-click="catSetParam('candl', '0', catId)">&nbsp;&nbsp;NO&nbsp;&nbsp;</button>
+</div>	
 </div>

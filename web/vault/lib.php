@@ -223,7 +223,7 @@
 		}
 		
 		// INSERT
-		PUBLIC STATIC FUNCTION INSERT($TABLE, $DATA)
+		PUBLIC STATIC FUNCTION INSERT($TABLE, $DATA, $TRUST = NULL)
 		{	
 			$MYSQLI = $GLOBALS['MYSQLI'];
 			
@@ -231,8 +231,14 @@
 			$VALUES = [];
 			FOREACH($DATA AS $KEY => $VALUE)
 			{
-				$VALUE = SELF::STRIP($VALUE);							
-				$KEY = SELF::STRIP($KEY);							
+				IF(!$TRUST) {
+					$VALUE = SELF::STRIP($VALUE);							
+					$KEY = SELF::STRIP($KEY);							
+				} ELSE
+				{											
+					$VALUE = $MYSQLI->real_escape_string($VALUE);
+					$KEY = $MYSQLI->real_escape_string($KEY);
+				}
 				
 				$COLS[] = $KEY;						
 				$VALUES[] = $VALUE == null ? 'NULL' : "'" .$VALUE . "'";
@@ -244,6 +250,7 @@
 			RETURN $MYSQLI->affected_rows;
 		}
 		
+				
 		PUBLIC STATIC FUNCTION MULTIINSERT($TABLE, $DATA)
 		{	
 			$MYSQLI = $GLOBALS['MYSQLI'];
@@ -532,7 +539,7 @@
 				IF($CAT->id == $ID) RETURN $CAT;
 			}
 			
-			RETURN '';
+			RETURN [];
 		}		
 		
 		PUBLIC STATIC FUNCTION GET($DATA) {			
@@ -708,6 +715,7 @@
 			IF($T > 0 AND $T <= COUNT($S)) RETURN $S[$T];
 			RETURN NULL;
 		}
+			
 		
 		PUBLIC STATIC FUNCTION CHECKPENDING($DATA) {
 			$ERROR = '{"responce": "PENDINGBAD"}';
@@ -727,6 +735,36 @@
 			RETURN $SUCCESS;
 		}
 		
+		PUBLIC STATIC FUNCTION RATE($DATA) {
+			$ERROR = '{"responce": "RATEBAD"}';
+			IF(!ISSET($DATA->id) OR !IS_NUMERIC($DATA->id)) RETURN $ERROR;
+			IF(!ISSET($DATA->type) OR !IS_NUMERIC($DATA->type)) RETURN $ERROR;
+			
+			$AUTH = $GLOBALS['AUTH']['user'];
+			
+			$TABLE = SELF::TYPE($DATA->type);
+			
+			$WHERE['id'] = $DATA->id;
+			$RESULT = DB::SELECT($TABLE, $WHERE);
+			IF(!$RESULT) RETURN $ERROR;
+			
+			$PROD = $RESULT->fetch_object();			
+			$RATING = ARRAY_FILTER(EXPLODE(';', $PROD->rating));
+			
+			IF(IN_ARRAY($AUTH->user, $RATING)) 
+			{	
+				$RATING = ARRAY_DIFF($RATING, [$AUTH->user]);
+			} ELSE {
+				$RATING[] = $AUTH->user;
+			}
+									
+			$SET['rating'] = IMPLODE(';', $RATING);
+			
+			DB::UPDATE($TABLE, $SET, $WHERE);
+			
+			RETURN $SUCCESS;
+		}
+		
 		PUBLIC STATIC FUNCTION INFO($DATA) {
 			$ERROR = '{"responce": "PRODINFOBAD"}';
 			$NOACCESS = '{"responce": "PRODINFONOACCESS"}';
@@ -740,6 +778,7 @@
 			$RESULT = DB::SELECT('category');
 			$CATEGORIES = DB::TOARRAY($RESULT);
 			
+			$WHERE = [];
 			$WHERE['id'] = $DATA->id;
 			
 			$TABLE = SELF::TYPE($DATA->type);
@@ -748,7 +787,7 @@
 			$RESULT = DB::SELECT($TABLE, $WHERE);	
 			IF(!$RESULT) RETURN $ERROR;
 			$INFO = $RESULT->fetch_object();
-						
+				
 			// PATHWAY
 			$PATHWAY = CAT::GETPATHWAY($INFO->catid, $CATEGORIES);			
 			$PATHWAY = ARRAY_REVERSE($PATHWAY);
@@ -756,19 +795,101 @@
 			
 			// ACCESS
 			$ID = $PATHWAY[0]['id'];
-			$CAT = CAT::GETCATINFO($CATEGORIES, $ID);			
-			IF($CAT->parent = 0) RETURN $ERROR;	
+			$CAT = CAT::GETCATINFO($CATEGORIES, $ID);	
+
+			IF($CAT->parent != 0) RETURN $ERROR;	
 			IF($CAT->status == 0 AND $ISNOADMIN) RETURN $NOACCESS;
 			$GRP = ARRAY_FILTER(EXPLODE(';', $CAT->premissions));
 			IF(!IN_ARRAY($AUTH->grp, $GRP) AND COUNT($GRP) AND $AUTH->rights < 1) RETURN $NOACCESS;
 			IF($INFO->status == 0 AND $ISNOADMIN) RETURN $STATUSOFF;
 				
 			
+			// RATING
+			$RATING = ARRAY_FILTER(EXPLODE(';', $INFO->rating));
+			$RATINGCNT = COUNT($RATING);
+			
 			$OUT['pathway'] = $PATHWAY;
 			$OUT['type'] = $TABLE;
 			$OUT['product'] = $INFO;
+			$OUT['rating'] = $RATINGCNT ;
+			$OUT['userrate'] = IN_ARRAY($AUTH->user, $RATING);
+			$OUT['comments'] = SELF::GETCOMMENTS($DATA, TRUE);
 			
 			RETURN JSON_ENCODE($OUT);
+		}
+		
+		PUBLIC STATIC FUNCTION SENDCOMMENT($DATA) {
+			$ERROR = '{"responce": "COMMENTBAD"}';
+			$SUCCESS = '{"responce": "COMMENTOK"}';
+			$NOACCESS = '{"responce": "COMMENTNOACCESS"}';
+			$NOTEXT = '{"responce": "COMMENTNOTEXT"}';
+			$AUTH = $GLOBALS['AUTH']['user'];
+			
+			IF(!ISSET($DATA->id) OR !IS_NUMERIC($DATA->id)) RETURN $ERROR;
+			IF(!ISSET($DATA->type) OR !IS_NUMERIC($DATA->type)) RETURN $ERROR;
+			IF(!ISSET($AUTH->user) OR $AUTH->rights < 0) RETURN $NOACCESS;
+			IF(!ISSET($DATA->txt) OR !COUNT($DATA->txt) OR EMPTY($DATA->txt)) RETURN $NOTEXT;
+			
+			$TABLE = SELF::TYPE($DATA->type);
+			
+			$TXT = STRIP_TAGS($DATA->txt);
+			$TXT = STR_REPLACE('\n\n', '\n', $TXT);
+			IF(!COUNT($TXT) OR EMPTY($TXT)) RETURN $NOTEXT;
+			
+			$BUG = $DATA->bug ? 1 : 0;
+			
+			$SET['comment'] = $TXT;
+			$SET['prodid'] = $DATA->id;
+			$SET['date'] = TIME();
+			$SET['user'] = $AUTH->user;
+			$SET['bug'] = $BUG;
+			DB::INSERT('comments', $SET);
+								
+			MSGSYSTEM::ADDEDCOMMENT($TXT, $DATA->id, $TABLE, $BUG);
+			
+			RETURN $SUCCESS;
+		}
+		
+		PUBLIC STATIC FUNCTION GETCOMMENTS($DATA, $RAW = NULL) {
+			$ERROR = '{"responce": "COMMENTGETBAD"}';
+			$SUCCESS = '{"responce": "COMMENTGETOK"}';						
+			$AUTH = $GLOBALS['AUTH']['user'];
+			
+			IF(!ISSET($DATA->id) OR !IS_NUMERIC($DATA->id)) RETURN $ERROR;
+			IF(!ISSET($DATA->type) OR !IS_NUMERIC($DATA->type)) RETURN $ERROR;
+			
+			$TABLE = SELF::TYPE($DATA->type);
+			
+			$WHERE['prodid'] = $DATA->id;
+			$RESULT = DB::SELECT('comments', $WHERE, [], 'date', NULL, TRUE);
+			$OUT = DB::TOARRAY($RESULT);
+			
+			IF($RAW) RETURN $OUT;
+			RETURN JSON_ENCODE($OUT);
+		}
+		
+		PUBLIC STATIC FUNCTION DELCOMMENT($DATA) {
+			$ERROR = '{"responce": "COMMENTDELBAD"}';
+			$SUCCESS = '{"responce": "COMMENTDELOK"}';						
+			$AUTH = $GLOBALS['AUTH']['user'];
+			
+			IF(!ISSET($DATA->id) OR !IS_NUMERIC($DATA->id)) RETURN $ERROR;
+			IF(!ISSET($DATA->type) OR !IS_NUMERIC($DATA->type)) RETURN $ERROR;
+			
+			$TABLE = SELF::TYPE($DATA->type);
+			
+			$WHERE['id'] = $DATA->id;
+			$RESULT = DB::SELECT('comments', $WHERE);
+			$COMMENT = $RESULT->fetch_object();
+			IF(!$COMMENT) RETURN $ERROR;
+			
+			IF($COMMENT->user != $AUTH->user AND $AUTH->rights < 1) RETURN $ERROR;
+			
+			$DEL[] = $DATA->id;
+			$RESULT = DB::DEL('comments', $DEL, 'id');
+			
+			IF(!$RESULT) RETURN $ERROR;
+			RETURN $SUCCESS;
 		}
 		
 		PUBLIC STATIC FUNCTION GET($DATA) {
@@ -859,6 +980,7 @@
 			
 			$ERROR = '{"responce": "MODELBAD"}';
 			$NOTEXIST = '{"responce": "MODELNOTEXIST"}';
+			$NORIGHTS = '{"responce": "NORIGHTS"}';
 			
 			$TYPE = PRODUCTS::TYPE($TYPE);
 			IF(!$TYPE) {
@@ -879,6 +1001,17 @@
 			$RESULT = DB::TOARRAY($RESULT);	
 			$PROD = $RESULT[0];
 			$DIR = '';
+				
+			$RESULT = DB::SELECT('category');
+			$CATEGORIES = DB::TOARRAY($RESULT);
+	
+			$ACCESS = ACCESS::DOWNLOADACCESS($PROD);
+									
+			IF(!$ACCESS) {
+				ECHO $NORIGHTS;
+				RETURN FALSE;
+			}
+				
 			IF($TYPE == 'models') {
 										
 				$FILE = PRODUCTS::GETMODELPATH($PROD);
@@ -886,7 +1019,7 @@
 					ECHO $NOTEXIST;
 					RETURN FALSE;
 				}
-				
+								
 				$DIR = DIRNAME($FILE) . '\\';	
 			}
 			
@@ -897,11 +1030,84 @@
 				RETURN FALSE;
 			}
 			
-			$SET['downloads'] = $PROD ->downloads + 1;
-			DB::UPDATE($TYPE, $SET, $WHERE);
-			
+			STATISTIC::DOWNLOADMODEL($PROD);
+					
 			$FILE = $FILES[0];
 			SELF::DOWNLOAD($FILE);		
+		}
+	}
+	
+	///////////////////////////////////////////////////////
+	// STATISTIC CLASS
+	///////////////////////////////////////////////////////
+	
+	CLASS STATISTIC {				
+		PUBLIC STATIC FUNCTION DOWNLOADMODEL($MODEL) {
+			$AUTH = $GLOBALS['AUTH']['user'];
+			$USER = $AUTH->user;
+			
+			// STATISTIC BY MODEL
+			$WHERE = [];
+			$SET = [];
+			$WHERE['id'] = $MODEL->id;
+			$SET['downloads'] = $MODEL->downloads + 1;
+			DB::UPDATE('models', $SET, $WHERE);
+			
+			// STATISTIC FOR USER
+			$WHERE = [];
+			$SET = [];
+			$WHERE['user'] = $USER;
+			
+			$RESULT = DB::SELECT('users', $WHERE);
+			$U = $RESULT->fetch_object();
+			$SET['downloads'] = $U->downloads + 1;
+			DB::UPDATE('users', $SET, $WHERE);
+			
+			// STATISTIC BY USER
+			$WHERE = [];
+			$SET = [];
+			
+			$SET['date'] = TIME();
+			$SET['user'] = $AUTH->user;
+			$SET['type'] = 1;
+			$SET['prodid'] = $MODEL->id;
+			$SET['prodname'] = $MODEL->name;
+			$SET['day'] = DATE("Y-m-d", TIME());
+			
+			DB::INSERT('statistic_user_downloads', $SET);
+			
+			// STATISTIC BY MONTH
+			$WHERE = [];
+			$SET = [];
+			
+			$Y = DATE('Y');
+			$M = DATE('m');
+			
+			$WHERE['year'] = $Y;
+			$WHERE['month'] = $M;
+			$RESULT = DB::SELECT('statistic_downloads', $WHERE);
+			$R = $RESULT->fetch_object();
+			$CNT = 1;
+			
+			IF($R) {
+				$CNT = $R->cnt + 1;
+			}
+			
+			$WHERE = [];
+			$SET = [];
+			
+			$WHERE['id'] = $R->id;
+			
+			$SET['year'] = $Y;
+			$SET['month'] = $M;
+			$SET['cnt'] = $CNT;
+			$SET['date'] = TIME();
+						
+			IF(!$R) {
+				DB::INSERT('statistic_downloads', $SET);
+			} ELSE {
+				DB::UPDATE('statistic_downloads', $SET, $WHERE);
+			}
 		}
 	}
 	
@@ -926,21 +1132,92 @@
 				ECHO $ERROR;
 				RETURN FALSE;
 			}
-						
-			$RESULT = DB::TOARRAY($RESULT);	
-			$MODEL = $RESULT[0];
+						 
+			$MODEL = $RESULT->fetch_object();
 						
 			$FILE = PRODUCTS::GETMODELPATH($MODEL);
 			IF($FILE == -1) RETURN $NOTEXIST;
-			
-			
-			$SET['downloads'] = $MODEL->downloads + 1;
-			DB::UPDATE('models', $SET, $WHERE);
+						
+			STATISTIC::DOWNLOADMODEL($MODEL);
 						
 			$OUT['responce'] = "MODELOK";
 			$OUT['file'] = $FILE;
 			
 			RETURN JSON_ENCODE($OUT);					
+		}
+	}
+	
+	///////////////////////////////////////////////////////
+	// ACCESS CLASS
+	///////////////////////////////////////////////////////
+	
+	CLASS ACCESS {
+		PUBLIC STATIC FUNCTION GETSUBIDS($CATEGORIES, $PARENT) {				
+			$IDS = [];
+			$IDS[] = $PARENT;
+			$SIDS = [];
+			
+			FOREACH($CATEGORIES AS $CATEGORY) {			
+				IF($CATEGORY->parent == $PARENT) {													
+					$SIDS = SELF::GETSUBIDS($CATEGORIES, $CATEGORY->id);
+					
+					$IDS[] = $CATEGORY->id;
+					$IDS = ARRAY_MERGE($IDS, $SIDS);
+				}								
+			}
+			
+			RETURN ARRAY_UNIQUE($IDS);
+		}
+		
+		PUBLIC STATIC FUNCTION GETACCESSID($CATEGORIES, $RULE, $COL, $ID) {																
+			$IDS = [];
+			$AUTH = $GLOBALS['AUTH']['user'];
+			
+			$SUBIDS = SELF::GETSUBIDS($CATEGORIES, $ID);
+			
+			IF($AUTH->rights > 0) RETURN ARRAY_UNIQUE($SUBIDS);
+				
+			FOREACH($CATEGORIES AS $CAT) {			
+				IF($CAT->parent == 0) {
+					$GRP = ARRAY_FILTER(EXPLODE(';', $CAT->{$COL}));
+					IF(IN_ARRAY($RULE, $GRP) OR !COUNT($GRP)) {										
+						$I = SELF::GETSUBIDS($CATEGORIES, $CAT->id);
+						$IDS = ARRAY_MERGE($IDS, $I);
+					}
+				}
+			}
+
+			$IDS = ARRAY_UNIQUE($IDS);
+			RETURN ARRAY_INTERSECT($IDS, $SUBIDS);
+		}
+				
+		
+		PUBLIC STATIC FUNCTION GETACCESS($ID = -1, $CATEGORIES) {
+			$AUTH = $GLOBALS['AUTH']['user'];
+			$FILTER = [];			
+			$NOACCESS = FALSE;
+			IF($ID == -1) $ID = 0;
+			
+			$FILTER['ids'] = SELF::GETACCESSID($CATEGORIES, $AUTH->grp, 'premissions', $ID);
+			$NOACCESS = !COUNT($FILTER['ids']);				
+			IF($NOACCESS) RETURN FALSE;						
+			
+			RETURN $FILTER['ids'];
+		}
+		
+		PUBLIC STATIC FUNCTION DOWNLOADACCESS($PROD) {
+			$AUTH = $GLOBALS['AUTH']['user'];
+			
+			$RESULT = DB::SELECT('category');
+			$CATEGORIES = DB::TOARRAY($RESULT);
+	
+			$ACCESSID = SELF::GETACCESS(-1, $CATEGORIES);			
+			$PATHWAY = CAT::GETPATHWAY($PROD->catid, $CATEGORIES);			
+			$PATHWAY = ARRAY_REVERSE($PATHWAY);
+			$LIBID = $PATHWAY[0]['id'];
+			$LIB = CAT::GETCATINFO($CATEGORIES, $LIBID);
+			IF((!$LIB->candl AND $AUTH->rights < 1) OR !IN_ARRAY($PROD->catid, $ACCESSID)) RETURN FALSE;
+			RETURN TRUE;
 		}
 	}
 	
@@ -976,7 +1253,7 @@
 			
 			RETURN SELF::GLOBALSEARCH($DATA, TRUE);
 		}
-		
+		/*
 		PUBLIC STATIC FUNCTION GETSUBIDS($CATEGORIES, $PARENT) {				
 			$IDS = [];
 			$IDS[] = $PARENT;
@@ -1029,7 +1306,7 @@
 			IF($NOACCESS) RETURN FALSE;						
 			
 			RETURN $FILTER['ids'];
-		}
+		}*/
 						
 		PUBLIC STATIC FUNCTION GLOBALSEARCH($DATA, $FASTSEARCH = NULL) {
 			
@@ -1054,7 +1331,7 @@
 			}
 						
 			// FILTER CATID
-			$ACCESS = SELF::GETACCESS($FILTERCATID, $CATEGORIES);
+			$ACCESS = ACCESS::GETACCESS($FILTERCATID, $CATEGORIES);
 			IF($ACCESS === FALSE) RETURN FALSE;
 			$FILTER['cat']['ids'] = $ACCESS;
 	
@@ -1272,5 +1549,73 @@
 			
 			ECHO JSON_ENCODE($OUT);	
 		}
-	}	
+	}
+	
+	///////////////////////////////////////////////////////
+	// MSGSYSTEM CLASS
+	///////////////////////////////////////////////////////
+
+	CLASS MSGSYSTEM {
+		PUBLIC STATIC FUNCTION ADD($SUBJECT, $MSG, $BUG = 0, $IMG = NULL) {
+			IF(EMPTY($MSG)) RETURN FALSE;
+			
+			$AUTH = $GLOBALS['AUTH']['user'];
+			
+			$SET['msg'] = $MSG;
+			$SET['subject'] = $SUBJECT;
+			$SET['bug'] = $BUG;
+			$SET['viewed'] = 0;	
+			$SET['date'] = TIME();
+			$SET['user'] = $AUTH->user;
+			$SET['img'] = $IMG;
+						
+			DB::INSERT('msg', $SET, TRUE);
+		}	
+		
+		PUBLIC STATIC FUNCTION ADDEDCOMMENT($TXT, $ID, $TABLE, $BUG = 0) {
+			
+			$AUTH = $GLOBALS['AUTH']['user'];
+			
+			$WHERE['id'] = $ID;
+			$RESULT = DB::SELECT($TABLE, $WHERE);
+			$PROD = $RESULT->fetch_object();
+						
+			$MSG = '<a href="' . HOSTNAME . '#/' . RTRIM($TABLE, 's') . '/' . $ID . '">' . $PROD->name . '</a><br>';
+			$MSG .= 'Added comment by ' . $AUTH->user . '<br><br>';						
+			$MSG .= '<pre>' . $TXT. '</pre><br>';
+			
+			$IMG = $PROD->previews;
+			
+			$TITLE = $BUG ? 'Bug Report' : 'Comment';
+			MSGSYSTEM::ADD($TITLE, $MSG, $BUG, $IMG);
+		}
+		
+		PUBLIC STATIC FUNCTION FEEDBACK($DATA) {
+			$ERROR = '{"responce": "FEEDBACKBAD"}';
+			$SUCCESS = '{"responce": "FEEDBACKOK"}';						
+			
+			$AUTH = $GLOBALS['AUTH']['user'];
+			
+			IF(!ISSET($DATA->txt) OR !ISSET($DATA->subject)) RETURN $ERROR;
+						
+			$AUTH = $GLOBALS['AUTH']['user'];
+			
+			$TXT = STRIP_TAGS($DATA->txt);
+			$TXT = STR_REPLACE('\n\n', '\n', $TXT);
+			IF(!COUNT($TXT) OR EMPTY($TXT)) RETURN $ERROR;
+						
+			$MSG = 'Feedback send by ' . $AUTH->user . '<br><br>';
+			$MSG .= '<b>' . DB::STRIP($DATA->subject) . '</b><br><br>';
+			$MSG .= '<pre>' . $TXT. '</pre><br>';
+			$MSG .= '<div>
+				<a href="mailto:' . $AUTH->user . MAILDOMAIN . '">Send Reply</a>				
+			</div>';
+			
+			$BUG = $DATA->bug ? 1 : 0;
+			
+			MSGSYSTEM::ADD('Feedback', $MSG, $BUG);
+			
+			RETURN $SUCCESS;
+		}		
+	}
 ?>

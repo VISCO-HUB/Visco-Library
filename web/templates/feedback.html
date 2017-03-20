@@ -1,0 +1,15 @@
+<div class="light-box"  ng-show="showFeedBack">
+	<div class="close" ng-click="hideShowFeedback(false)" title="Close"></div>
+	<span class="light-box-close glyphicon glyphicon-remove" aria-hidden="true" ng-click="hideShowFeedback(false)" title="Close"></span>	
+	<div class="feedback col-md-6 col-sm-12 col-xs-12">
+		<form>
+			<h3>Feedback</h3>
+			<div class="form-group">
+				<input type="text" id="subject" class="form-control validate" placeholder="Subject" required="" autofocus ng-model="feedback.subject"><br>	
+				<textarea class="form-control validate" rows="5" placeholder="Your Message" id="msg" ng-model="feedback.content"></textarea>
+			</div>
+			<br>
+			<button type="submit" class="btn btn-primary" ng-click="feedBack(feedback)">Send</button> <label class="margin-left-20 pointer"><input type="checkbox" value="" ng-model="feedback.bug"> As bug report</label>		
+		</form>
+	</div>
+</div>

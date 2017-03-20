@@ -23,11 +23,13 @@ document.addEventListener("contextmenu", function(e){
 
 /* APP */
 
-var app = angular.module('app', ['ngRoute', 'ngSanitize', 'ngCookies', 'ui.bootstrap', 'angularFileUpload']);
+var app = angular.module('app', ['ngRoute', 'ngSanitize', 'ngCookies', 'ui.bootstrap', 'angularFileUpload', 'chart.js']);
 
 
 // CONFIG 
-app.config(function($routeProvider) {    
+app.config(function($routeProvider, $sceProvider) {    
+	
+	 $sceProvider.enabled(false);
 	
 	$routeProvider
     .when('/settings', {
@@ -42,7 +44,7 @@ app.config(function($routeProvider) {
         templateUrl : "templates/upload.php",
 		controller: 'uploadCtrl'
     })
-	.when('/dashboard', {
+	.when('/dashboard/:page', {
         templateUrl : "templates/dashboard.php",
 		controller: 'dashboardCtrl'
     })
@@ -54,6 +56,10 @@ app.config(function($routeProvider) {
         templateUrl : "templates/models.php",
 		controller: 'modelsCtrl',
     })
+	.when('/msg/:page', {
+        templateUrl : "templates/msg.php",
+		controller: 'msgCtrl',
+    })	
 	.when('/textures/:page', {
         templateUrl : "templates/textures.php",
 		controller: 'texturesCtrl',
@@ -74,7 +80,7 @@ app.config(function($routeProvider) {
         templateUrl : "templates/category-edit.php",
 		controller: 'categoryEditCtrl'
     })
-	.otherwise({redirectTo:'/dashboard'});
+	.otherwise({redirectTo:'/dashboard/1'});
 });
 
 // DIRECTIVES
@@ -182,58 +188,123 @@ app.controller('uploadCtrl', function($scope, FileUploader, vault, $rootScope) {
 	};
  });
 	// DASHBOARD
- app.controller('dashboardCtrl', function($scope, vault, $rootScope) {
-	$rootScope.addCrumb('Dashboard', '#/dashboard');
+ app.controller('dashboardCtrl', function($scope, vault, $rootScope, $location, $routeParams, $timeout, $cookieStore) {
+	$rootScope.addCrumb('Dashboard', '#/dashboard/1');
+	$scope.page = $routeParams.page;
+	$rootScope.section = '/dashboard';
 	
-	 CanvasJS.addColorSet("shaders",
-		[//colorSet Array
-			"#337AB7"               
-		]);
-
+	$scope.currentPage = 1;
+	$timeout(function(){
+		$scope.currentPage = $scope.page;
+	}, 50);
 	
-	$scope.chart = new CanvasJS.Chart("chartContainer",
-    {
-		axisY: {
-			lineThickness: 0.2,
-			gridThickness: 0.2,
-			tickThickness: 0.2
-		},
-		axisX: {
-			lineThickness: 0.2,
-			gridThickness: 0,
-			tickThickness: 0.2
-		},
-		toolTip: {
-			borderColor: "#FFF"
-		},
-		colorSet: "shaders",
-		title:{
-    
-		},	
-		data: [
-			{        
-				type: "splineArea",
-			
-				dataPoints: [
-					{ x: new Date(2017, 00, 1), y: 1352 },
-					{ x: new Date(2017, 01, 1), y: 1514 },
-					{ x: new Date(2017, 02, 1), y: 1321 },
-					{ x: new Date(2017, 03, 1), y: 1163 },
-					{ x: new Date(2017, 04, 1), y: 950 },
-					{ x: new Date(2017, 05, 1), y: 1201 },
-					{ x: new Date(2017, 06, 1), y: 1186 },
-					{ x: new Date(2017, 07, 1), y: 1281 },
-					{ x: new Date(2017, 08, 1), y: 1438 },
-					{ x: new Date(2017, 09, 1), y: 1305 },
-					{ x: new Date(2017, 10, 1), y: 1480 },
-					{ x: new Date(2017, 11, 1), y: 1291 }        
-				]
-			}            
-		]
-    });
-
-    $scope.chart.render();
- });
+	
+	if(!$cookieStore.get('perpage')) {		
+		$cookieStore.put('perpage', 50);	
+	};
+	
+	$rootScope.perpage = $cookieStore.get('perpage');
+	
+	$scope.downloadLogGet = function(page, perpage, filter) {
+		vault.downloadLogGet(page, perpage, filter);
+	}
+	
+	$scope.changePerPage = function(p) {		
+		$cookieStore.put('perpage', p);
+		$rootScope.perpage = p;		
+		
+		$scope.downloadLogGet($scope.page, $rootScope.perpage, $rootScope.downloadLogFilter);
+	}
+	
+	$scope.downloadLogGet($scope.page, $rootScope.perpage, $rootScope.downloadLogFilter);
+	
+	$scope.changePage = function(p) {	
+		$location.path('/dashboard/' + p);	
+	}
+	
+	$rootScope.dataMonthDownload = [];
+	$rootScope.labelsMonthDownload = [];
+	$rootScope.labelsUserColors = ['#35A9E1', '#FF5555', '#FABB3C', '#67C3EF', '#8064A2', '#4BACC6', '#F79646', '#2C4D75', '#C0504D'];
+	$rootScope.dataUserDownload = [];
+	$rootScope.labelsUserDownload = [];
+	
+	if(!$rootScope.tabRow1) {
+		$rootScope.tabRow1 = 1;
+	}
+	
+	$scope.changeTabRow1 = function(i) {
+		$rootScope.tabRow1 = i;
+		$('html, body').animate({
+        	scrollTop: ($('#tabs').offset().top) - 60
+    	}, 500);
+	}
+	
+	$scope.getDashBoardInfo = function() {
+		vault.getDashBoardInfo();
+	}
+		
+	$scope.colors = ['rgba(0,154,191,0.5)'];
+	   
+    $scope.datasetOverride = [
+      {
+        label: "Downloads",
+        borderWidth: 3,
+        hoverBackgroundColor: "rgba(255,99,132,0.4)",
+        hoverBorderColor: "rgba(255,99,132,1)",
+		pointRadius: 6   
+      },
+	  {}
+    ];
+		
+	 $scope.datasetOverride2 = [
+      {
+        label: "Downloads",
+        borderWidth: 3
+      },
+	  {}
+    ];
+	
+	
+	$scope.options2 = {
+		scales:
+        {
+			reverse: true,           
+			xAxes: [{
+                display: false
+            }]
+        }
+	};
+	
+	$scope.options3 = {
+		responsive: true,
+		maintainAspectRatio: true,
+		segmentShowStroke: false,
+		animateRotate: true,
+		animateScale: false,
+		percentageInnerCutout: 50,
+		legend: {
+			display: true,
+			position: 'bottom',
+			fullWidth: false
+		}
+	};
+	
+	$scope.options = {
+		scales: {
+			reverse: true,
+			yAxes: [
+			{
+			 ticks:				
+				{
+					beginAtZero:true
+				}
+			}
+		  ]
+		}
+	};
+		
+	$scope.getDashBoardInfo();
+  });
  
 	//USERS
 app.controller('usersCtrl', function($scope, vault, $rootScope, $location, $routeParams, $timeout, $cookieStore) {
@@ -361,7 +432,7 @@ app.controller('tagsCtrl', function($scope, vault, $rootScope, $location, $route
 
 	//COMMENTS
 app.controller('commentsCtrl', function($scope, vault, $rootScope, $location, $routeParams, $timeout, $cookieStore) {
-	$rootScope.addCrumb('Comments', '#/comments');
+	$rootScope.addCrumb('Comments', '#/comments/1');
 	
 	$scope.page = $routeParams.page;
 	$rootScope.section = '/comments';
@@ -376,6 +447,31 @@ app.controller('commentsCtrl', function($scope, vault, $rootScope, $location, $r
 	};
 	
 	$rootScope.perpage = $cookieStore.get('perpage');
+	
+	$scope.commentsGet = function(page, perpage, filter) {
+		vault.commentsGet(page, perpage, filter);
+	}
+	
+	$scope.changePerPage = function(p) {		
+		$cookieStore.put('perpage', p);
+		$rootScope.perpage = p;		
+		
+		$scope.commentsGet($scope.page, $rootScope.perpage, $rootScope.commentsFilter);
+	}
+	
+	$scope.commentDelete = function(id) {
+		if(!confirm('Do you really want to delete comment?')){
+			return false;
+		}
+		
+		vault.commentDelete(id, $scope.page, $rootScope.perpage, $rootScope.commentsFilter);
+	}
+	
+	$scope.commentsGet($scope.page, $rootScope.perpage, $rootScope.commentsFilter);
+	
+	$scope.changePage = function() {							
+		$location.path('/comments/' + $scope.currentPage);		
+	}
 
 });
 
@@ -403,7 +499,7 @@ app.controller('texturesCtrl', function($scope, vault, $rootScope, $location, $r
 app.controller("modelsEditCtrl", function ($scope, $rootScope, $routeParams, vault) {
 	vault.getGlobal();
 	vault.catGet();
-		
+			
 	$rootScope.section = '/models';
 	$scope.type = 1;
 		
@@ -530,12 +626,7 @@ app.controller("modelsEditCtrl", function ($scope, $rootScope, $routeParams, vau
 		
 		$scope.productsGet($scope.page, $rootScope.perpage, $scope.type, $rootScope.modelFilter);
 	}
-	
-	$scope.getMainPreview = function(p, size) {
-		var a = vault.getPreviews(p, size);
-		return a[0];
-	}
-	
+		
 	$scope.changeFilter = function(f) {
 		if(!$rootScope.modelFilter) {$rootScope.modelFilter = {}};
 		
@@ -568,6 +659,84 @@ app.controller("modelsEditCtrl", function ($scope, $rootScope, $routeParams, vau
 		vault.prodDelete(id, $scope.type, $scope.page, $rootScope.perpage, $rootScope.modelFilter);
 	}
  });
+ 
+	// MSG CTRL
+	
+app.controller('msgCtrl', function($scope, vault, $rootScope, $location, $routeParams, $timeout, $cookieStore, $sce) {
+	$rootScope.addCrumb('Messages', '#/msg');
+	
+	$scope.page = $routeParams.page;
+	$rootScope.section = '/msg';
+	
+	$timeout(function(){
+		$scope.currentPage = $scope.page;
+	}, 50);
+	
+	
+	if(!$cookieStore.get('perpage')) {		
+		$cookieStore.put('perpage', 50);	
+	};
+	
+	$rootScope.perpage = $cookieStore.get('perpage');
+	
+	$scope.type = 1;
+		
+	$scope.msgGet = function(page, perpage, filter){				
+		vault.msgGet(page, perpage, filter);
+	};
+	
+	$scope.changePerPage = function(p) {		
+		$cookieStore.put('perpage', p);
+		$rootScope.perpage = p;		
+		
+		$scope.msgGet($scope.page, $rootScope.perpage,$rootScope.msgFilter);
+	}
+		
+	
+	$scope.msgGet($scope.page, $rootScope.perpage, $rootScope.msgFilter);
+	
+	
+	$scope.changePage = function() {							
+		$location.path('/msg/' + $scope.currentPage);		
+	}
+
+	$scope.msgSetParam = function(param, value, id) {
+		vault.msgSetParam(param, value, id);
+	}	
+	
+	$scope.msgDelete = function(id, name) {
+		if(!confirm('Do you really want to delete "' + name + '"?')){
+			return false;
+		}
+	
+		$scope.currentSubject = '';
+		$scope.currentImg = null;
+		$scope.currentMessage = 'Message "' + name + '" deleted!';
+		vault.msgDelete(id, $scope.page, $rootScope.perpage, $rootScope.msgFilter);
+	}
+	
+	$scope.renderHtml = function(html)
+	{
+		return $sce.trustAsHtml(html);
+	};
+	
+	$scope.currentMessage = '';
+	$scope.currentSubject = '';
+	$scope.currentImg = null;
+	
+	$scope.setCurrentMessage = function(msg) {		
+		
+		vault.msgSetParam('viewed', '1', msg.id);
+		
+		$scope.currentMessage = $scope.renderHtml(msg.msg);
+		$scope.currentSubject = msg.subject;
+		var p = msg.img ? vault.getPreviews(msg.img, 'medium')[0] : null;
+		$scope.currentImg = p;
+		
+		$scope.msgGet($scope.page, $rootScope.perpage, $rootScope.msgFilter);
+	}
+ });
+	
  	// CATEGORY	
 app.controller("categoryEditCtrl", function ($scope, $rootScope, $routeParams, vault) {
 	vault.getGlobal();
@@ -731,11 +900,6 @@ app.controller("categoryCtrl", function ($scope, $rootScope, vault) {
 	}
 });
 
-	// MSG
-app.controller("msgCtrl", function ($scope, $rootScope, vault) {
-	
-});
-
 	// SETTINGS
 app.controller("settingsCtrl", function ($scope, $rootScope, vault) {
 	vault.getGlobal();
@@ -781,6 +945,12 @@ app.run(function($rootScope, $location, $routeParams, vault) {
 			
 		// INIT
 		
+		$rootScope.rnd = function(min, max) {
+			return Math.floor(Math.random() * (max - min) ) + min;
+		}
+			
+		$rootScope.months = {1: "Jan", 2:"Feb", 3: "Mar", 4: "Apr", 5: "May", 6: "Jun", 7:"Jul", 8: 'Aug', 9: 'Sep', 10: 'Oct', 11: 'Nov', 12: 'Dec'};
+		
 		$rootScope.tm = function(time) {return vault.tm(time)};
 		
 		$rootScope.goLogin = function() {
@@ -809,6 +979,7 @@ app.run(function($rootScope, $location, $routeParams, vault) {
 		$rootScope.categories = {};
 		$rootScope.products = {};
 		$rootScope.product = {};
+		$rootScope.donwloadLog = {};
 		
 		$rootScope.globals = {};
 				
@@ -843,6 +1014,32 @@ app.run(function($rootScope, $location, $routeParams, vault) {
 					count = count + 1;
 			}
 			return count;
+		}
+		
+		// IMAGES
+		
+		$rootScope.getMainPreview = function(p, size) {
+			var a = vault.getPreviews(p, size);
+			return a[0];
+		}
+		
+		// MESSAGES
+		$rootScope.msgCnt = 0;
+		vault.getMsgCnt();
+		$rootScope.messages = [];
+		
+		// MXS BROWSER ACTIONS
+	
+		$rootScope.mxsGoBack = function(){
+			vault.sendCommandMXS('GOBACK');
+		}
+
+		$rootScope.mxsGoForward = function(){
+			vault.sendCommandMXS('GOFORWARD');
+		}
+
+		$rootScope.mxsForceRefresh = function(){
+			vault.sendCommandMXS('FORCEREFRESH');
 		}
     });
 });
@@ -982,7 +1179,7 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		var json = {'parentid': parentid};
 		
 		HttpPost('CATGET', json).then(function(r){						
-			
+			console.log(r.data)
 			$rootScope.categories = r.data;
 			responceMessage(r.data);
 		},
@@ -1031,6 +1228,48 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		HttpPost('TAGSGET', json).then(function(r){						
 			console.log(r.data);			
 			$rootScope.tagsList = r.data;									
+			responceMessage(r.data);
+		},
+		function(r){
+			responceMessage(r);
+		});
+	}
+	
+	var commentsGet = function(page, perpage, filter) {
+			
+		var json = {'page': page, 'perpage': perpage, 'filter': filter};
+		
+		HttpPost('COMMENTSGET', json).then(function(r){						
+			console.log(r.data);			
+			$rootScope.commentsList = r.data;									
+			responceMessage(r.data);
+		},
+		function(r){
+			responceMessage(r);
+		});
+	}
+	
+	var commentDelete = function(id, page, perpage, filter) {
+		var json = {'id': id};
+		
+		HttpPost('COMMENTSDEL', json).then(function(r){						
+			console.log(r.data);
+			
+			commentsGet(page, perpage, filter);
+			responceMessage(r.data);
+		},
+		function(r){
+			responceMessage(r);
+		});
+	}
+	
+	var downloadLogGet = function(page, perpage, filter) {
+			
+		var json = {'page': page, 'perpage': perpage, 'filter': filter};
+		
+		HttpPost('DOWNLOADLOGGET', json).then(function(r){						
+			console.log(r.data);			
+			$rootScope.donwloadLog = r.data;									
 			responceMessage(r.data);
 		},
 		function(r){
@@ -1426,6 +1665,114 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		});
 	}
 	
+	
+	var getMsgCnt = function() {		
+		var json = {'get': 'cnt'};
+		
+		HttpPost('MSGGETCNT', json).then(function(r){												
+			
+			console.log(r.data)				
+			$rootScope.msgCnt = r.data;
+			responceMessage(r.data);			
+		},
+		function(r){
+			responceMessage(r);
+		});
+	}
+	
+	var msgGet = function(page, perpage, filter) {
+		var json = {'page': page, 'perpage': perpage, 'filter': filter};
+		
+		HttpPost('MSGGET', json).then(function(r){									
+			$rootScope.messages = r.data;						
+			
+			if(r.data.notview != undefined) {
+				$rootScope.msgCnt['cnt'] = r.data.notview;
+			}
+			
+			responceMessage(r.data);
+		},
+		function(r){
+			responceMessage(r);
+		});
+	}
+	
+	var msgSetParam = function(param, value, id)
+	{
+		var json = {'param': param, 'value': value, 'id': id};
+		
+		HttpPost('MSGSETPARAM', json).then(function(r){												
+			console.log(r.data)					
+		},
+		function(r){
+			responceMessage(r);
+		});
+	}
+	
+	var msgDelete = function(id, page, perpage, filter) {
+		var json = {'id': id};
+			
+		HttpPost('MSGDELETE', json).then(function(r){												
+			
+			responceMessage(r.data);
+			msgGet(page, perpage, filter)		
+		},
+		function(r){
+			responceMessage(r);
+		});
+	}
+	
+	var sendCommandMXS = function(cmd, value) {
+		if(!value) {value = '';}
+		window.external.text = cmd + '=' + value + '#' + new Date().getTime();
+	}
+		
+	var getDashBoardInfo = function() {
+		var json = {'info': 'all'};
+			
+		HttpPost('DASHBOARDINFO', json).then(function(r){												
+			$rootScope.dashBoardInfo = r.data;
+			$rootScope.graphMotnData = [];
+			var d = [];
+			var l = [];
+			if(r.data.graph_month) {
+				
+				angular.forEach(r.data.graph_month, function(item, key) {				
+					d.push(item.cnt);
+					l.push($rootScope.months[item.month]);
+				});								
+			}
+			
+			$rootScope.dataMonthDownload = [d];
+			$rootScope.labelsMonthDownload = l;
+								
+			var d3 = [];
+			var l3 = [];
+			var c3 = [];
+			if(r.data.graph_user) {				
+				angular.forEach(r.data.graph_user, function(item, key) {															
+					var dd = {};
+					var r = $rootScope.rnd(0, 200);
+					var g = $rootScope.rnd(0, 200);
+					var b = $rootScope.rnd(0, 200);
+					c3.push('rgba(' + r + ',' + g +  ',' + b +  ',0.5)');
+					
+					d3.push(item.dwl);
+					l3.push(item.user);					
+				});								
+			}
+						
+			$rootScope.dataUserDownload = d3;
+			$rootScope.labelsUserDownload = l3;
+			//$rootScope.labelsUserColors = c3;
+									
+			console.log(r.data)
+			responceMessage(r.data);	
+		},
+		function(r){
+			responceMessage(r);
+		});
+	}
 			
 	return {
 		showMessage: showMessage,
@@ -1462,6 +1809,15 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		usersSetParam: usersSetParam,
 		usersGetFilter: usersGetFilter,
 		tagsRefresh: tagsRefresh,
+		getMsgCnt: getMsgCnt,
+		msgGet: msgGet,
+		msgSetParam: msgSetParam,
+		msgDelete: msgDelete,
+		sendCommandMXS: sendCommandMXS,
+		getDashBoardInfo: getDashBoardInfo,
+		downloadLogGet: downloadLogGet,
+		commentsGet: commentsGet,
+		commentDelete: commentDelete,
 		tm: tm
 	};
 });

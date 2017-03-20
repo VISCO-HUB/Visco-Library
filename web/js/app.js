@@ -101,6 +101,24 @@ app.directive("preview", function($rootScope) {
     };
 });
 
+app.directive("comments", function($rootScope) {	 
+    return {
+        templateUrl : hostname + 'templates/comments.html'
+    };
+});
+
+app.directive("lightbox", function ($rootScope) {
+	return {
+		templateUrl : hostname + 'templates/lightbox.html'		
+    };
+});
+
+app.directive("feedback", function ($rootScope) {
+	return {
+		templateUrl : hostname + 'templates/feedback.html'		
+    };
+});
+
 app.directive('iframeOnload', [function(){
 return {
     scope: {
@@ -326,22 +344,25 @@ app.controller("homeCtrl", function ($scope, $rootScope, vault, $interval) {
 app.controller("modelCtrl", function ($scope, vault, $rootScope, $location, $routeParams, $timeout, $cookieStore) {
 	$rootScope.isHome = false;
 	$scope.id = $routeParams.id;
-	$rootScope.productGalleryPreviews = [];
-	$rootScope.productGallery = [];
+	$rootScope.libType = 1;
 	
 	$scope.getProduct = function(id, type){				
 		vault.getProduct(id, type);
 	};
 		
-	$scope.showItem = function(x){
-		$rootScope.currItem = x;
-	};
-	
 	$scope.getProduct($scope.id, 1);
 	
 	$scope.tabinfo = 'desc';
 	$scope.changeTabInfo = function(s) {
 		$scope.tabinfo = s;
+	}
+	
+	$scope.rateProduct = function(id, type) {
+		vault.rateProduct(id, type);
+	}
+	
+	$scope.favoriteProduct = function(id, type) {
+		vault.favoriteProduct(id, type);
 	}
 	
 	$scope.tabinfo2 = 'info';
@@ -353,6 +374,7 @@ app.controller("modelCtrl", function ($scope, vault, $rootScope, $location, $rou
 app.controller("modelsCtrl", function ($scope, vault, $rootScope, $location, $routeParams, $timeout, $cookieStore) {
 	$rootScope.isHome = false;
 	$rootScope.globalQuery = '';
+	$rootScope.libType = 1;
 		
 	$scope.page = $routeParams.page;
 	$scope.catid = $routeParams.catid;
@@ -403,12 +425,12 @@ app.run(function($rootScope, $location, $routeParams, $timeout, $cookieStore, va
    $rootScope.searchIn = {};
   
 	$rootScope.yesNo = function(s) {
-		if(s == 0 || !s || s == undefined || s == null) {return 'No';}
+		if(s == 0 || !s || s == undefined || s == null || s == 'No' || s == 'NO' || s == 'no' ) {return 'No';}
 		return 'Yes';
 	}
 	
 	$rootScope.isNA = function(s) {
-		if(s == 0 || !s || s == undefined || s == null || s == '' || s.length == 0) {return 'N/A';}
+		if(s == 0 || !s || s == undefined || s == null || s == '' || s.length == 0 || s == 'N/A') {return 'N/A';}
 		return s;
 	}
 	
@@ -498,16 +520,6 @@ app.run(function($rootScope, $location, $routeParams, $timeout, $cookieStore, va
 		$rootScope.breadcrumbs.push({'url' : url, 'name': name });
 	}
 	
-	$rootScope.bigPreview = '';
-	$rootScope.bigPreviewPos = {'x': 0, 'y': 0};
-	
-	$rootScope.showBigPreview = function($event, show, previews) {
-		$rootScope.bigPreview = '';
-		if(show == true) {
-			$rootScope.bigPreview = $rootScope.getProdImages(previews, 2, true);
-		}		
-	}
-	
 	// PLACE 
 	
 	$rootScope.place = $cookieStore.get('place-mode');
@@ -541,30 +553,31 @@ app.run(function($rootScope, $location, $routeParams, $timeout, $cookieStore, va
 	$rootScope.download = '';	
 	
 	$rootScope.downloadUrl = function(id, type) {		
-		if($rootScope.auth.rights < 1) {return false;}
-		
 		$rootScope.download = hostname + 'vault/download.php?id=' + id +'&type=' + type;
 		
 		$timeout(function() {			
 			$rootScope.$apply(function(){$rootScope.download = ''});
+			
 		}, 1000);
 	}
 	
 	$rootScope.prodError = {};
 	
 	$rootScope.downloadMsg = function() {
-		
 		var t = $("#download").contents().find("body").html();		
 		if(!t || !t.length) {return false;}
 		
 		var j = JSON.parse(t);	
 		var v = getUrlVars($rootScope.download);
+		var id = v['id'];
 		
-		if(j.responce == "MODELBAD" || j.responce == "MODELNOTEXIST"){			
-			var id = v['id'];
-			$rootScope.$apply(function(){$rootScope.prodError[id] = true});						
+		if(j.responce == "MODELBAD" || j.responce == "MODELNOTEXIST"){						
+			$rootScope.$apply(function(){$rootScope.prodError[id] = 1});						
 		}	
 		
+		if(j.responce == "NORIGHTS") {
+			$rootScope.$apply(function(){$rootScope.prodError[id] = 2});	
+		}
 		$rootScope.download = '';		
 	}
 	
@@ -665,8 +678,104 @@ app.run(function($rootScope, $location, $routeParams, $timeout, $cookieStore, va
 		if(global == 0) {catid = -1;}
 		$location.path('/search/' + btoa($rootScope.globalQuery) + '/' + catid + '/' + global + '/' + page);
 	}
-
 	
+	// FEEDBACK
+	$rootScope.hideShowFeedback = function(x){		
+		$rootScope.showFeedBack = x;	
+	};
+	
+	$rootScope.feedBack = function(feed) {		
+		vault.feedBack(feed.content, feed.subject, feed.bug);
+	}
+		
+	// LIGHTBOX
+	
+	$rootScope.hideShowLightBox = function(x, img){
+		$rootScope.showLightBox = x;
+				
+		if(!img) return false;		
+		$rootScope.currItem = 0;		
+		$rootScope.productGalleryPreviews = [];
+		$rootScope.productGallery = [];			
+		$rootScope.productGallery[0] = 'img/loading.gif';
+			
+		$timeout(function(){			
+			$rootScope.productGallery = $rootScope.getProdImages(img, 2, false);
+			$rootScope.productGalleryPreviews = $rootScope.getProdImages(img, 0, false);			
+		}, 150);		
+	};
+	
+	$rootScope.slideLightBox = function(i){
+		
+		var c = $rootScope.currItem;
+		var l = $rootScope.productGallery.length - 1;
+		
+		var s = c + i;
+		if(s > l) {s = 0;}
+		if(s < 0) {s = l;}
+		
+		$rootScope.currItem = s;		
+	};
+	
+	$rootScope.showItem = function(x){
+		$rootScope.currItem = x;
+	};
+	
+	$rootScope.keyLightBox = function(e){
+		
+		if(e.keyCode == 39) {			
+			$rootScope.slideLightBox(1);
+		}
+		
+		if(e.keyCode == 37) {
+			$rootScope.slideLightBox(-1);
+		}
+		
+		if(e.keyCode == 27) {
+			$rootScope.showLightBox = false;
+			$rootScope.showFeedBack = false;
+		}	
+
+		$rootScope.$apply();		
+	};
+	
+	var $doc = angular.element(document);
+
+	$doc.on('keydown', $rootScope.keyLightBox);
+	
+	$rootScope.$on('$destroy',function(){
+		$doc.off('keydown', $rootScope.keyLightBox);
+	});
+	
+	// COMMENTS
+	
+	$rootScope.sendComment = function(id, txt, bug) {
+		vault.sendComment(id, txt, bug, $rootScope.libType);
+	}
+	
+	$rootScope.delComment = function(id, prodid) {
+		
+		if(!confirm('Do you really want delete comment?')){
+			return false;
+		}
+		
+		vault.delComment(id, prodid, $rootScope.libType);
+	}
+	
+	// MXS BROWSER ACTIONS
+	
+	$rootScope.mxsGoBack = function(){
+		vault.sendCommandMXS('GOBACK');
+	}
+
+	$rootScope.mxsGoForward = function(){
+		vault.sendCommandMXS('GOFORWARD');
+	}
+
+	$rootScope.mxsForceRefresh = function(){
+		vault.sendCommandMXS('FORCEREFRESH');
+	}	
+		
    $rootScope.$watch(function() { 
         return $location.path(); 
     },
@@ -690,7 +799,14 @@ app.run(function($rootScope, $location, $routeParams, $timeout, $cookieStore, va
 		$rootScope.prodError = {};		
 		$rootScope.searchIn.cattype = 2;
 		$rootScope.currItem = 0;
-
+				
+		$rootScope.showLightBox = false;
+		$rootScope.showFeedBack = false;
+		$rootScope.productGalleryPreviews = [];
+		$rootScope.productGallery = [];
+		$rootScope.prod = {};
+		$rootScope.comments = [];
+				
 		$rootScope.bindSearchEvent();
     });
 });
@@ -728,6 +844,20 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 			case 'NORIGHTS': s.error = 'You have no rights view this content!';
 			break;
 			case 'MODELNOTEXIST': s.error = 'Error! Model not found. Please report about this model!';
+			break;
+			case 'COMMENTNOTEXT': s.warning = 'Message is required!';
+			break;
+			case 'COMMENTNOACCESS': s.error = 'You have no access to send comment!';
+			break;
+			case 'COMMENTOK': s.success = 'Comment successfully added!';
+			break;
+			case 'COMMENTDELOK': s.success = 'Comment deleted!';
+			break;
+			case 'COMMENTDELBAD': s.error = 'Error deleting comment!';
+			break;
+			case 'FEEDBACKBAD': s.warning = 'Please fill correct all fields!';
+			break;
+			case 'FEEDBACKOK': s.success = 'Feedback successfully sent!';
 			break;
 		}		
 		$rootScope.msg = s;		
@@ -952,11 +1082,13 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		var json = {'id': id, 'type': type};
 			
 		HttpPost('PRODINFO', json).then(function(r){						
+			$rootScope.prod = r.data.product;
 			$rootScope.product = r.data;
 			$rootScope.activeMenuId = [];
 			$rootScope.activeMenuName = [];
 			$rootScope.breadcrumbs = [];
-			
+			$rootScope.comments = r.data.comments;
+						
 			if(r.data.pathway) {
 				angular.forEach(r.data.pathway, function(item, key) {
 					$rootScope.addCrumb(item.name, ('#/' +  r.data.type + '/' + item.id + '/1'));
@@ -966,7 +1098,7 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 			}
 			if(r.data.product) {
 				$rootScope.productGallery = $rootScope.getProdImages(r.data.product.previews, 2);
-				$rootScope.productGalleryPreviews = $rootScope.getProdImages(r.data.product.previews, 0);
+				$rootScope.productGalleryPreviews = $rootScope.getProdImages(r.data.product.previews, 0);				
 			}
 			
 			responceMessage(r.data);
@@ -975,6 +1107,97 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 			responceMessage(r);
 		});
 	};
+	
+	var rateProduct = function(id, type)
+	{		
+		var json = {'id': id, 'type': type};
+			
+		HttpPost('PRODRATE', json).then(function(r){						
+				
+			getProduct(id, type);
+			
+			responceMessage(r.data);
+		},
+		function(r){
+			responceMessage(r);
+		});
+	};
+	
+	var favoriteProduct = function(id, type)
+	{		
+		var json = {'id': id, 'type': type};
+			
+		alert('This option under construction!');
+			
+		HttpPost('PRODFAVORITE', json).then(function(r){						
+						
+			responceMessage(r.data);
+		},
+		function(r){
+			responceMessage(r);
+		});
+	};
+
+	var feedBack = function(txt, subject, bug)
+	{		
+		var json = {'txt': txt, 'subject': subject, 'bug': bug};
+				
+		HttpPost('FEEDBACK', json).then(function(r){						
+			if(r.data.responce == "FEEDBACKOK") {
+				$rootScope.showFeedBack = false;
+			}
+			responceMessage(r.data);
+		},
+		function(r){
+			responceMessage(r);
+		});
+	}; 
+
+	var getComments = function(id, type)
+	{		
+		var json = {'id': id, 'type': type};
+		deleteMessage();
+				
+		HttpPost('GETCOMMENTS', json).then(function(r){						
+						
+			$rootScope.comments = r.data;
+			responceMessage(r.data);
+		},
+		function(r){
+			responceMessage(r);
+		});
+	};	
+	
+	var sendComment = function(id, txt, bug, type)
+	{		
+		var json = {'id': id, 'txt': txt, 'type': type, 'bug': bug};
+		deleteMessage();
+				
+		HttpPost('SENDCOMMENT', json).then(function(r){						
+						
+			getComments(id, type);
+			responceMessage(r.data);
+		},
+		function(r){
+			responceMessage(r);
+		});
+	};
+	
+	var delComment = function(id, prodid, type)
+	{		
+		var json = {'id': id, 'type': type};
+		deleteMessage();
+				
+		HttpPost('DELCOMMENT', json).then(function(r){						
+						
+			getComments(prodid, type);
+			responceMessage(r.data);
+		},
+		function(r){
+			responceMessage(r);
+		});
+	};
+		
 	
 	return {
 		responceMessage: responceMessage,
@@ -990,7 +1213,13 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		fastSearch: fastSearch,
 		searchProducts: searchProducts,
 		checkPending: checkPending,
-		getProduct: getProduct
+		getProduct: getProduct,
+		rateProduct: rateProduct,
+		favoriteProduct: favoriteProduct,
+		feedBack: feedBack,
+		sendComment: sendComment,
+		delComment: delComment,
+		sendCommandMXS: sendCommandMXS
 	};
 });
 

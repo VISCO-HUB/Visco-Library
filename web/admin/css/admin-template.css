@@ -64,6 +64,15 @@ h1, h2, h3, h4 {
 	border-color: #74AD34;
 }
 
+.icon-bug
+{ 
+	height: 14px;
+	margin-right: 2px;
+}
+
+.text-bug {
+	color: #d9534f;
+}
 
 .admin-cat-hierarchy {
 	border: 1px solid #eee;
@@ -305,6 +314,14 @@ h1, h2, h3, h4 {
 .dashboard-card.yellow {
 	background: rgba(243,156,17,1.00);
 }
+.dashboard-card.color2 {
+	background: rgba(158,212,28,1);
+}
+
+.dashboard-card.color3 {
+	background: rgba(128,100,162,1);
+}
+
 .dashboard-card .bottom {
 	background: rgba(0,0,0,0.2);
 	text-align: center;
@@ -404,4 +421,23 @@ h1, h2, h3, h4 {
 
 .margin-10-2 {
 	margin: 10px 2px;	
+}
+
+/* MESSAGE */
+
+.message {
+	border: 1px solid #DDD;
+	padding: 10px;
+	margin: 10px 0; 
+	min-height: 220px;
+}
+
+@keyframes blinker { 
+    0% { opacity: 1.0; } 
+    50% { opacity: 0.22; } 
+    100% { opacity: 1.0; } 
+}
+
+.text-blink {
+	animation: blinker 1s infinite;
 }

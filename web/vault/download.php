@@ -28,13 +28,13 @@
 	}
 	
 	$AUTH = AUTH::CHECK();
-	$ISADMIN = $AUTH['user']->rights >= 1;
+	$ISALLOW = $AUTH['user']->rights >= 0;
 	
-	IF(!$ISADMIN) {
+	IF(!$ISALLOW) {
 		ECHO $RESTRICTED;
 		EXIT;
 	}
-	
+
 	SET_TIME_LIMIT(0);
 	PRODUCTS::MODELDOWNLOAD($ID, $TYPE);
 ?>
