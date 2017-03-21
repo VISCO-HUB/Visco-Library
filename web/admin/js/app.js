@@ -23,7 +23,7 @@ document.addEventListener("contextmenu", function(e){
 
 /* APP */
 
-var app = angular.module('app', ['ngRoute', 'ngSanitize', 'ngCookies', 'ui.bootstrap', 'angularFileUpload', 'chart.js']);
+var app = angular.module('app', ['ngRoute', 'ngSanitize', 'ngCookies', 'ui.bootstrap', 'angularFileUpload', 'chart.js', 'ngAnimate']);
 
 
 // CONFIG 
@@ -87,6 +87,12 @@ app.config(function($routeProvider, $sceProvider) {
 app.directive("alerts", function($rootScope) {
     return {
         templateUrl : 'templates/alert.html'
+    };
+});
+
+app.directive("menu", function($rootScope) {
+    return {
+        templateUrl : hostname + '/admin/templates/menu.html'
     };
 });
 
@@ -726,14 +732,12 @@ app.controller('msgCtrl', function($scope, vault, $rootScope, $location, $routeP
 	
 	$scope.setCurrentMessage = function(msg) {		
 		
-		vault.msgSetParam('viewed', '1', msg.id);
+		vault.msgSetParam('viewed', '1', msg.id, $scope.page, $rootScope.perpage, $rootScope.msgFilter);
 		
 		$scope.currentMessage = $scope.renderHtml(msg.msg);
 		$scope.currentSubject = msg.subject;
 		var p = msg.img ? vault.getPreviews(msg.img, 'medium')[0] : null;
-		$scope.currentImg = p;
-		
-		$scope.msgGet($scope.page, $rootScope.perpage, $rootScope.msgFilter);
+		$scope.currentImg = p;				
 	}
  });
 	
@@ -945,6 +949,11 @@ app.run(function($rootScope, $location, $routeParams, vault) {
 			
 		// INIT
 		
+		$rootScope.showOverlayMenu = false;
+		$rootScope.toggleOverlayMenu = function(){
+			$rootScope.showOverlayMenu = !$rootScope.showOverlayMenu;
+		}
+		
 		$rootScope.rnd = function(min, max) {
 			return Math.floor(Math.random() * (max - min) ) + min;
 		}
@@ -1122,12 +1131,17 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 	}
 	
 	// SIMPLIFY POST PROCEDURE
-	var HttpPost = function(query, json) {		
+	var HttpPost = function(query, json) {			
 		return $http({
 			url: hostname + 'admin/vault/handle.php?query=' + query + '&time=' + new Date().getTime(),
 			method: "POST",
 			data: json
-		});
+		}).then(function(r) {					
+				console.log(r.data);
+				if(r.data.responce == 'RESTRICTED') {$rootScope.goHome(); return false;}
+				return r;
+			}			
+		);
 	}
 	
 	var httpGet = function(query) {		
@@ -1697,12 +1711,12 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		});
 	}
 	
-	var msgSetParam = function(param, value, id)
+	var msgSetParam = function(param, value, id, page, perpage, filter)
 	{
 		var json = {'param': param, 'value': value, 'id': id};
 		
-		HttpPost('MSGSETPARAM', json).then(function(r){												
-			console.log(r.data)					
+		HttpPost('MSGSETPARAM', json).then(function(r){															
+			msgGet(page, perpage, filter);
 		},
 		function(r){
 			responceMessage(r);

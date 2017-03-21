@@ -17,7 +17,7 @@
 	<ul class="side-menu" ng-show="libType==1">
 		<li ng-repeat="cat in categories" ng-if="libType==cat.type && cat.status==1">
 			<a ng-href="#/models/{{cat.id}}/1" ng-class="{active: menuItemActive[cat.id]}" class="pointer">{{cat.name}}</a>
-				<span class="glyphicon glyphicon-info-sign size-15 padding-left-5 text-muted" aria-hidden="true" tooltip-popup-delay="200" uib-tooltip="Moderators: {{cat.editors.replace(';', ', ')}}"></span>		
+				<span class="glyphicon glyphicon-info-sign size-15 padding-left-5 text-muted" aria-hidden="true" tooltip-popup-delay="200" uib-tooltip="Moderators: {{cat.editors ? cat.editors.replace(';', ', ') : 'No'}}"></span>		
 				<span class="glyphicon glyphicon-chevron-down size-20 float-right text-muted pointer" aria-hidden="true" ng-show="!menuItemShow[cat.id] && !menuItemActive[cat.id]" ng-click="showHideMenu(cat.id, false)"></span>
 				<span class="glyphicon glyphicon-chevron-up size-20 float-right text-muted pointer" aria-hidden="true" ng-show="menuItemShow[cat.id] || menuItemActive[cat.id]" ng-click="showHideMenu(cat.id, false)"></span>	
 			<ul ng-show="menuItemShow[cat.id] || menuItemActive[cat.id]">

@@ -5,6 +5,9 @@
 	</div>
 </script>
 
+<div ng-show="product.responce"><h3 class="text-center">You have no access!</h3></div>
+
+<div ng-show="product.info">
 <h1>Edit: {{product.info.name}}</h1>
 <hr>
 <h2><small>Status:</small></h2>
@@ -137,3 +140,4 @@
 		<td>{{product.info.uploadedby}}</td>
 	</tr>
 </table>
+</div>

@@ -25,7 +25,8 @@
 		<h3 class="capitalize">{{prod.name}}</h3>
 		<button type="button" class="btn btn-default custom-button-gray button-fixed button-rating" ng-class="{'highlight': product.userrate}" uib-tooltip="Rate model" ng-click="rateProduct(prod.id, libType)"> &nbsp;&nbsp;</button>&nbsp;
 		<button type="button" class="btn btn-default custom-button-gray button-fixed button-heart" uib-tooltip="Add to favorite" ng-click="favoriteProduct(prod.id, libType)"> &nbsp;&nbsp;</button>&nbsp;
-		<button type="button" class="btn btn-default custom-button-gray button-fixed button-download" uib-tooltip="Download model" ng-click="downloadUrl(prod.id, libType)" ng-class="{'disabled': auth.rights < 1}"> &nbsp;&nbsp;</button>&nbsp;
+		<button type="button" class="btn btn-default custom-button-gray button-fixed button-download" uib-tooltip="Download model" ng-click="downloadUrl(prod.id, libType)" ng-class="{'disabled': auth.rights < 0}"> &nbsp;&nbsp;</button>&nbsp;
+		<a ng-href="admin/#/models-edit/{{prod.id}}/1" class="btn btn-default custom-button-gray button-fixed button-edit" uib-tooltip="Edit" ng-show="auth.rights > 0"> &nbsp;&nbsp;</a>&nbsp;
 		<hr>
 		<ul class="nav nav-tabs nav-justified">
 			  <li ng-class="{'active': tabinfo2 =='info'}"><a href="" ng-click="changeTabInfo2('info')">Info</a></li>

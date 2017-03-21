@@ -733,10 +733,59 @@ label {
     bottom: 0;
     z-index: 1255;
     right: 0; 
+	transition: all 0.4s linear;
 }
 
 .alert-msg > div {
-	box-shadow: 0px 1px 2px 0px rgba(0, 0, 0, 0.29)
+	box-shadow: 0px 0px 13px 0px rgba(0, 0, 0, 0.2);
+    border: 4px solid #FFF;
+}
+
+.alert-msg .alert-success {
+	color: #FFF;
+    background-color: #56AF53;
+    border-color: #FFF;
+	box-shadow: 0px 0px 13px 0px rgba(86, 175, 83, 0.6) !important;
+}
+
+.alert-msg .alert-danger {
+	color: #FFF;
+    background-color: #D1524C;
+    border-color: #FFF;
+	box-shadow: 0px 0px 13px 0px rgba(209,82,76,0.6) !important;
+}
+
+.alert-msg .alert-warning {
+	color: #FFF;
+    background-color: #E69B18;
+    border-color: #FFF;
+	box-shadow: 0px 0px 13px 0px rgba(230,155,24,0.6) !important;
+}
+
+.alert-msg .close {
+	opacity: 1.0;
+	text-shadow: none;
+	padding: 10px;
+    top: 8px;
+    right: 21px;
+    position: absolute;
+}
+
+.alert-msg .close:hover {
+	opacity: 0.5;
+	text-shadow: none;
+	color: #FFF;
+}
+
+.alert-msg.ng-show {
+	opacity: 1.0;
+	margin-bottom: 0;
+}
+
+.alert-msg.ng-hide {
+	opacity: 0.0;
+	transition: all 0s linear;
+	margin-bottom: -70px;
 }
 
 .margin-10-2 {
@@ -883,6 +932,7 @@ label {
 
 .flex {
 	display: flex;
+	justify-content: space-around;
 }
 
 .card {      
@@ -1183,6 +1233,13 @@ label {
 .button-report:active
 {
     background-image: url(../img/report.svg);
+    background-size: 60%;
+}
+
+.button-edit,
+.button-edit:active
+{
+	background-image: url(../img/edit.svg);
     background-size: 60%;
 }
 

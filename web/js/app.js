@@ -570,14 +570,19 @@ app.run(function($rootScope, $location, $routeParams, $timeout, $cookieStore, va
 		var j = JSON.parse(t);	
 		var v = getUrlVars($rootScope.download);
 		var id = v['id'];
-		
-		if(j.responce == "MODELBAD" || j.responce == "MODELNOTEXIST"){						
-			$rootScope.$apply(function(){$rootScope.prodError[id] = 1});						
-		}	
-		
-		if(j.responce == "NORIGHTS") {
-			$rootScope.$apply(function(){$rootScope.prodError[id] = 2});	
+		var err = 0;
+		switch(j.responce)
+		{			
+			case 'MODELBAD': err = 1;
+			break;
+			case 'MODELNOTEXIST': err = 1;
+			break;
+			case 'NORIGHTS': err = 2;
+			break;
+
 		}
+		$rootScope.$apply(function(){$rootScope.prodError[id] = err});
+		
 		$rootScope.download = '';		
 	}
 	
@@ -774,6 +779,10 @@ app.run(function($rootScope, $location, $routeParams, $timeout, $cookieStore, va
 
 	$rootScope.mxsForceRefresh = function(){
 		vault.sendCommandMXS('FORCEREFRESH');
+	}	
+		
+	$rootScope.constructionAlert = function() {
+		alert('This option under construction!');
 	}	
 		
    $rootScope.$watch(function() { 

@@ -7,6 +7,7 @@
 			<th>Library</th>		
 			<th>Type</th>					
 			<th>Status</th>
+			<th>Download</th>
 			<th ng-show="auth.rights==2">Sort</th>
 			<th width="150px">Actions</th>
 		</tr>
@@ -17,6 +18,10 @@
 			<td>
 				<span ng-show="cat.status==0" class="label label-default pointer" ng-click="catSetParam('status', '1', cat.id)">Disabled</span> 
 				<span ng-show="cat.status==1" class="label label-success pointer" ng-click="catSetParam('status', '0', cat.id)">Enabled</span>
+			</td>
+			<td>
+				<span ng-show="cat.candl!=1" class="label label-default pointer" ng-click="catSetParam('candl', '1', cat.id)">No</span> 
+				<span ng-show="cat.candl==1" class="label label-success pointer" ng-click="catSetParam('candl', '0', cat.id)">Yes</span>
 			</td>
 			<td ng-show="auth.rights==2">
 				<span class="glyphicon text-gray glyphicon-triangle-bottom pointer" aria-hidden="true" ng-click="changeSort(cat.id, -1)"></span>&nbsp;&nbsp;

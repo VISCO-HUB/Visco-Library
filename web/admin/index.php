@@ -27,6 +27,7 @@
 <script type="text/javascript" src="../js/angular-file-upload.min.js"></script>
 <script type="text/javascript" src="../js/chart/Chart.min.js"></script>
 <script type="text/javascript" src="../js/angular-chart.min.js"></script>
+<script type="text/javascript" src="../js/angular-animate.min.js"></script>
 <script type="text/javascript" src="js/app.js"></script>
 <script type="text/javascript" src="../js/bootstrap.min.js"></script>
 <script type="text/javascript" src="../js/ui-bootstrap-tpls-2.1.3.min.js"></script>
@@ -47,6 +48,7 @@
 			<div class="navbar-header hidden-xxs"> <a href="/"><img src="../visco_logo.svg" class="logo"></a> <span class="head-title hidden-xs">Assets Library</span> </div>
 			<div id="navbar3" class="navbar-default">
 				<ul class="nav nav-buttons">
+					<li class="visible-xs-inline visible-sm-inline"><a href="" ng-click="toggleOverlayMenu()" ><span class="glyphicon glyphicon-menu-hamburger"></span></a></li>	
 					<li class="active"><a href="#/" tooltip-popup-delay="200" uib-tooltip="Home" tooltip-placement="bottom"><span class="glyphicon glyphicon-home"></span></a></li>
 					<li ng-show="auth.browser=='MXS'"><a href="" ng-click="mxsGoBack()" tooltip-popup-delay="200" uib-tooltip="Back"><span class="glyphicon glyphicon-arrow-left"></span></a></li>
 					<li ng-show="auth.browser=='MXS'"><a href="" ng-click="mxsGoForward()" tooltip-popup-delay="200" uib-tooltip="Forward"><span class="glyphicon glyphicon-arrow-right"></span></a></li>
@@ -78,24 +80,22 @@
 </div>
 <div class="container" alerts></div>
 <div class="container">
-	<div class="col-sm-3 col-md-3 col-lg-3"> <br>
-		<ul class="nav nav-pills nav-stacked">
-			<li ng-class="{active: section=='/dashboard'}"><a href="#/dashboard/1">Dashboard</a></li>
-			<li ng-class="{active: section=='/category'}"><a href="#/category" >Libraries</a></li>
-			<li ng-class="{active: section=='/models'}"><a href="#/models/1" >Models</a></li>
-			<li ng-class="{active: section=='/textures'}"><a href="#/textures/1" >Textures</a></li>
-			<li ng-class="{active: section=='/tags'}" ng-show="auth.rights==2"><a href="#/tags/1" >Tags</a></li>
-			<li ng-class="{active: section=='/comments'}" ng-show="auth.rights==2"><a href="#/comments/1" >Comments</a></li>
-			<li ng-class="{active: section=='/upload'}"><a href="#/upload" >Upload</a></li>
-			<li ng-class="{active: section=='/users'}" ng-show="auth.rights==2"><a href="#/users/1" >Users</a></li>
-			<li ng-class="{active: section=='/settings'}" ng-show="auth.rights==2"><a href="#/settings" >Settings</a></li>
-		</ul>
+	<div class="col-sm-3 col-md-3 col-lg-3 hidden-xs hidden-sm"> <br>
+		<div menu></div>	
 	</div>
-	<div class="col-sm-9 col-md-9 col-lg-9">
+	<div class="col-sm-12 col-md-9 col-lg-9 col-xs-12">
 		<div ng-view></div>
 	</div>
 </div>
 <br>
+<div class="overlay pointer" ng-show="showOverlayMenu" ng-click="toggleOverlayMenu()">
+</div>
+
+<div class="side-menu-popup col-xs-12 col-sm-6 col-md-4 col-lg-4" ng-show="showOverlayMenu">
+	<div class="close"><span class="glyphicon glyphicon-remove" aria-hidden="true" ng-click="toggleOverlayMenu()"></span></div>
+	<div menu class="margin-top-40"></div>
+</div>
+
 <?php ECHO $USER; ?>
 </body>
 </html>

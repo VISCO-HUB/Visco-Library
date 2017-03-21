@@ -4,9 +4,9 @@
 <ul class="nav nav-tabs">
   <li ng-class="{active:show == 'tabGlobal'}" ng-click="show='tabGlobal'"><a href="">Global</a></li>
   <li ng-class="{active:show == 'tabTags'}"><a href="" ng-click="show='tabTags'">Tags</a></li>
-  <li ng-class="{active:show == 'tab2'}"><a href="" ng-click="show='tab2'">Mail</a></li>
+  <!--<li ng-class="{active:show == 'tab2'}"><a href="" ng-click="show='tab2'">Mail</a></li>
   <li ng-class="{active:show == 'tab3'}"><a href="" ng-click="show='tab3'">System</a></li>
-  <li ng-class="{active:show == 'tab4'}"><a href="" ng-click="show='tab4'">View</a></li>
+  <li ng-class="{active:show == 'tab4'}"><a href="" ng-click="show='tab4'">View</a></li>-->
 
 </ul>
 

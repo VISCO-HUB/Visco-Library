@@ -56,7 +56,7 @@
 							<li class="dropdown-header">Hi, {{auth.name || auth.user}}</li>
 							<li class="divider"></li>
 							<li ng-show="auth.rights > 0"><a href="/admin/">Admin Panel</a></li>
-							<li><a href="" ng-click="">Profile</a></li>
+							<li><a href="" ng-click="constructionAlert()">Profile</a></li>
 							<li><a href="" ng-click="hideShowFeedback(true)">Send Feedback</a></li>
 						</ul>
 					</li>

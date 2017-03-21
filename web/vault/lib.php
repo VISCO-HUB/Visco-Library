@@ -572,7 +572,7 @@
 					$I['desc'] = $CATEGORY->description;
 					$I['type'] = $CATEGORY->type;
 					$I['sort'] = $CATEGORY->sort;
-					$I['editors'] = $CATEGORY->editors;
+					$I['editors'] = IMPLODE(';', ARRAY_FILTER(EXPLODE(';', $CATEGORY->editors)));
 										
 					FOREACH($CATEGORIES AS $SUBCAT) {
 						IF($SUBCAT->parent == $CATEGORY->id)
@@ -1216,6 +1216,7 @@
 			$PATHWAY = ARRAY_REVERSE($PATHWAY);
 			$LIBID = $PATHWAY[0]['id'];
 			$LIB = CAT::GETCATINFO($CATEGORIES, $LIBID);
+			IF(!$AUTH OR !COUNT($AUTH->user)) RETURN FALSE;
 			IF((!$LIB->candl AND $AUTH->rights < 1) OR !IN_ARRAY($PROD->catid, $ACCESSID)) RETURN FALSE;
 			RETURN TRUE;
 		}

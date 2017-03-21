@@ -563,6 +563,54 @@
 	}
 	
 	///////////////////////////////////////////////////////
+	// ACCESS CLASS
+	///////////////////////////////////////////////////////
+	
+	CLASS ACCESS {
+		PUBLIC STATIC FUNCTION EXTRACTIDS($CATEGORIES, $PARENT, &$IDS) {
+			$TREE = [];			
+			FOREACH($CATEGORIES AS $CATEGORY) {			
+				IF($CATEGORY->parent == $PARENT) {													
+					FOREACH($CATEGORIES AS $SUBCAT) {
+						IF($SUBCAT->parent == $CATEGORY->id)
+						{
+							$FLAG = TRUE;
+							BREAK;
+						}
+					}
+					
+					IF($FLAG) {
+						$I = SELF::EXTRACTIDS($CATEGORIES, $CATEGORY->id, $IDS);
+						$IDS = ARRAY_MERGE($IDS, $I);
+					}
+
+					$IDS[] = $CATEGORY->id;
+				}
+			}
+			
+			RETURN $IDS;
+		}
+		
+		PUBLIC STATIC FUNCTION GETACCESSID($RULE, $COL) {												
+			$RESULT = DB::SELECT('category', [], 'sort');
+			$CATEGORIES = DB::TOARRAY($RESULT);
+			
+			$IDS = [];
+			
+			FOREACH($CATEGORIES AS $CAT) {			
+				IF(IN_ARRAY($RULE, EXPLODE(';', $CAT->{$COL}))) {										
+					$I = SELF::EXTRACTIDS($CATEGORIES, $CAT->id, $IDS);
+					$IDS = ARRAY_MERGE($IDS, $I);
+				}
+			}
+
+			$IDS = ARRAY_UNIQUE($IDS);
+			IF(COUNT($IDS)) RETURN $IDS;
+			RETURN [-1];
+		}
+	}
+	
+	///////////////////////////////////////////////////////
 	// CATEGORIES CLASS
 	///////////////////////////////////////////////////////
 
@@ -854,49 +902,7 @@
 			
 			RETURN JSON_ENCODE($RESULT);
 		}
-		
-		PUBLIC STATIC FUNCTION EXTRACTIDS($CATEGORIES, $PARENT, &$IDS) {
-			$TREE = [];			
-			FOREACH($CATEGORIES AS $CATEGORY) {			
-				IF($CATEGORY->parent == $PARENT) {													
-					FOREACH($CATEGORIES AS $SUBCAT) {
-						IF($SUBCAT->parent == $CATEGORY->id)
-						{
-							$FLAG = TRUE;
-							BREAK;
-						}
-					}
-					
-					IF($FLAG) {
-						$I = SELF::EXTRACTIDS($CATEGORIES, $CATEGORY->id, $IDS);
-						$IDS = ARRAY_MERGE($IDS, $I);
-					}
-
-					$IDS[] = $CATEGORY->id;
-				}
-			}
-			
-			RETURN $IDS;
-		}
-		
-		PUBLIC STATIC FUNCTION GETACCESSID($RULE, $COL) {												
-			$RESULT = DB::SELECT('category', [], 'sort');
-			$CATEGORIES = DB::TOARRAY($RESULT);
-			
-			$IDS = [];
-			
-			FOREACH($CATEGORIES AS $CAT) {			
-				IF(IN_ARRAY($RULE, EXPLODE(';', $CAT->{$COL}))) {										
-					$I = SELF::EXTRACTIDS($CATEGORIES, $CAT->id, $IDS);
-					$IDS = ARRAY_MERGE($IDS, $I);
-				}
-			}
-
-			$IDS = ARRAY_UNIQUE($IDS);
-			IF(COUNT($IDS)) RETURN $IDS;
-			RETURN [-1];
-		}
-		
+				
 		PUBLIC STATIC FUNCTION CHANGESORT($A, $POS, $SHIFT) {
 			$I = $A[$POS];
 			UNSET($A[$POS]);
@@ -1172,7 +1178,7 @@
 			$AUTH = $GLOBALS['AUTH']['user'];
 						
 			IF($AUTH->rights != 2) {
-				$ACCESS_IDS = CAT::GETACCESSID($AUTH->user, 'editors');								
+				$ACCESS_IDS = ACCESS::GETACCESSID($AUTH->user, 'editors');								
 								
 				$ACCESS['catid'] = $ACCESS_IDS;										 
 			}
@@ -1236,7 +1242,10 @@
 		
 		PUBLIC STATIC FUNCTION PRODUCTINFO($DATA) {			
 			$ERROR = '{"responce": "PRODBAD"}';
-						
+			$NOACCESS = '{"responce": "PRODNOACCESS"}';
+
+			$AUTH = $GLOBALS['AUTH']['user'];				
+				
 			IF(!ISSET($DATA->id)) RETURN '[]';
 			IF(!ISSET($DATA->type)) RETURN '[]';
 			
@@ -1244,6 +1253,9 @@
 			$TYPE = SELF::TYPE($DATA->type);
 								
 			IF(!$TYPE) RETURN $ERROR;
+						
+			
+			$ACCESS_IDS = ACCESS::GETACCESSID($AUTH->user, 'editors');								
 					
 			$RESULT = DB::SELECT($TYPE, $WHERE);
 			$PRODUCT = DB::TOARRAY($RESULT);
@@ -1251,7 +1263,10 @@
 			$GLOBS = GLOBS::PARSE();
 			
 			$OUT['info'] = $PRODUCT[0];
-						
+				
+			IF($AUTH->rights < 2 AND !IN_ARRAY($OUT['info']->catid, $ACCESS_IDS)) RETURN $NOACCESS;
+
+				
 			IF($OUT['info']->catid) {
 				$WHERE2['id'] = $OUT['info']->catid;				
 				$RESULT2 = DB::SELECT('category', $WHERE2);
