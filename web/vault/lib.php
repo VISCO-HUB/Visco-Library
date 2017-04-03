@@ -351,7 +351,7 @@
 			$OUT['name'] = DB::CONVERT($OUT['name']);
 			$OUT['grp'] = DB::CONVERT($OUT['grp']);
 			$OUT['office'] = DB::CONVERT($OUT['office']);
-			
+						
 			RETURN $OUT;
 		}
 		
@@ -433,6 +433,28 @@
 			ECHO $SUCCESS;
 		}
 		
+		PUBLIC STATIC FUNCTION GETUSERPROFILE($DATA) {
+			$ERROR = '{"responce": "USERPROFILEBAD"}';
+			$SUCCESS = '{"responce": "USERPROFILEOK"}';
+		
+			IF(!ISSET($DATA->user)) RETURN $ERROR;
+			
+			$WHERE['user'] = $DATA->user;
+			$RESULT = DB::SELECT('users', $WHERE);
+			
+			$PROFILE = $RESULT->fetch_object();
+			IF(!$PROFILE) RETURN $ERROR;
+			
+			$AUTH['user'] = $PROFILE;
+			
+			UNSET($PROFILE->token);		
+			$PROFILE->avatar = SELF::GETAVATAR($AUTH);
+			
+			$OUT['profile'] = $PROFILE;
+			
+			RETURN JSON_ENCODE($OUT);
+		}
+		
 		PUBLIC STATIC FUNCTION CHECK() {							
 			
 			$AUTH = [];
@@ -455,6 +477,14 @@
 			RETURN $AUTH;
 		}
 		
+		PUBLIC STATIC FUNCTION GETAUTH() {
+			$AUTH = SELF::CHECK();
+			UNSET($AUTH['user']->token);		
+			$AUTH['user']->avatar = SELF::GETAVATAR($AUTH);
+			
+			RETURN JSON_ENCODE($AUTH['user']);
+		}
+		
 		PUBLIC STATIC FUNCTION SIGNOUT() {
 			SESSION_START();
 			$_SESSION['token'] = '';
@@ -465,6 +495,15 @@
 			RETURN '{"responce": "SIGNEDOUT"}';
 		}
 		
+		PUBLIC STATIC FUNCTION GETAVATAR($AUTH) {
+			$A = $AUTH['user']->avatar;
+			$AVATAR = AVATAR_PATH . $A;
+			$AVATARFILE = AVATAR_ABSPATH . $A;
+			$OUT = ($A AND FILE_EXISTS($AVATAR)) ? $AVATARFILE : 'img/noavatar.svg';
+			
+			RETURN $OUT;
+		}
+		
 		PUBLIC STATIC FUNCTION USER() {
 			SESSION_START();
 			
@@ -472,7 +511,9 @@
 			$AUTH = SELF::CHECK();
 								
 			IF($AUTH['exist'] == TRUE AND $AUTH['user']->status == 1) {
-				UNSET($AUTH['user']->token);				
+				UNSET($AUTH['user']->token);	
+				$AUTH['user']->avatar = SELF::GETAVATAR($AUTH);
+				
 				RETURN '{{setAuth(' . JSON_ENCODE($AUTH['user']) . ')}}';				
 			}
 			ELSE {
@@ -489,7 +530,9 @@
 			$AUTH = SELF::CHECK();
 								
 			IF($AUTH['exist'] == TRUE AND $AUTH['user']->status == 1 AND $AUTH['user']->rights > 0) {
-				UNSET($AUTH['user']->token);				
+				UNSET($AUTH['user']->token);	
+				$AUTH['user']->avatar = SELF::GETAVATAR($AUTH);
+				
 				RETURN '{{setAuth(' . JSON_ENCODE($AUTH['user']) . ')}}';				
 			}
 			ELSE {
@@ -862,7 +905,17 @@
 			
 			$WHERE['prodid'] = $DATA->id;
 			$RESULT = DB::SELECT('comments', $WHERE, [], 'date', NULL, TRUE);
-			$OUT = DB::TOARRAY($RESULT);
+			$CMT = DB::TOARRAY($RESULT);
+			
+			$OUT = [];
+			FOREACH($CMT AS $V){
+				$WHERE = [];
+				$WHERE['user'] = $V->user;
+				$RES = DB::SELECT('users', $WHERE);
+				$U = $RES->fetch_object();
+				$V->avatar = AVATAR_ABSPATH . $U->avatar;
+				$OUT[] = $V;
+			}
 			
 			IF($RAW) RETURN $OUT;
 			RETURN JSON_ENCODE($OUT);
@@ -932,7 +985,12 @@
 			$WHEREOR['catid'] = $SUBIDS;
 						
 			$RESULT = DB::SELECT($TABLE, $WHEREOR, $WHEREAND, 'date', $LIMIT);			
-			$PRODUCTS = DB::TOARRAY($RESULT);
+			$P = DB::TOARRAY($RESULT);
+			$PRODUCTS = [];
+			FOREACH($P AS $V) {
+				$V->productpage = $PRODPAGE;
+				$PRODUCTS[] = $V;				
+			}
 			
 			$ROWS = DB::CNT($TABLE, $WHEREOR, $WHEREAND);						
 			$NUMPAGES = $ROWS;
@@ -1616,6 +1674,314 @@
 			
 			MSGSYSTEM::ADD('Feedback', $MSG, $BUG);
 			
+			RETURN $SUCCESS;
+		}		
+	}
+	
+	///////////////////////////////////////////////////////
+	// AVATAR CLASS
+	///////////////////////////////////////////////////////
+	
+	CLASS AVATAR {
+		PUBLIC STATIC FUNCTION RESIZE($TARGET, $NEW, $SIZE) {
+			LIST($W_ORIG, $H_ORIG) = GETIMAGESIZE($TARGET);
+			
+			$OFFSET_X = 0;  
+			$OFFSET_Y = 0; 
+			$SQR = $SIZE;
+			
+			IF($W_ORIG > $H_ORIG) {
+				$SQR = $H_ORIG;             
+				$OFFSET_X = ($W_ORIG - $H_ORIG) / 2;  
+				$OFFSET_Y = 0;              
+			} ELSE IF($H_ORIG > $W_ORIG) {
+				$SQR = $W_ORIG;             
+				$OFFSET_X = 0;  
+				$OFFSET_Y = ($H_ORIG - $W_ORIG) / 2;              
+			} ELSE
+			{
+				$SQR = $W_ORIG;             
+				$OFFSET_X = 0;  
+				$OFFSET_Y = 0; 
+			}
+			
+			$IMG = IMAGECREATEFROMJPEG($TARGET);
+			$TCI = IMAGECREATETRUECOLOR($SIZE, $SIZE);
+			
+			IMAGECOPYRESAMPLED($TCI, $IMG, 0, 0, $OFFSET_X, $OFFSET_Y, $SIZE, $SIZE, $SQR, $SQR);
+			IMAGEJPEG($TCI, $NEW, 99);
+		}
+		
+		PUBLIC STATIC FUNCTION CLEAR() {
+			$AUTH = $GLOBALS['AUTH']['user'];
+			$USER = $AUTH->user;
+			
+			$SET['avatar'] = NULL;
+			$WHERE['user'] = $USER;
+			DB::UPDATE('users', $SET, $WHERE, TRUE);
+		}
+	}
+	
+	///////////////////////////////////////////////////////
+	// FAVORITES CLASS
+	///////////////////////////////////////////////////////
+	
+	CLASS FAVORITES {
+		
+		PUBLIC STATIC FUNCTION UNIQUEID($LEN) {
+			$TOKEN = '';
+			$CODE = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+			$CODE .= "abcdefghijklmnopqrstuvwxyz";
+			$CODE .= "0123456789";
+			$MAX = STRLEN($CODE);
+			
+			FOR($I = 0; $I < $LEN; $I++) {
+				$TOKEN .= $CODE[rand(0, $MAX - 1)];
+			}
+
+			RETURN  $TOKEN;
+		}
+		
+		PUBLIC STATIC FUNCTION GET($DATA) {
+			IF(!ISSET($DATA->type))RETURN '{}';
+						
+			$AUTH = $GLOBALS['AUTH']['user'];
+			
+			$WHERE['user'] = $AUTH->user;
+			$WHERE['type'] = $DATA->type;
+			$RESULT = DB::SELECT('favorites', [], $WHERE, 'date', NULL, TRUE);			
+			$FAV = DB::TOARRAY($RESULT);
+			
+			$TABLE = PRODUCTS::TYPE($DATA->type);
+			$PRODPAGE = PRODUCTS::TYPE($DATA->type, PRODUCTPAGE);
+						
+			$OUT = [];
+			FOREACH($FAV AS $V) {
+				$W['id'] = EXPLODE(';', $V->products);
+				
+				$RES = DB::SELECT($TABLE, $W);
+				
+				$PRODS = [];
+				FOREACH(DB::TOARRAY($RES) AS $VV) {
+					$VV->productpage = $PRODPAGE;
+					$PRODS[$VV->id] = $VV;
+				}
+				$V->products = $PRODS;
+								
+				$OUT[] = $V;
+			}
+			
+			RETURN JSON_ENCODE($OUT);
+		}
+		
+		PUBLIC STATIC FUNCTION GETSHARED($DATA) {
+			$SHAREOFF['responce'] = 'FAVGETSHAREOFF';
+			$ERROR['responce'] = 'FAVGETSHAREBAD';
+			
+			$AUTH = $GLOBALS['AUTH']['user'];
+			
+			
+			IF(!ISSET($DATA->shareid))RETURN '{}';
+						
+			$WHERE['shareid'] = $DATA->shareid;
+			$RESULT = DB::SELECT('favorites', [], $WHERE, 'date', NULL, TRUE);			
+			$SHARE = $RESULT->fetch_object();
+			
+			IF(!$SHARE) RETURN JSON_ENCODE($ERROR);
+			IF($SHARE->shared != 1) RETURN JSON_ENCODE($SHAREOFF);
+			
+			$SHAREOFF['user'] = $SHARE->user;
+			
+			$TABLE = PRODUCTS::TYPE($SHARE->type);
+						
+			$W['id'] = EXPLODE(';', $SHARE->products);			
+			$RES = DB::SELECT($TABLE, $W);
+			
+			$PRODPAGE = PRODUCTS::TYPE($SHARE->type, PRODUCTPAGE);
+			
+			$PRODS = [];
+			FOREACH(DB::TOARRAY($RES) AS $V) {
+				$V->productpage = $PRODPAGE;
+				$PRODS[$V->id] = $V;
+			}
+			
+			$SHARE->products = $PRODS;
+					
+			RETURN JSON_ENCODE($SHARE);
+		}
+		
+		PUBLIC STATIC FUNCTION GETCOLLECTION($DATA) {
+			IF(!ISSET($DATA->id))RETURN '{}';
+			$ERROR = '{"responce": "FAVCOLLECTIONBAD"}';
+						
+			$AUTH = $GLOBALS['AUTH']['user'];
+			
+			$WHERE['id'] = $DATA->id;
+			$WHERE['user'] = $AUTH->user;
+			$RESULT = DB::SELECT('favorites', [], $WHERE, 'date', NULL, TRUE);			
+			$COLLECTOIN = $RESULT->fetch_object();
+					
+			IF(!$COLLECTOIN) RETURN $ERROR;
+			
+			$TABLE = PRODUCTS::TYPE($COLLECTOIN->type);
+			$PRODPAGE = PRODUCTS::TYPE($COLLECTOIN->type, PRODUCTPAGE);
+						
+			$W['id'] = EXPLODE(';', $COLLECTOIN->products);			
+			$RES = DB::SELECT($TABLE, $W);
+			
+			$PRODS = [];
+			FOREACH(DB::TOARRAY($RES) AS $V) {
+				$V->productpage = $PRODPAGE;
+				$PRODS[] = $V;
+			}
+			
+			$COLLECTOIN->products = $PRODS;
+						
+			RETURN JSON_ENCODE($COLLECTOIN);
+		}
+				
+		PUBLIC STATIC FUNCTION SHARECOLLECTION($DATA) {
+			$ERROR = '{"responce": "FAVSHAREBAD"}';
+			$SHAREON = '{"responce": "FAVSHAREON"}';
+			$SHAREOFF = '{"responce": "FAVSHAREOFF"}';
+					
+			IF(!ISSET($DATA->id))RETURN $ERROR;
+			
+			$AUTH = $GLOBALS['AUTH']['user'];
+			
+			$WHERE['id'] = $DATA->id;
+			$WHERE['user'] = $AUTH->user;
+			$RESULT = DB::SELECT('favorites', [], $WHERE);
+			
+			IF(!$RESULT->fetch_object()) RETURN $ERROR;
+			
+			$SET['shared'] = $DATA->status == 1 ? 1 : 0;
+			
+			DB::UPDATE('favorites', $SET, $WHERE, TRUE);
+			
+			RETURN $SET['shared'] ? $SHAREON : $SHAREOFF;
+		}
+		
+		PUBLIC STATIC FUNCTION NEWCOLLECTION($DATA) {
+			$ERROR = '{"responce": "FAVNEWCOLLECTIONBAD"}';
+			$SUCCESS = '{"responce": "FAVNEWCOLLECTIONOK"}';
+			$EXIST = '{"responce": "FAVNEWCOLLECTIONEXIST"}';
+			$ITEMADDED = '{"responce": "FAVNEWCOLLECTIONITEMADDED"}';
+						
+			IF(!ISSET($DATA->type) OR !ISSET($DATA->name))RETURN $ERROR;
+			
+			$AUTH = $GLOBALS['AUTH']['user'];
+			
+			$WHERE['name'] = $DATA->name;
+			$RESULT = DB::SELECT('favorites', $WHERE);
+			
+			IF($RESULT->fetch_object()) RETURN $EXIST;
+			
+			$SET['user'] = $AUTH->user;
+			$SET['name'] = $DATA->name;
+			$SET['type'] = $DATA->type;
+			$SET['date'] = TIME();
+			$SET['shareid'] = SELF::UNIQUEID(8);
+			DB::INSERT('favorites', $SET);
+			
+			IF(ISSET($DATA->prodid)) {
+				$MYSQLI = $GLOBALS['MYSQLI'];				
+				$DATA->id = $MYSQLI->insert_id;
+				
+				SELF::ADDITEM($DATA);
+				
+				RETURN $ITEMADDED;
+			}
+			
+			RETURN $SUCCESS;
+		}
+		
+		PUBLIC STATIC FUNCTION ADDITEM($DATA) {
+			$ERROR['responce'] = 'FAVADDITEMBAD';
+			$SUCCESS['responce'] = 'FAVADDITEMOK';
+									
+			IF(!ISSET($DATA->id) OR !ISSET($DATA->prodid))RETURN JSON_ENCODE($ERROR);
+			
+			$AUTH = $GLOBALS['AUTH']['user'];
+			
+			$WHERE['id'] = $DATA->id;
+			$WHERE['user'] = $AUTH->user;
+			$RESULT = DB::SELECT('favorites', [], $WHERE);
+			$COLLECTOIN = $RESULT->fetch_object();
+			IF(!$COLLECTOIN) RETURN $ERROR;
+			
+			$ITEMS = ARRAY_FILTER(EXPLODE(';', $COLLECTOIN->products));			
+			$ITEMS = ARRAY_DIFF($ITEMS, [$DATA->prodid]);			
+			$ITEMS[] = $DATA->prodid;
+			
+			$SET['products'] = IMPLODE(';', $ITEMS);
+			DB::UPDATE('favorites', $SET, $WHERE, TRUE);
+			
+			$SUCCESS['name'] = $COLLECTOIN->name;
+			RETURN JSON_ENCODE($SUCCESS);
+		}
+		
+		PUBLIC STATIC FUNCTION REMOVEITEM($DATA) {
+			$ERROR['responce'] = 'FAVREMITEMBAD';
+			$SUCCESS['responce'] = 'FAVREMITEMOK';
+									
+			IF(!ISSET($DATA->id) OR !ISSET($DATA->prodid))RETURN JSON_ENCODE($ERROR);
+			
+			$AUTH = $GLOBALS['AUTH']['user'];
+			
+			$WHERE['id'] = $DATA->id;
+			$WHERE['user'] = $AUTH->user;
+			$RESULT = DB::SELECT('favorites', [], $WHERE);
+			$COLLECTOIN = $RESULT->fetch_object();
+			IF(!$COLLECTOIN) RETURN $ERROR;
+			
+			$ITEMS = ARRAY_FILTER(EXPLODE(';', $COLLECTOIN->products));									
+			$ITEMS = ARRAY_DIFF($ITEMS, [$DATA->prodid]);			
+			$SET['products'] = IMPLODE(';', $ITEMS);
+			DB::UPDATE('favorites', $SET, $WHERE, TRUE);
+			
+			$SUCCESS['name'] = $COLLECTOIN->name;
+			RETURN JSON_ENCODE($SUCCESS);
+		}
+		
+		PUBLIC STATIC FUNCTION RENCOLLECTION($DATA) {
+			$ERROR = '{"responce": "FAVRENBAD"}';
+			$SUCCESS = '{"responce": "FAVRENOK"}';
+									
+			IF(!ISSET($DATA->id) OR !ISSET($DATA->name))RETURN $ERROR;
+			
+			$AUTH = $GLOBALS['AUTH']['user'];
+			
+			$WHERE['id'] = $DATA->id;
+			$WHERE['user'] = $AUTH->user;
+						
+			$RESULT = DB::SELECT('favorites', [], $WHERE);
+			
+			IF(!$RESULT->fetch_object()) RETURN $ERROR;
+			
+			$SET['name'] = $DATA->name;
+			DB::UPDATE('favorites', $SET, $WHERE, TRUE);
+			
+			RETURN $SUCCESS;
+		}
+
+		PUBLIC STATIC FUNCTION DELCOLLECTION($DATA) {
+			$ERROR = '{"responce": "FAVDELBAD"}';
+			$SUCCESS = '{"responce": "FAVDELOK"}';
+									
+			IF(!ISSET($DATA->id))RETURN $ERROR;
+			
+			$AUTH = $GLOBALS['AUTH']['user'];
+			
+			$WHERE['id'] = $DATA->id;
+			$WHERE['user'] = $AUTH->user;
+			$RESULT = DB::SELECT('favorites', [], $WHERE);
+					
+			IF(!$RESULT->fetch_object()) RETURN $ERROR;
+			
+			$DEL[] = $DATA->id;
+			$RESULT = DB::DEL('favorites', $DEL, 'id');
+						
 			RETURN $SUCCESS;
 		}		
 	}

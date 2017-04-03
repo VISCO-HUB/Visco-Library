@@ -20,7 +20,9 @@ Array.prototype.makeUnique = function(){
 }
 
 document.addEventListener("contextmenu", function(e){
-   e.preventDefault();
+   if(!$(e.target).is('input')) {
+	e.preventDefault();
+   }
 }, false);
 
 var hostname = window.location.protocol + '//' + window.location.hostname + '/';
@@ -35,10 +37,10 @@ var getUrlVars = function (url) {
 
 /* APP */
 
-var app = angular.module('app', ['ngRoute', 'ngSanitize', 'ui.bootstrap', 'ngAnimate', 'ngCookies']);
+var app = angular.module('app', ['ngRoute', 'ngSanitize', 'ui.bootstrap', 'ngAnimate', 'ngCookies', 'angularFileUpload']);
 
 // CONFIG 
-app.config(function($routeProvider) {    
+app.config(['$routeProvider', function($routeProvider) {
 	
 	$routeProvider
     .when('/home', {
@@ -53,6 +55,22 @@ app.config(function($routeProvider) {
         templateUrl : 'templates/model.php',
 		controller: 'modelCtrl'
     })
+	.when('/user/:user', {
+        templateUrl : 'templates/user.php',
+		controller: 'userCtrl'
+    })
+	.when('/profile/:tab', {
+        templateUrl : 'templates/profile.php',
+		controller: 'profileCtrl'
+    })
+	.when('/favorite-collection/:id', {
+        templateUrl : 'templates/favorite-collection.php',
+		controller: 'favoriteCollectionCtrl'
+    })
+	.when('/favorite-share/:shareid', {
+        templateUrl : 'templates/favorite-share.php',
+		controller: 'favoriteShareCtrl'
+    })
 	.when('/search/:query/:catid/:global/:page', {
         templateUrl : 'templates/search.php',
 		controller: 'searchCtrl'
@@ -62,7 +80,7 @@ app.config(function($routeProvider) {
 		controller: 'aboutCtrl'
     }) 	
 	.otherwise({redirectTo:'/home'});
-});
+}]);
 
 // DIRECTIVES
 app.directive("alerts", function($rootScope) {	 
@@ -119,6 +137,12 @@ app.directive("feedback", function ($rootScope) {
     };
 });
 
+app.directive("quickfavorites", function ($rootScope) {
+	return {
+		templateUrl : hostname + 'templates/quick-favorites.html'		
+    };
+});
+
 app.directive('iframeOnload', [function(){
 return {
     scope: {
@@ -160,6 +184,15 @@ app.filter('orderObjectBy', function() {
   };
 });
 
+app.filter('range', function(){
+	return function(n) {
+		var res = [];
+		for (var i = 0; i < n; i++) {
+			res.push(i);
+		}
+		return res;
+	};
+});
 
 app.filter('encode', function() {
 	return function(s) {
@@ -216,6 +249,145 @@ app.controller("fastSearchCtrl", function ($scope, $rootScope, $location, $route
 
 	//$rootScope.globalQuery = '';
 });
+	
+	// PROFILE
+
+app.controller("profileCtrl", function ($scope, $rootScope, $location, $timeout, $routeParams, vault, FileUploader) {
+	$rootScope.isHome = false;
+	$scope.tab = $routeParams.tab;
+	$scope.favtab = 1;
+			
+	$rootScope.addCrumb($scope.tab, '');		
+		
+	$scope.changeTab = function(tab) {
+		$scope.tab = tab;
+	}
+		
+	var uploader1 = $scope.uploader1 = new FileUploader({
+		url: hostname + 'vault/uploadavatar.php'
+	});
+	
+	uploader1.onAfterAddingFile = function(fileItem) {
+        uploader1.uploadAll();
+		//console.info('onAfterAddingFile', fileItem);
+    };
+	
+	uploader1.onWhenAddingFileFailed = function(item /*{File|FileLikeObject}*/, filter, options) {
+        //console.info('onWhenAddingFileFailed', item, filter, options);
+		vault.showMessage('Allowed only *.jpg files!', 'error');
+	};
+	
+	uploader1.onCompleteItem = function(fileItem, response, status, headers) {
+		//console.info('onCompleteItem', fileItem, response, status, headers);
+		
+		vault.getAuth();
+		vault.showMessage('Avatar changed success!', 'success');
+	};
+	
+	uploader1.onErrorItem = function(fileItem, response, status, headers) {
+        //console.info('onErrorItem', fileItem, response, status, headers);
+	};
+			
+	uploader1.filters.push({
+		name: 'imageFilter',
+		fn: function(item /*{File|FileLikeObject}*/, options) {
+			var type = '|' + item.type.slice(item.type.lastIndexOf('/') + 1) + '|';
+			z = '|jpg|jpeg|'.indexOf(type) !== -1;
+			return z;
+		}
+	});
+	
+	$rootScope.avatar = 'img/noavatar.svg';
+	
+	$scope.getAvatar = function(a) {
+		$rootScope.avatar = a.avatar;
+	}
+	
+	$scope.getAvatar($rootScope.auth);
+	
+	$scope.clearAvatar = function() {
+		vault.clearAvatar();
+	}
+	
+	$rootScope.favorites = {};
+		
+	
+	$rootScope.favGet(1);
+});
+
+app.controller("quickFavCtrl", function ($scope, $rootScope, $location, $timeout, $routeParams, vault) {
+		
+	$rootScope.favGet($rootScope.libType);
+	$scope.status = {};
+	
+	$scope.favAddRemove = function(status, id, prodid, type){
+		if(status) {
+			vault.favAddItem(id, prodid, type);
+		} else {
+			vault.favDelItem(id, prodid);
+		}
+	}		
+});
+
+app.controller("favoriteCollectionCtrl", function ($scope, $rootScope, $location, $timeout, $routeParams, vault) {
+		
+	$rootScope.isHome = false;
+	
+	$rootScope.addCrumb('Favorites', '#/profile/favorites');
+	$rootScope.addCrumb('View Collection', '');
+	
+	$scope.collectionid = $routeParams.id;
+		
+	$scope.favGetCollection = function(id){
+		vault.favGetCollection(id);		
+	}
+	
+	$scope.favShareCollection = function(id, status) {
+		vault.favShareCollection(id, status);
+	}
+	
+	$scope.favGetCollection($scope.collectionid);
+	
+	$("input[type='text']").on("click", function () {
+		$(this).select();
+	});
+});
+
+app.controller("favoriteShareCtrl", function ($scope, $rootScope, $location, $timeout, $routeParams, vault) {
+		
+	$rootScope.isHome = false;
+	
+	$rootScope.addCrumb('Favorites', '#/profile/favorites');
+	$rootScope.addCrumb('Shared', '');
+	
+	$scope.shareid = $routeParams.shareid;
+		
+	$scope.favGetShared = function(id){
+		vault.favGetShared(id);		
+	}
+		
+	
+	$scope.favGetShared($scope.shareid);
+});
+
+
+app.controller("userCtrl", function ($scope, $rootScope, $location, $timeout, $routeParams, vault) {
+	$rootScope.isHome = false;
+				
+	$rootScope.addCrumb('User Profile', '');		
+	
+	$scope.user = $routeParams.user;
+	
+	$rootScope.userProfile = {};
+	
+	$scope.getUserProfile = function() {
+		vault.getUserProfile($scope.user);
+	}
+	
+	$scope.getUserProfile();
+		
+});
+
 	
 app.controller("searchCtrl", function ($scope, vault, $rootScope, $location, $routeParams, $timeout, $cookieStore) {
 	$rootScope.isHome = false;
@@ -369,6 +541,8 @@ app.controller("modelCtrl", function ($scope, vault, $rootScope, $location, $rou
 	$scope.changeTabInfo2 = function(s) {
 		$scope.tabinfo2 = s;
 	}
+	
+	$rootScope.favGet($rootScope.libType);
 });
 
 app.controller("modelsCtrl", function ($scope, vault, $rootScope, $location, $routeParams, $timeout, $cookieStore) {
@@ -415,6 +589,8 @@ app.controller("modelsCtrl", function ($scope, vault, $rootScope, $location, $ro
 	$scope.checkPending = function(id) {		
 		vault.checkPending(id, $scope.page, $rootScope.perpage, $rootScope.catFilter, 1, $scope.catid);
 	}
+	
+	$rootScope.favGet($rootScope.libType);
 });
 
 // AUTO RUN
@@ -463,7 +639,9 @@ app.run(function($rootScope, $location, $routeParams, $timeout, $cookieStore, va
 	};
 	
 	$rootScope.getProdImages = function(imgs, size, main) {
-		var out = [];
+		if(!imgs) {return '';}
+		
+		var out = [];		
 		var a = imgs.split(';');
 		var sizes = ['60x60', '200x200', '600x600'];
 		
@@ -688,6 +866,7 @@ app.run(function($rootScope, $location, $routeParams, $timeout, $cookieStore, va
 	$rootScope.hideShowFeedback = function(x){		
 		$rootScope.showFeedBack = x;	
 	};
+		
 	
 	$rootScope.feedBack = function(feed) {		
 		vault.feedBack(feed.content, feed.subject, feed.bug);
@@ -736,9 +915,11 @@ app.run(function($rootScope, $location, $routeParams, $timeout, $cookieStore, va
 			$rootScope.slideLightBox(-1);
 		}
 		
+		// ESC ACTION
 		if(e.keyCode == 27) {
 			$rootScope.showLightBox = false;
 			$rootScope.showFeedBack = false;
+			$rootScope.showQuickFavorites = false;
 		}	
 
 		$rootScope.$apply();		
@@ -784,14 +965,109 @@ app.run(function($rootScope, $location, $routeParams, $timeout, $cookieStore, va
 	$rootScope.constructionAlert = function() {
 		alert('This option under construction!');
 	}	
+	
+	$rootScope.getAuth = function() {
+		vault.getAuth();
+	}
+	
+	$rootScope.avatar = '';
+	
+	$rootScope.shortenName = function(n, s) {
+		if(n.length > s) {
+			return n.substr(0, s).trim() + '...';
+		}
 		
-   $rootScope.$watch(function() { 
+		return n;
+	}
+		
+	// FAV
+	
+	$rootScope.openSharedLink = function() {
+	
+		var shareid = prompt('Please enter collection ID!', '');
+		
+		if(!shareid.length || shareid.match(/[^a-zA-Z0-9-_ ]/)) {
+			vault.showMessage('Wrong collection ID!', 'warning');
+			
+			return false;
+		}
+		
+		$location.path('/favorite-share/' + shareid);	
+	}
+	
+	$rootScope.favDelCollectionItem = function(id, prodid, name) {
+		if(!confirm('Do you really want to delete item \"' + name + '\"?')){
+			return false;
+		}
+		
+		vault.favDelCollectionItem(id, prodid);
+	}
+	
+	$rootScope.hideShowQuickFavortites = function(x){	
+		$rootScope.quickFavID = x;
+		$rootScope.showQuickFavorites = x.id;	
+	};
+	
+	$rootScope.favGet = function(type) {		
+		vault.favGet(type);
+	}	
+		
+	$rootScope.favNewCollection = function(type, prodid) {
+		
+		var name = prompt('Please enter collection name! Ex.: Cars', '');			
+		
+		if(!name || !name.length) {			
+			vault.showMessage('Please enter the name!', 'warning');
+		
+			return false;
+		}
+		
+		if(!name.length || name.match(/[^a-zA-Z0-9-_ ]/)) {
+			vault.showMessage('Wrong collection name!', 'warning');
+			
+			return false;
+		}
+		
+		vault.favNewCollection(name, type, prodid);
+	}
+
+	$rootScope.favDeleteCollection = function(id, name, type, getforid) {
+		if(!confirm('Do you really want to delete collection \"' + name + '\"?')){
+			return false;
+		}
+		
+		vault.favDeleteCollection(id, type, getforid);
+	}
+	
+	$rootScope.favRenameCollection = function(id, name, type, getforid) {
+		if(!confirm('Do you really want to rename collection \"' + name + '\"?')){
+			return false;
+		}
+		
+		var name = prompt('Please enter collection name! Ex.: Cars', '');
+		
+		if(!name || !name.length) {			
+			vault.showMessage('Please enter the name!', 'warning');
+		
+			return false;
+		}
+		
+		if(!name.length || name.match(/[^a-zA-Z0-9-_ ]/)) {
+			vault.showMessage('Wrong collection name!', 'warning');
+			
+			return false;
+		}
+		
+		vault.favRenameCollection(id, name, type, getforid);
+	}	
+		
+    $rootScope.$watch(function() { 
         return $location.path(); 
     },
      function(a){
 			
 		// INIT
-				
+		$rootScope.quickFavID = -1;		
 		$rootScope.msg = {};						
 		$rootScope.globals = {};				
 		$rootScope.showOverlayMenu = false;			
@@ -815,6 +1091,7 @@ app.run(function($rootScope, $location, $routeParams, $timeout, $cookieStore, va
 		$rootScope.productGallery = [];
 		$rootScope.prod = {};
 		$rootScope.comments = [];
+		$rootScope.showQuickFavorites = false;	
 				
 		$rootScope.bindSearchEvent();
     });
@@ -867,6 +1144,30 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 			case 'FEEDBACKBAD': s.warning = 'Please fill correct all fields!';
 			break;
 			case 'FEEDBACKOK': s.success = 'Feedback successfully sent!';
+			break;
+			case 'FAVNEWCOLLECTIONOK': s.success = 'Collection created!';
+			break;
+			case 'FAVNEWCOLLECTIONBAD': s.error = 'Error while create collection!';
+			break;
+			case 'FAVNEWCOLLECTIONEXIST': s.warning = 'Collection with this name already exist!';
+			break;			
+			case 'FAVDELOK': s.success = 'Collection deleted!';
+			break;
+			case 'FAVDELBAD': s.error = 'Error while delete collection!';
+			break;
+			case 'FAVRENBAD': s.error = 'Error while rename collection!';
+			break;
+			case 'FAVRENOK': s.success = 'Success collection renamed!';
+			break;
+			case 'FAVADDITEMOK': s.success = 'Item added to "' + r.name + '" collection!';
+			break;
+			case 'FAVREMITEMOK': s.warning = 'Item removed from "' + r.name + '" collection!';
+			break;
+			case 'FAVNEWCOLLECTIONITEMADDED': s.success = 'Item added to new collection!';
+			break;
+			case 'FAVSHAREON': s.success = 'Collection shared! Now you can copy the link!';
+			break;
+			case 'FAVSHAREOFF': s.warning = 'Collection closed for other users!';
 			break;
 		}		
 		$rootScope.msg = s;		
@@ -1177,6 +1478,22 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		});
 	};	
 	
+	var getAuth = function()
+	{		
+		var json = {'type': 'user'};
+						
+		HttpPost('GETAUTH', json).then(function(r){						
+			
+			$rootScope.auth = r.data;
+			$rootScope.avatar = r.data.avatar;
+			
+			responceMessage(r.data);
+		},
+		function(r){
+			responceMessage(r);
+		});
+	};
+	
 	var sendComment = function(id, txt, bug, type)
 	{		
 		var json = {'id': id, 'txt': txt, 'type': type, 'bug': bug};
@@ -1206,7 +1523,198 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 			responceMessage(r);
 		});
 	};
+	
+	var clearAvatar = function(id, prodid, type)
+	{		
+		var json = {'type': 'avatar'};
+		deleteMessage();
+				
+		HttpPost('DELAVATAR', json).then(function(r){						
+						
+			getAuth();
+			responceMessage(r.data);
+		},
+		function(r){
+			responceMessage(r);
+		});
+	};
+	
+	var getUserProfile = function(user) {
+		var json = {'user': user};
+		deleteMessage();
+				
+		HttpPost('GETUSERPROFILE', json).then(function(r){						
 		
+			$rootScope.userProfile = r.data.profile;
+			responceMessage(r.data);
+		},
+		function(r){
+			responceMessage(r);
+		});
+	}
+	
+	// FAV
+	
+	var favGet = function(type) {
+		var json = {'type': type};
+		deleteMessage();
+				
+		HttpPost('FAVGET', json).then(function(r){						
+		
+			$rootScope.favorites = r.data
+			responceMessage(r.data);
+		},
+		function(r){
+			responceMessage(r);
+		});
+	}
+	
+	var favNewCollection = function(name, type, prodid) {
+		var json = {'name': name, 'type': type, 'prodid': prodid};
+		deleteMessage();
+				
+		HttpPost('FAVNEWCOLLECTION', json).then(function(r){						
+						
+			favGet(type);
+			responceMessage(r.data);
+		},
+		function(r){
+			responceMessage(r);
+		});
+	}
+	
+	var favDeleteCollection = function(id, type, getforid) {
+		var json = {'id': id};
+		deleteMessage();
+				
+		HttpPost('FAVDELCOLLECTION', json).then(function(r){						
+			if(getforid) {
+				favGetCollection(id);
+			} else
+			{
+				favGet(type);
+			}
+			responceMessage(r.data);
+		},
+		function(r){
+			responceMessage(r);
+		});
+	}
+	
+	var favRenameCollection = function(id, name, type, getforid) {
+		var json = {'id': id, 'name': name};
+		deleteMessage();
+				
+		HttpPost('FAVRENAMECOLLECTION', json).then(function(r){						
+			if(getforid) {
+				favGetCollection(id);
+			} else
+			{
+				favGet(type);
+			}
+			
+			responceMessage(r.data);
+		},
+		function(r){
+			responceMessage(r);
+		});
+	}
+	
+	var favAdd = function(id, prodid, type) {
+		var json = {'id': id, 'prodid': prodid};
+		deleteMessage();
+				
+		HttpPost('FAVADDITEM', json).then(function(r){						
+			favGet(type);
+			responceMessage(r.data);
+		},
+		function(r){
+			responceMessage(r);
+		});
+	}
+	
+	var favAddItem = function(id, prodid, type) {
+		var json = {'id': id, 'prodid': prodid};
+		deleteMessage();
+				
+		HttpPost('FAVADDITEM', json).then(function(r){						
+			favGet(type);
+			responceMessage(r.data);
+		},
+		function(r){
+			responceMessage(r);
+		});
+	}
+	
+	var favDelItem = function(id, prodid, type) {
+		var json = {'id': id, 'prodid': prodid};
+		deleteMessage();
+				
+		HttpPost('FAVDELITEM', json).then(function(r){						
+			favGet(type);
+			responceMessage(r.data);
+		},
+		function(r){
+			responceMessage(r);
+		});
+	}
+		
+	
+	var favGetCollection = function(id) {
+		var json = {'id': id};
+		deleteMessage();
+				
+		HttpPost('FAVGETCOLLECTION', json).then(function(r){						
+						
+			$rootScope.favoriteCollection = r.data;
+			
+			responceMessage(r.data);
+		},
+		function(r){
+			responceMessage(r);
+		});
+	}
+	
+	var favDelCollectionItem = function(id, prodid) {
+		var json = {'id': id, 'prodid': prodid};
+		deleteMessage();
+				
+		HttpPost('FAVDELITEM', json).then(function(r){						
+				favGetCollection(id);
+			responceMessage(r.data);
+		},
+		function(r){
+			responceMessage(r);
+		});
+	}
+	
+	var favShareCollection = function(id, status) {
+		var json = {'id': id, 'status': status};
+		deleteMessage();
+				
+		HttpPost('FAVSHARECOLLECTION', json).then(function(r){											
+			favGetCollection(id);
+			
+			responceMessage(r.data);
+		},
+		function(r){
+			responceMessage(r);
+		});
+	}
+	
+	var favGetShared = function(shareid) {
+		var json = {'shareid': shareid};
+		deleteMessage();
+				
+		HttpPost('FAVGETSHARED', json).then(function(r){											
+			$rootScope.favoriteCollection = r.data;
+			
+			responceMessage(r.data);
+		},
+		function(r){
+			responceMessage(r);
+		});
+	}
 	
 	return {
 		responceMessage: responceMessage,
@@ -1228,7 +1736,20 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		feedBack: feedBack,
 		sendComment: sendComment,
 		delComment: delComment,
-		sendCommandMXS: sendCommandMXS
+		sendCommandMXS: sendCommandMXS,
+		getAuth: getAuth,
+		clearAvatar: clearAvatar,
+		getUserProfile: getUserProfile,
+		favGet: favGet,
+		favAddItem: favAddItem,
+		favDelItem: favDelItem,
+		favNewCollection: favNewCollection,
+		favDeleteCollection: favDeleteCollection,
+		favRenameCollection: favRenameCollection,
+		favGetCollection: favGetCollection,
+		favShareCollection: favShareCollection,
+		favGetShared: favGetShared,
+		favDelCollectionItem: favDelCollectionItem
 	};
 });
 

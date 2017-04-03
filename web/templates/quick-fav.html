@@ -1,0 +1,15 @@
+<div ng-controller="quickFavCtrl" class="quick-fav">
+	<ul ng-show="favorites.length">
+		<li ng-repeat="f in favorites">
+			<label class="pointer">
+				<input type="checkbox" ng-checked="f.products[quickFavID]" ng-model="status[f.id]" ng-click="favAddRemove(status[f.id], f.id, quickFavID, libType)"> {{shortenName(f.name, 16)}}
+			</label>
+		</li>
+	</ul>
+	<span ng-show="!favorites.length">No collections yet...</span>
+
+	<hr>
+	<a href="" ng-click="favNewCollection(libType, quickFavID)"><span class="glyphicon glyphicon-plus-sign" aria-hidden="true"></span> New Collection</a><br>
+	<hr>
+	<a href="#/profile/favorites"><span class="glyphicon glyphicon-heart" aria-hidden="true"></span> View Favorites</a>
+</div>

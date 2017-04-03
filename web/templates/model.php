@@ -24,7 +24,7 @@
 	<div class="col-md-12 col-lg-4 col-sm-12 col-xs-12 fontsize-12">
 		<h3 class="capitalize">{{prod.name}}</h3>
 		<button type="button" class="btn btn-default custom-button-gray button-fixed button-rating" ng-class="{'highlight': product.userrate}" uib-tooltip="Rate model" ng-click="rateProduct(prod.id, libType)"> &nbsp;&nbsp;</button>&nbsp;
-		<button type="button" class="btn btn-default custom-button-gray button-fixed button-heart" uib-tooltip="Add to favorite" ng-click="favoriteProduct(prod.id, libType)"> &nbsp;&nbsp;</button>&nbsp;
+		<button type="button" class="btn btn-default custom-button-gray button-fixed button-heart" uib-tooltip="Add to favorite" ng-click="hideShowQuickFavortites(prod)"> &nbsp;&nbsp;</button>&nbsp;
 		<button type="button" class="btn btn-default custom-button-gray button-fixed button-download" uib-tooltip="Download model" ng-click="downloadUrl(prod.id, libType)" ng-class="{'disabled': auth.rights < 0}"> &nbsp;&nbsp;</button>&nbsp;
 		<a ng-href="admin/#/models-edit/{{prod.id}}/1" class="btn btn-default custom-button-gray button-fixed button-edit" uib-tooltip="Edit" ng-show="auth.rights > 0"> &nbsp;&nbsp;</a>&nbsp;
 		<hr>
@@ -46,7 +46,10 @@
 			<div class="capitalize"><strong>Client:</strong> {{isNA(prod.client)}}</div>		
 			<div><strong>Modeller:</strong> {{isNA(prod.modeller)}}</div>		
 			<div class="capitalize" ng-show="prod.custom1"><strong>Custom1:</strong> {{isNA(prod.custom1)}}</div>
-			<div><strong>Uploaded By:</strong> {{isNA(prod.uploadedby)}}</div>
+			<div><strong>Uploaded By:</strong> 
+				<a ng-href="#/user/{{prod.uploadedby}}" ng-show="prod.uploadedby">{{prod.uploadedby}}</a>
+				<span ng-show="!prod.uploadedby">{{isNA(prod.uploadedby)}}</span>
+			</div>
 	
 			<hr>
 			<div><strong>Polys:</strong> {{prod.polys}}</div>

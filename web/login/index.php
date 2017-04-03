@@ -20,6 +20,7 @@
     <script type="text/javascript" src="../js/angular-sanitize.min.js"></script>    
    	<script type="text/javascript" src="../js/angular-animate.min.js"></script>
    	<script type="text/javascript" src="../js/angular-cookies.min.js"></script>
+	<script type="text/javascript" src="../js/angular-file-upload.min.js"></script>
 	<script type="text/javascript" src="../js/app.js"></script>   
     <script type="text/javascript" src="../js/bootstrap.min.js"></script>
 	<script type="text/javascript" src="../js/ui-bootstrap-tpls-2.1.3.min.js"></script>

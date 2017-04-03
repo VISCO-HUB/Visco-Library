@@ -9,7 +9,7 @@
 <hr>
 <div ng-show="!comments.length" class="text-muted text-center">No comments...</div>
 <div ng-repeat="comment in comments" class="comment" ng-show="comments.length" ng-class="{'bug': comment.bug==1}">
-	<div class="small text-muted"><img src="img/bug.svg" class="icon-bug" ng-show="comment.bug==1">{{comment.user}} <span class="date">{{tm(comment.date)}} </span></div>
-	<div class="txt"><pre>{{comment.comment}}</pre></div>	
+	<div class="small text-muted"><img src="img/bug.svg" class="icon-bug" ng-show="comment.bug==1"><a ng-href="#/user/{{comment.user}}">{{comment.user}}</a><span class="date">{{tm(comment.date)}} </span></div>
+	<div class="txt"><img ng-src="{{comment.avatar}}" class="comment-avatar"><pre>{{comment.comment}}</pre></div>	
 	<div class="text-right" ng-show="auth.user == comment.user || auth.rights > 0"><a href="" ng-click="delComment(comment.id, prod.id)">Delete</a></div>
 </div>

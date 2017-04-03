@@ -53,7 +53,7 @@ fn httpGet url =
 )	
 
 global _ViscoAssetsForm
-global _FILLREPORT = "\n1. Open full model info\n2. Press the button \"Report\"\n3. Fill the form\n4. Press the button \"Send\""
+global _FILLREPORT = "\n1. Open full model info\n2. Go to comments\n3. Check the button \"Send As Bug Report\"\n3. Fill the form\n4. Press the button \"Send\""
 global _MODELNOTEXIST = "This model not exist!\n\nPlease notify administrator about this issue:" + _FILLREPORT
 global _MODELBAD = "This model not exist in data base!\n\nPlease notify administrator about this issue:" + _FILLREPORT
 
@@ -365,7 +365,20 @@ dotNet.addEventHandler execCommand "TextChanged" onExecute
 dotnet.addEventHandler executeTimer "tick" onExecuteCommand
 
 dotNet.setLifetimeControl _ViscoAssetsForm #dotnet
---_ViscoAssetsForm.show()
-_ViscoAssetsForm.showmodeless()	
---clearListener()
+
+fn maxHWND = 
+(
+	maxHandlePointer=(Windows.GetMAXHWND())	
+	sysPointer = DotNetObject "System.IntPtr" maxHandlePointer
+	maxHwnd = DotNetObject "MaxCustomControls.Win32HandleWrapper" sysPointer
+)
+
+maxHandlePointer = (Windows.GetMAXHWND())
+sysPointer = DotNetObject "System.IntPtr" maxHandlePointer
+_ViscoAssetsForm.fromHandle sysPointer
+
+_ViscoAssetsForm.ShowInTaskbar = off
+--_ViscoAssetsForm.showmodeless()	
+_ViscoAssetsForm.show()
+clearListener()
 

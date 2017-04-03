@@ -1,8 +1,7 @@
+
 <?php
-
-$DIR = "\\\\visco.local\\data\\Library\\";
-
-
-echo 'Free space: ' . (floor(100 * disk_free_space($DIR) / disk_total_space($DIR))) . '%';
-
+$a1=array(98, 98);
+$a1 = array_diff($a1, [98]);
+print_r($a1);
 ?>
+

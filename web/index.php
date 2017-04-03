@@ -24,6 +24,7 @@
 <script type="text/javascript" src="js/angular-route.min.js"></script>
 <script type="text/javascript" src="js/angular-sanitize.min.js"></script>
 <script type="text/javascript" src="js/angular-cookies.min.js"></script>
+<script type="text/javascript" src="js/angular-file-upload.min.js"></script>
 <script type="text/javascript" src="js/angular-animate.min.js"></script>
 <script type="text/javascript" src="js/app.js"></script>
 <script type="text/javascript" src="js/bootstrap.min.js"></script>
@@ -51,16 +52,16 @@
 					<li ng-show="auth.browser=='MXS'"><a href="" ng-click="mxsGoForward()"><span class="glyphicon glyphicon-arrow-right"></span></a></li>
 					<li ng-show="auth.browser=='MXS'"><a href="" ng-click="mxsForceRefresh()"><span class="glyphicon glyphicon-refresh"></span></a></li>
 					<li class="visible-xs-inline"><a href="" ng-click="toggleOverlayMenu()" ><span class="glyphicon glyphicon-menu-hamburger"></span></a></li>										
-					<li class="dropdown" ng-show="auth.rights > 0"> <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false"><span class="glyphicon glyphicon-cog"></span></a>
+					<li class="dropdown" ng-show="auth.rights >= 0"> <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false"><span class="glyphicon glyphicon-cog"></span></a>
 						<ul class="dropdown-menu" role="menu">
 							<li class="dropdown-header">Hi, {{auth.name || auth.user}}</li>
 							<li class="divider"></li>
 							<li ng-show="auth.rights > 0"><a href="/admin/">Admin Panel</a></li>
-							<li><a href="" ng-click="constructionAlert()">Profile</a></li>
+							<li><a href="#/profile/profile">Profile</a></li>
 							<li><a href="" ng-click="hideShowFeedback(true)">Send Feedback</a></li>
 						</ul>
 					</li>
-					<li class=""><a href="#/"><span class="glyphicon glyphicon-heart"></span></a></li>					
+					<li class=""><a href="#/profile/favorites"><span class="glyphicon glyphicon-heart"></span></a></li>					
 					<li class=""><a href="" ng-click="singOut()"><span class="glyphicon glyphicon-log-out"></span></a></li>
 				</ul>
 			</div>
@@ -100,6 +101,7 @@
 <iframe id="download" ng-src="{{download}}" iframe-onload="downloadMsg()" class="hidden"></iframe>
 <div lightbox></div>
 <div feedback></div>
+<div quickfavorites></div>
 </body>
 </html>
 

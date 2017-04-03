@@ -146,7 +146,8 @@ app.controller('uploadCtrl', function($scope, FileUploader, vault, $rootScope) {
 		{
             name: 'zipFilter',
             fn: function(item /*{File|FileLikeObject}*/, options) {
-                var type = '|' + item.type.slice(item.type.lastIndexOf('/') + 1) + '|';
+                console.log(item.type);
+				var type = '|' + item.type.slice(item.type.lastIndexOf('/') + 1) + '|';
                 return '|x-zip-compressed|'.indexOf(type) !== -1;
             }
 		}

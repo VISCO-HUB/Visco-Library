@@ -59,7 +59,7 @@
 						<ul class="dropdown-menu" role="menu">
 							<li class="dropdown-header">Hi, {{auth.name || auth.user}}</li>
 							<li class="divider"></li>
-							<li><a href="" ng-click="">Profile</a></li>
+							<li><a ng-href="/#/profile/profile">Profile</a></li>
 						</ul>
 					</li>
 					<li class="active"><a href="" ng-click="singOut()" tooltip-popup-delay="200" uib-tooltip="SignOut" tooltip-placement="bottom"><span class="glyphicon glyphicon-log-out"></span></a></li>

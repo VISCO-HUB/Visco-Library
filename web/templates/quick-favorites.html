@@ -1,0 +1,19 @@
+<div class="light-box"  ng-show="showQuickFavorites" ng-controller="quickFavCtrl" >
+	<div class="close" ng-click="hideShowQuickFavortites(false)" title="Close"></div>
+	<span class="light-box-close glyphicon glyphicon-remove" aria-hidden="true" ng-click="hideShowQuickFavortites(false)" title="Close"></span>	
+
+	<div class="quick-fav feedback col-md-4 col-sm-8 col-xs-12">
+		<h3>{{quickFavID.name}}</h3>
+		<ul ng-show="favorites.length">
+			<li ng-repeat="f in favorites">
+				<label class="pointer"><input type="checkbox" ng-checked="f.products[quickFavID.id]" ng-model="status[f.id]" ng-click="favAddRemove(status[f.id], f.id, quickFavID.id, libType)"> {{f.name}}
+				</label>
+			</li>
+		</ul>
+		<span ng-show="!favorites.length">No collections yet...</span>
+	
+		<hr>
+		<a href="" ng-click="favNewCollection(libType, quickFavID.id)"><span class="glyphicon glyphicon-plus-sign" aria-hidden="true"></span> New Collection</a>
+		<a href="#/profile/favorites" class="pull-right"><span class="glyphicon glyphicon-heart" aria-hidden="true"></span> View Favorites</a>
+	</div>
+</div>

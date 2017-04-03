@@ -33,5 +33,11 @@
 	// LIB TYPES (SQL TABLES MUST NAMED AS TYPES)
 	DEFINE('LIBTYPES', ARRAY(1 => 'models', 2 => 'textures'));
 	DEFINE('PRODUCTPAGE', ARRAY(1 => 'model', 2 => 'texture'));
-
+	
+	// AVATAR
+	DEFINE('AVATAR_SIZE', 100);
+	DEFINE('AVATAR_ABSPATH', 'avatars\\');
+	DEFINE('AVATAR_PATH', ROOT . AVATAR_ABSPATH);
+	
+	
 ?>
