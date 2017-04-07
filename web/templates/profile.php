@@ -1,5 +1,5 @@
 <ul class="nav nav-tabs">
-  <li ng-class="{'active': tab=='profile'}" ng-show="auth.rights >= 0"><a href="#/profile/profile">Main</a></li>
+  <li ng-class="{'active': tab=='profile'}"><a href="#/profile/profile">Main</a></li>
   <li ng-class="{'active': tab=='favorites'}"><a href="#/profile/favorites">Favorites</a></li>
 </ul><br>
 <div ng-show="tab=='profile'">
@@ -15,33 +15,42 @@
 		<tbody>
 			<tr>
 				<td>Name: </td>
-				<td><strong>{{auth.name}}</strong></td>
+				<td><strong>{{profile.name}}</strong></td>
 			</tr>
 			<tr>
 				<td>Login: </td>
-				<td><strong>{{auth.user}}</strong></td>
+				<td><strong>{{profile.user}}</strong></td>
 			</tr>
 			<tr>
 				<td>Account:</td>
 				<td>
-					<strong><span ng-show="auth.rights == -1" class="label label-info">Guest</span>
-					<span ng-show="auth.rights == 0" class="label label-primary">User</span>
-					<span ng-show="auth.rights == 1" class="label label-warning">Moderator</span>
-					<span ng-show="auth.rights == 2" class="label label-danger">Super Admin</span></strong>
+					<strong><span ng-show="profile.rights == -1" class="label label-info">Guest</span>
+					<span ng-show="profile.rights == 0" class="label label-primary">User</span>
+					<span ng-show="profile.rights == 1" class="label label-warning">Moderator</span>
+					<span ng-show="profile.rights == 2" class="label label-danger">Super Admin</span></strong>
 				</td>
 			</tr>
 			<tr>
 				<td>Group: </td>
-				<td><strong>{{auth.grp}}</strong></td>
+				<td><strong>{{profile.grp}}</strong></td>
 			</tr>
 			<tr>
 				<td>Office: </td>
-				<td><strong>{{auth.office}}</strong></td>
+				<td><strong>{{profile.office}}</strong></td>
 			</tr>
 			<tr>
 				<td>Downloads: </td>
-				<td><span class="label label-success">{{auth.downloads ? auth.downloads : 0}}</span></td>
+				<td><span class="label label-success">{{profile.downloads ? profile.downloads : 0}}</span></td>
 			</tr>
+			<tr>
+				<td>Notifications: </td>
+				<td>
+				<span class="btn-group btn-group-xs" role="group">
+        			<button class="btn btn-default width-40px" ng-class="{'btn-success': profile.notification==1}" type="button" ng-click="profileChangeParam('notification', 1)"> ON </button>
+					<button class="btn btn-default width-40px"  ng-class="{'btn-danger': profile.notification!=1}" type="button" ng-click="profileChangeParam('notification', 0)"> OFF </button>
+				</span>
+				</td>
+			</tr>				
 		</tbody>
 	</table>
 </div>

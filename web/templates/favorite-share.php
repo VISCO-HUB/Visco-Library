@@ -10,4 +10,4 @@
 	<h3 class="text-center" ng-show="!count(favoriteCollection.products)">Collection is empty...</h3>
 </div>
 <div ng-show="favoriteCollection.responce=='FAVGETSHAREBAD'"><h3 class="text-center">Shared collection not found!</h3></div>
-<div ng-show="favoriteCollection.responce=='FAVGETSHAREOFF'"><h3 class="text-center">Shared collection is closed!<br>Contact with user {{favoriteCollection.user}} to access this collection!</h3></div>
+<div ng-show="favoriteCollection.responce=='FAVGETSHAREOFF'"><h3 class="text-center">Shared collection "{{favoriteCollection.name}}" is closed!<br>Contact with user {{favoriteCollection.user}} to access this collection!</h3></div>

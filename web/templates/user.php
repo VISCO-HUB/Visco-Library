@@ -39,6 +39,14 @@
 				<td>Downloads: </td>
 				<td><span class="label label-success">{{userProfile.downloads ? userProfile.downloads : 0}}</span></td>
 			</tr>
+			<tr>
+				<td>Notifications: </td>
+				<td>{{yesNo(userProfile.notification)}}</td>
+			</tr>
+			<tr>
+				<td>E-Mail: </td>
+				<td><a ng-href="mailto:{{userProfile.email}}?Subject=Reply from Assets Library">{{userProfile.email}}</td>
+			</tr>
 		</tbody>
 	</table>
 </div>

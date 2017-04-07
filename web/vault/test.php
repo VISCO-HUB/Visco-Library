@@ -1,7 +1,13 @@
 
 <?php
-$a1=array(98, 98);
-$a1 = array_diff($a1, [98]);
-print_r($a1);
+
+$BG = 0;
+$R = 255;
+IF($R > ($BG-15)) {
+	ECHO 1;
+} ELSE
+{
+	ECHO 0;
+}
 ?>
 

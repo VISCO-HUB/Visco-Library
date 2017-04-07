@@ -256,7 +256,7 @@ app.controller("profileCtrl", function ($scope, $rootScope, $location, $timeout,
 	$rootScope.isHome = false;
 	$scope.tab = $routeParams.tab;
 	$scope.favtab = 1;
-			
+				
 	$rootScope.addCrumb($scope.tab, '');		
 		
 	$scope.changeTab = function(tab) {
@@ -309,22 +309,26 @@ app.controller("profileCtrl", function ($scope, $rootScope, $location, $timeout,
 		vault.clearAvatar();
 	}
 	
+	$scope.profileChangeParam = function(p, v) {
+		vault.profileChangeParam(p, v);
+	}
+	
 	$rootScope.favorites = {};
 		
 	
 	$rootScope.favGet(1);
+	vault.getAuth();
 });
 
 app.controller("quickFavCtrl", function ($scope, $rootScope, $location, $timeout, $routeParams, vault) {
-		
-	$rootScope.favGet($rootScope.libType);
+
 	$scope.status = {};
 	
 	$scope.favAddRemove = function(status, id, prodid, type){
 		if(status) {
 			vault.favAddItem(id, prodid, type);
 		} else {
-			vault.favDelItem(id, prodid);
+			vault.favDelItem(id, prodid, type);
 		}
 	}		
 });
@@ -626,7 +630,7 @@ app.run(function($rootScope, $location, $routeParams, $timeout, $cookieStore, va
 	}
 	
 	$rootScope.setAuth = function(u) {
-		$rootScope.auth = u;
+		$rootScope.auth = u;		
 	}
 
 	$rootScope.deleteMsg = function() {$rootScope.msg = {};};
@@ -986,6 +990,7 @@ app.run(function($rootScope, $location, $routeParams, $timeout, $cookieStore, va
 	
 		var shareid = prompt('Please enter collection ID!', '');
 		
+		if(!shareid) {return false;}
 		if(!shareid.length || shareid.match(/[^a-zA-Z0-9-_ ]/)) {
 			vault.showMessage('Wrong collection ID!', 'warning');
 			
@@ -1006,6 +1011,8 @@ app.run(function($rootScope, $location, $routeParams, $timeout, $cookieStore, va
 	$rootScope.hideShowQuickFavortites = function(x){	
 		$rootScope.quickFavID = x;
 		$rootScope.showQuickFavorites = x.id;	
+		
+		$rootScope.favGet($rootScope.libType);
 	};
 	
 	$rootScope.favGet = function(type) {		
@@ -1021,7 +1028,7 @@ app.run(function($rootScope, $location, $routeParams, $timeout, $cookieStore, va
 		
 			return false;
 		}
-		
+				
 		if(!name.length || name.match(/[^a-zA-Z0-9-_ ]/)) {
 			vault.showMessage('Wrong collection name!', 'warning');
 			
@@ -1482,11 +1489,12 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 	{		
 		var json = {'type': 'user'};
 						
-		HttpPost('GETAUTH', json).then(function(r){						
-			
+		HttpPost('GETAUTH', json).then(function(r){									
+					
 			$rootScope.auth = r.data;
 			$rootScope.avatar = r.data.avatar;
-			
+			$rootScope.profile = r.data;
+						
 			responceMessage(r.data);
 		},
 		function(r){
@@ -1530,6 +1538,21 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		deleteMessage();
 				
 		HttpPost('DELAVATAR', json).then(function(r){						
+						
+			getAuth();
+			responceMessage(r.data);
+		},
+		function(r){
+			responceMessage(r);
+		});
+	};
+	
+	var profileChangeParam = function(p, v)
+	{		
+		var json = {'param': p, 'value': v};
+		deleteMessage();
+				
+		HttpPost('PROFILECHANGEPARAM', json).then(function(r){						
 						
 			getAuth();
 			responceMessage(r.data);
@@ -1749,7 +1772,8 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		favGetCollection: favGetCollection,
 		favShareCollection: favShareCollection,
 		favGetShared: favGetShared,
-		favDelCollectionItem: favDelCollectionItem
+		favDelCollectionItem: favDelCollectionItem,
+		profileChangeParam: profileChangeParam
 	};
 });
 

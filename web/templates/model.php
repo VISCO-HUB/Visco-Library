@@ -96,4 +96,4 @@
 <div ng-show="!product.product.name.length && !product.responce"><h3 class="text-center">Model not found!</h3></div>
 <div ng-show="product.responce == 'PRODINFONOACCESS'"><h3 class="text-center">You have no access to view this content!</h3></div>
 <div ng-show="product.responce == 'PRODINFOOFF'"><h3 class="text-center">This model disabled!M</h3></div>
-<img ng-repeat="img in productGallery" src="{{img}}" class="hidden">
+<img ng-repeat="img in productGallery" ng-src="{{img}}" class="hidden">

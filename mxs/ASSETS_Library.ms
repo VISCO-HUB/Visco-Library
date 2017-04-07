@@ -1,6 +1,50 @@
+/*  
+[INFO] 
+
+NAME = Assets Library
+VERSION = 1.0.5
+AUTHOR = Vasily Lukyanenko
+DEV = VISCO
+HELP = 
+
+[INSTALL]
+
+MACRO=AssetsLibrary
+CAT=VISCO
+TEXT=Assets Library
+ICON=#("AssetsLibrary", 1)
+
+[ICONS]
+
+\\visco.local\data\Instal_Sync\scripts\scripts\icons\AssetsLibrary\AssetsLibrary_24a.bmp=
+\\visco.local\data\Instal_Sync\scripts\scripts\icons\AssetsLibrary\AssetsLibrary_24i.bmp=
+\\visco.local\data\Instal_Sync\scripts\scripts\icons\AssetsLibrary\AssetsLibrary_16i.bmp=
+\\visco.local\data\Instal_Sync\scripts\scripts\icons\AssetsLibrary\AssetsLibrary_16a.bmp=
+
+
+[1.0.0]
+
+* First release =
+
+[1.0.5]
+
+* Changed: Improved speed and fixes=
+* Changed: Favicon=
+
+
+[ABOUT]
+
+Open Assets Library via 3Ds Max=
+
+[TEST]
+
+[SCRIPT]
+*/
+
+
 --global siteUrl = @"http://assets.visco.no/"
 global siteUrl = @"http://svg-web-003/"
-global iconFile = @"\\visco.local\data\Instal_Sync\scripts\scripts\img\favicon.ico"
+global iconFile = @"\\visco.local\data\Instal_Sync\scripts\scripts\img\assets_favicon.ico"
 global trustUrl = siteUrl + @"vault/mxs/mxsTrustUser.php?user=" + sysInfo.username
 global forceRefresh
 
@@ -377,7 +421,7 @@ maxHandlePointer = (Windows.GetMAXHWND())
 sysPointer = DotNetObject "System.IntPtr" maxHandlePointer
 _ViscoAssetsForm.fromHandle sysPointer
 
-_ViscoAssetsForm.ShowInTaskbar = off
+_ViscoAssetsForm.ShowInTaskbar = on
 --_ViscoAssetsForm.showmodeless()	
 _ViscoAssetsForm.show()
 clearListener()

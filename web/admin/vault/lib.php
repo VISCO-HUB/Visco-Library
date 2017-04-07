@@ -1106,6 +1106,7 @@
 			}
 			
 			$BG = 0;
+			$BIN = [];
 			
 			FOR($I = 0; $I < $H; $I++) {
 				FOR($J = 0; $J < $W; $J++) {
@@ -1121,8 +1122,12 @@
 					IF($I == 0 AND $J == 0)  $BG = $R;
 					$SENS = 15;
 					
+					IF($BG < 170) {
+						$BIN[$I][$J] = 1;
+					} ELSE {
+						$BIN[$I][$J] = ($R > $BG - $SENS) ? 0 : 1;	
+					}
 					
-					$BIN[$I][$J] = ($R > $BG - $SENS) ? 0 : 1;
 					//IF($BG != 0) $BIN[$I][$J] = 1;
 				}
 			}

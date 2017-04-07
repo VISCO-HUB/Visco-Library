@@ -449,10 +449,28 @@
 			
 			UNSET($PROFILE->token);		
 			$PROFILE->avatar = SELF::GETAVATAR($AUTH);
+			$PROFILE->email = $PROFILE->user . MAILDOMAIN;
 			
 			$OUT['profile'] = $PROFILE;
 			
 			RETURN JSON_ENCODE($OUT);
+		}
+		
+		PUBLIC STATIC FUNCTION CHANGEPARAM($DATA) {
+			$ERROR = '{"responce": "PROFILECHANGEPARAMBAD"}';
+			$SUCCESS = '{"responce": "PROFILECHANGEPARAMOK"}';
+		
+			IF(!ISSET($DATA->param) OR !ISSET($DATA->value)) RETURN $ERROR;			
+			IF($DATA->value != 1 AND $DATA->value != 0) RETURN $ERROR;
+			IF($DATA->param != 'notification') RETURN $ERROR;
+			
+			$AUTH = $GLOBALS['AUTH']['user'];
+			
+			$SET[$DATA->param] = $DATA->value;
+			$WHERE['id'] = $AUTH->id;
+			DB::UPDATE('users', $SET, $WHERE);
+			
+			RETURN $SUCCESS;
 		}
 		
 		PUBLIC STATIC FUNCTION CHECK() {							
@@ -1421,8 +1439,14 @@
 			
 			$RESULT = DB::SEARCH($TYPE, $FIND, $COL, $FILTER, $LIMIT);
 			
-			//$RESULT = DB::SELECTLIKE($TYPE, $COL, $FIND, $LIMIT, $WHERE, NULL, $FILTER);			
-			$OUT['result'] = DB::TOARRAY($RESULT);
+			$PRODUCTS = [];
+			
+			FOREACH(DB::TOARRAY($RESULT) AS $V) {
+				$V->productpage = $PRODPAGE;
+				$PRODUCTS[] = $V;				
+			}
+			
+			$OUT['result'] = $PRODUCTS;
 						
 			// STATISTIC				
 			IF(!$FASTSEARCH) {
@@ -1787,11 +1811,12 @@
 			$RESULT = DB::SELECT('favorites', [], $WHERE, 'date', NULL, TRUE);			
 			$SHARE = $RESULT->fetch_object();
 			
+			$SHAREOFF['user'] = $SHARE->user;
+			$SHAREOFF['name'] = $SHARE->name;
+			
 			IF(!$SHARE) RETURN JSON_ENCODE($ERROR);
 			IF($SHARE->shared != 1) RETURN JSON_ENCODE($SHAREOFF);
-			
-			$SHAREOFF['user'] = $SHARE->user;
-			
+						
 			$TABLE = PRODUCTS::TYPE($SHARE->type);
 						
 			$W['id'] = EXPLODE(';', $SHARE->products);			

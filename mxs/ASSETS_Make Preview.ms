@@ -2,7 +2,7 @@
 [INFO] 
 
 NAME = Make Preview
-VERSION = 1.0.4
+VERSION = 1.0.5
 AUTHOR = Vasily Lukyanenko
 DEV = VISCO
 HELP = 
@@ -31,6 +31,14 @@ ICON=#("PhysX_Main", 3)
 
 - BugFix: Show/Hide All effect in Editor=
 
+[1.0.5]
+
+* Changed: Improve Wire Parameters in Editor=
++ Added: Final rende size options=
++ Added: Confirm message on Setup Scene=
++ Added: Disable steps when scene not setup=
++ Added: Choose renderer on Setup Scene=
+
 [ABOUT]
 
 This script helps to quickly make previews=
@@ -54,6 +62,7 @@ global _rStep0
 global _rStep1
 global _rStep2
 global _rStep3
+global _rPreset
 
 global 	blendOptions = #(
 	"Normal",
@@ -103,6 +112,14 @@ fn getScriptInfo s releaseInfo: "" =
 	return #(n, a, v, o, r, c, h)
 )
  
+fn getMaxVersion = 
+(
+	v = maxVersion()
+	v = 2000 + ((v[1] / 1000) - 2)
+	
+	return v as string
+)
+
  fn useSettings k p w =
 (
 	u = sysInfo.username
@@ -110,10 +127,7 @@ fn getScriptInfo s releaseInfo: "" =
 	n = filenameFromPath (getThisScriptFilename())			
 	settingsFile = d + @"ini\" + u + "_" + n + ".ini"
 		
-	v = maxVersion()
-	v = 2000 + ((v[1] / 1000) - 2)
-	
-	t = v as string
+	t = getMaxVersion()
 	
 	case w of
 	(
@@ -144,6 +158,76 @@ fn getRender =
 	return #unknown
 )
 
+fn findTheRender s =
+(
+	r = for o in RendererClass.classes where (matchPattern (o as string) pattern: ("*" + s + "*")) collect  o
+	if(r.count == 1)	do return r[1]
+	return false	
+)	
+
+fn setupRenderEngine =
+(
+	try(destroyDialog  _rChooserRenderEngine) catch()
+	rollout _rChooserRenderEngine "Choose Renderer"
+	(
+		listbox lbxRenderTypes "" items: #() width: 200 offset: [-13, -5]
+		button btnSelectRenderOk "Ok" across: 2 width: 60 height: 25 align: #left offset: [0, -2]
+		button btnCloseThisDialog "Close" width: 60 height: 25 align: #right offset: [0, -2]
+		
+		global renderEngine = #()
+		global renderEngineSelect = #none
+		
+		on _rChooserRenderEngine open do
+		(
+			renderEngineSelect = #none
+			renderSceneDialog.close()
+			
+			itm = #()
+						
+			r = findTheRender "v_ray_adv"
+			if(r != false) do 
+			(
+				append itm "V-Ray Adv"
+				append renderEngine r
+			)
+			
+			r = findTheRender "corona"
+			if(r != false) do 
+			(
+				append itm "Corona"
+				append renderEngine r
+			)
+			
+			r = findTheRender "scanline"
+			if(r != false) do 
+			(
+				append itm "Default Scanline"
+				append renderEngine r
+			)
+			
+			lbxRenderTypes.items = itm
+		)
+		
+		on btnCloseThisDialog pressed do 
+		(				
+			try(destroyDialog  _rChooserRenderEngine) catch()
+		)
+		
+		on btnSelectRenderOk pressed do
+		(
+			i = lbxRenderTypes.selection
+			renderers.current = execute(renderEngine[i] as string + "()")
+			renderSystem = renderers.current 
+			renderEngineSelect = #selected
+			
+			try(destroyDialog  _rChooserRenderEngine) catch()
+		)
+	)
+
+	createDialog _rChooserRenderEngine 200 170 modal: true parent: _rStep0.hwnd
+	
+	return renderEngineSelect
+)
 
 fn deleteDomes =
 (
@@ -159,6 +243,12 @@ fn deleteSkyLights =
 	try(delete l)catch()
 )
 
+fn checkInteger n d =
+(
+	if(n == undefined or n == 0 or n == "") do return d
+	return n as integer
+)
+
 fn setRenderQuality =
 (
 	renderSceneDialog.close()
@@ -166,22 +256,53 @@ fn setRenderQuality =
 	r = getRender()
 	q = useSettings "RENDER_QUALITY" "int" "r"
 	
+	renderSizeWidth = useSettings "RENDER_SIZE_X" "int" "r"
+	renderSizeHeight = useSettings "RENDER_SIZE_Y" "int" "r"
+	
+	renderSizeWidth = checkInteger renderSizeWidth 800
+	renderSizeHeight = checkInteger renderSizeHeight 800
+	
+	_rStep3.spnRenderSizeX.value = renderSizeWidth
+	_rStep3.spnRenderSizeY.value = renderSizeHeight
+	_rStep0.sldQuality.value = q
+	
+	_rStep3.cbxDR.visible = true
+	_rStep3.btnOpenEditor.visible = true
+	
 	renderSystem = renderers.current 
+	
+	x = 800
+	y = 800
 	
 	s = case q of
 	(
-		1: 600
-		2: 800
-		default: 400
+		1: 
+		(
+			x = (renderSizeWidth / 2) as integer
+			y = (renderSizeHeight / 2) as integer
+		)
+		2: 
+		(
+			x = renderSizeWidth
+			y = renderSizeHeight	
+		)
+		default: 
+		(
+			x = (renderSizeWidth / 2.2) as integer
+			y = (renderSizeHeight / 2.2) as integer
+		)
 	)
 					
-	renderWidth = s
-	renderHeight = s
+	renderWidth = x
+	renderHeight = y
 		
 	case r of 
 	(	
 		#Scanline: 		
-		(
+		(	
+			_rStep3.cbxDR.visible = false
+			_rStep3.btnOpenEditor.visible = false
+			
 			rendForce2Side = true
 			scanlineRender.antiAliasFilter = Catmull_Rom()
 			LT = SceneRadiosity.radiosity
@@ -222,6 +343,9 @@ fn setRenderQuality =
 			renderSystem.system_region_x = 24
 			renderSystem.system_region_y = 24
 			renderSystem.colorMapping_affectBackground = on
+			renderSystem.colorMapping_subpixel = on
+			renderSystem.colorMapping_clampOutput = on
+			renderSystem.colorMapping_clampLevel = 1.0
 			renderSystem.colorMapping_type = 6
 			renderSystem.colorMapping_darkMult = 1.0
 			renderSystem.colorMapping_brightMult = 1.0
@@ -273,22 +397,21 @@ fn setRenderQuality =
 		)
 	)
 
+	try(_rStep3.checkDR type: #get)catch()
+	
 	renderSceneDialog.commit()
 	renderSceneDialog.update()	
 )
 
-fn renderChange =
+fn rebuildScript =
 (	
+	-- Bug when press F10
 	try(fileIn (getThisScriptFileName()))catch()
-	/*_rStep0.qualitySet()	
-	setRenderQuality()
-	_rStep1.firstLoad()*/
 )
 
 fn onStartRender =
 (
-	setRenderQuality()
-	try(_rStep3.checkDR type: #get)catch()
+	setRenderQuality()	
 )
 
 fn onSelectionChanged =
@@ -296,7 +419,37 @@ fn onSelectionChanged =
 	_rStep2.autoSelectLight()
 )
 
-rollout _rStep0  "Basic Setup"
+fn isSetupScene = (fileProperties.findProperty #custom "MakePreviewSetup") == 0
+
+fn rolloutToggle t =
+(
+	if(t == false) do
+	(
+		removeRollout _rStep1 fFastRender
+		removeRollout _rStep2 fFastRender
+		removeRollout _rStep3 fFastRender
+		removeRollout _rPreset fFastRender
+		
+		return false
+	)
+	
+	addRollout _rStep1 fFastRender rolledUp:true
+	addRollout _rStep2 fFastRender rolledUp:true
+	addRollout _rStep3 fFastRender
+	addRollout _rPreset fFastRender rolledUp:true
+	
+	r = getRender()
+	
+	if(r == #Scanline) then
+	(
+		removeRollout _rStep1 fFastRender
+	) else
+	(
+		if(not isSetupScene()) do addRollout _rStep1 fFastRender rolledUp:true
+	)
+)
+
+rollout _rStep0  "Basic Setup" category:1
 (
 	group "Settings"
 	(
@@ -314,12 +467,6 @@ rollout _rStep0  "Basic Setup"
 	(
 		for i in _rStep0.controls do i.enabled = d					
 	)	
-		
-	fn qualitySet =
-	(
-		s = useSettings "RENDER_QUALITY" "int" "r"
-		sldQuality.value = s					
-	)
 	
 	on _rStep0	open do
 	(						
@@ -329,14 +476,12 @@ rollout _rStep0  "Basic Setup"
 		callbacks.removeScripts id:#preRender
 		callbacks.removescripts id:#selectionSetChanged
 				
-		callbacks.addScript #postRendererChange "renderChange()" id:#renderChange
-		callbacks.addScript #systemPostNew "renderChange()" id:#postNew
-		callbacks.addScript #systemPostReset "renderChange()" id:#postReset
+		--callbacks.addScript #postRendererChange "rebuildScript()" id:#renderChange
+		callbacks.addScript #systemPostNew "rebuildScript()" id:#postNew
+		callbacks.addScript #systemPostReset "rebuildScript()" id:#postReset
 		callbacks.addScript #preRender "onStartRender()" id:#preRender
 				
-		callbacks.addScript #selectionSetChanged "onSelectionChanged()" id:#selectionSetChanged persistent:false	
-						
-		qualitySet()
+		callbacks.addScript #selectionSetChanged "onSelectionChanged()" id:#selectionSetChanged persistent:false			
 	)
 	
 	on _rStep0 close do
@@ -349,18 +494,26 @@ rollout _rStep0  "Basic Setup"
 	)
 		
 	on btnSetupScene pressed do
-	(
+	(		
+		q = setupRenderEngine()
+		if(q == #none) do return false
+		
+		deleteDomes()
+		deleteSkyLights()
+		
 		r = getRender()
-				
+						
 		if(r == #unknown) do return messageBox "Please assign Corona or V-Ray Renderer!" title: "Warning!" 
+			
+		_rStep1.setHDRI()
 		
-		case r of
-		(
-			#VRay:  deleteDomes()			
-			#Scanline:  deleteSkyLights()			
-		)
+		--_rStep1.firstLoad()
+					
+		fileProperties.addProperty #custom "MakePreviewSetup" true
+			
+		rolloutToggle true
 		
-		_rStep1.SetupScene()
+		setRenderQuality()
 	)
 			
 	on spnAOSize changed v do
@@ -376,7 +529,7 @@ rollout _rStep0  "Basic Setup"
 	)
 )
 
-rollout _rStep1  "HDRI"
+rollout _rStep1  "HDRI" category:2
 (
 	group "Light"
 	(		
@@ -385,7 +538,8 @@ rollout _rStep1  "HDRI"
 		label lblStart "0 deg." align: #left across: 2
 		label lblStop "360 deg." align: #right
 		slider sldLightHDR "" ticks: 36 range:[0,360,0] type: #integer
-		button btnLightHDR "None"
+		button btnLightHDR "None" across: 2 width: 100 offset: [45, 0]
+		button btnResetLightHDR "R" tooltip: "Reset to default" offset: [2, 0]
 	)
 	
 	group "Reflections"
@@ -396,24 +550,16 @@ rollout _rStep1  "HDRI"
 		label lblStart2 "0 deg." align: #left across: 2
 		label lblStop2 "360 deg." align: #right
 		slider sldReflectHDR "" ticks: 36 range:[0,360,0] type: #integer
-		button btnReflectHDR "None"
+		button btnReflectHDR "None" across: 2 width: 100 offset: [45, 0]
+		button btnResetReflectHDR "R" tooltip: "Reset to default" offset: [2, 0]
 	)
 	
 	timer tmrRotateLightHDR "" active: false interval: 100
 	timer tmrRotateReflectHDR "" active: false interval: 100
 	
-	fn enableReflections =
-	(
-		c = cbxUseReflect.checked
-		spnReflectHDR.enabled = c
-		spnReflectHDR_Mult.enabled = c
-		lblStart2.enabled = c
-		lblStop2.enabled = c
-		sldReflectHDR.enabled = c
-		btnReflectHDR.enabled = c
-	)
 		
 	-------------------------------------------------
+	
 	
 	fn delVFB_Elements =
 	(
@@ -455,7 +601,7 @@ rollout _rStep1  "HDRI"
 				cm2.texmap = CoronaWire()	
 				cm2.texmap.baseColor = black
 				cm2.texmap.edgeColor = white
-				cm2.texmap.edgeWidthPixels = 0.2
+				cm2.texmap.edgeWidthPixels = 0.5
 				
 				append renderElements cm2
 			)
@@ -475,7 +621,7 @@ rollout _rStep1  "HDRI"
 				-- Wire	
 				cm2 = VrayExtraTex() 				
 				cm2.texture = VrayEdgesTex()
-				cm2.texture.pixelWidth = 0.2
+				cm2.texture.pixelWidth = 0.5
 				
 				append renderElements cm2
 			)
@@ -803,12 +949,18 @@ rollout _rStep1  "HDRI"
 			)
 			#VRay:
 			(
-				renderSystem.environment_rr_on = true			
-				renderSystem.environment_rr_map_on = true	
+				renderSystem.environment_rr_on = c			
+				renderSystem.environment_rr_map_on = c	
 			)
 		)
 		
-		
+		spnReflectHDR.enabled = c
+		spnReflectHDR_Mult.enabled = c
+		lblStart2.enabled = c
+		lblStop2.enabled = c
+		sldReflectHDR.enabled = c
+		btnReflectHDR.enabled = c
+		btnResetReflectHDR.enabled = c
 	)
 
 	fn getUnit =
@@ -853,17 +1005,10 @@ rollout _rStep1  "HDRI"
 		)
 								
 		renderSystem = renderers.current 
-		
-		if(r == #Scanline) do
-		(
-			_rStep0.spnAOSize.enabled = false	
-			removeRollout _rStep1 
-			return false
-		)
-		
+				
 		loadHDR()
-		enableReflections()
-		
+		useReflect()
+						
 		s = useSettings "AO_SIZE" "int" "r"
 		if(s != 0) do _rStep0.spnAOSize.value = s
 	)
@@ -896,7 +1041,6 @@ rollout _rStep1  "HDRI"
 		if(dome != undefined) do dome.affect_reflections = not s
 		
 		useReflect()
-		enableReflections()
 	)
 	
 	on _rStep1	open do
@@ -1017,9 +1161,27 @@ rollout _rStep1  "HDRI"
 		
 		useSettings "REFLECT_HDR_MULT" v "w"
 	)
+	
+	on btnResetLightHDR pressed do
+	(		
+		q = queryBox "Do you really want to reset to default HDR?" title: "Reset to default!"
+		if(not q) do return false
+		
+		useSettings "LIGHT_HDR" "" "w"
+		setHDRI()
+	)
+	
+	on btnResetReflectHDR pressed do
+	(		
+		q = queryBox "Do you really want to reset to default HDR?" title: "Reset to default!"
+		if(not q) do return false
+		
+		useSettings "REFLECT_HDR" "" "w"
+		setHDRI()
+	)
 )
 
-rollout _rStep2  "Highlights"
+rollout _rStep2  "Highlights" category:3
 (	
 	listbox lbxLights height: 8
 	button btnAdd "Add Light" across: 2
@@ -1319,33 +1481,57 @@ fn postProcess =
 	global rPostProcess
 	global rPostSettings
 	
+	global postRenderProcessImage = undefined
+	global btmPreview = undefined
+	
 	try(destroyDialog rPostProcess) catch()
 	
 	global postRender = undefined
 	
 	rollout rPostProcess "Post Process"
 	(
-		button btnImage "Wait while pre-rendering..." enabled: false border: false width: 800 height: 800 pos: [0, 0]
+		dotNetControl btmPreview "System.Windows.Forms.PictureBox" width: 800 height: 800 pos: [0, 0]	
 	
 		subrollout subRollout1 "Settings"
 		
 		timer tmrShowRender "" active: false
 				
-		fn preRender = renderMap outputMap size:[800, 800] filter: false scale: 1.0
+		fn preRenderImageFromMap = renderMap outputMap size:[800, 800] filter: false scale: 1.0 gamma: 2.2
+		
+		fn setBitmap b =
+		(
+			if(b == undefined) do return false
+			
+			bs = dotNetclass "System.Windows.Forms.PictureBoxSizeMode"
+			btmPreview.SizeMode = bs.Zoom 
+			
+			if(btmPreview.width > b.width and btmPreview.height > b.height) do btmPreview.SizeMode = bs.CenterImage
+				
+			setClipboardBitmap  b	
+			c = dotNetClass "System.Windows.Forms.Clipboard"
+			img = c.GetImage()	
+			r = dotNetObject "System.Drawing.Rectangle" 0 0 img.width img.height			
+			gu = (dotNetClass "System.Drawing.GraphicsUnit").Pixel			
+			a = dotNetObject "System.Drawing.Imaging.ImageAttributes"
+			a.SetGamma 0.45			
+			g = (dotNetClass "System.Drawing.Graphics").FromImage(img)	
+			g.DrawImage img r 0 0 img.width img.height gu a			
+			c.setImage(img)			
+			btmPreview.image = c.GetImage()
+		)
 		
 		fn clearRender = 
 		(
-			r = bitmap 1 1 color: black 
-			btnImage.images = #(r, r, 1,1,1,1,1)
+			btmPreview.image = undefined
 		)
 		
 		fn showRender now: false = 
 		(	
 			if(now != true ) do clearRender()
 			
-			postRender = preRender()
+			postRenderProcessImage = preRenderImageFromMap()
 			
-			tmrShowRender.interval = 500
+			tmrShowRender.interval = 100
 			if(now == true ) do tmrShowRender.interval = 1
 			
 			tmrShowRender.active = true
@@ -1356,32 +1542,40 @@ fn postProcess =
 			f = getSaveFileName types: "JPG|*.jpg|PNG|*.png"
 			if(f == undefined) do return false
 			
-			r = preRender()
+			r = preRenderImageFromMap()
 			
 			r.filename = f
 			save r gamma: 2.2
 			close r
 		)
 		
-		fn showWire show: 1 =
-		(
+		fn showWire show: undefined inv: undefined op: undefined blnd: undefined =
+		(			
 			i = outputMap.mapList.count			
-			outputMap.opacity[i] = if(show == 1) then 0 else 50
+			
+			if(show != undefined) do outputMap.mapEnabled[i] = if(show == 2) then true else false
+			if(op != undefined) do outputMap.opacity[i] =  op		
+			if(outputMap.mapList[i] != undefined and inv != undefined) do outputMap.mapList[i].output.invert =  inv
+			if(blnd == false) then
+			(
+				outputMap.blendMode[i] = 0
+			)
+			else
+			(
+				outputMap.blendMode[i] = if(inv == false) then 9 else 5
+			)
+			
 			rPostProcess.showRender now: true
 		)
 		
 		on rPostProcess open do
 		(				
-			showRender()
-			showWire()
+			showRender()			
 		)
 		
 		on tmrShowRender tick do
 		(
-			if(postRender == undefined) do r = bitmap 1 1 color: black 
-			
-			b = bitmap 800 800 color: black 
-			btnImage.images = #(postRender, b, 1,1,1,1,1)
+			setBitmap postRenderProcessImage
 			
 			tmrShowRender.active = false
 		)
@@ -1466,8 +1660,16 @@ fn postProcess =
 
 	ex += "rPostProcess.showRender now: true\n"
 	ex += ")\n"
+	ex += "group\"Wire Parameters\"(\n"
+	ex += "checkbox cbxBlendWire \"Blend\" checked: false\n"
+	ex += "checkbox cbxInvertWire \"Invert\" checked: true\n"	
+	ex += "spinner spnOpacityWire \"Opacity: \" range: [0, 100, 100] type: #integer align: #left fieldWidth: 30\n"
+	ex += ")\n"
 	ex += "radiobuttons rdoWire \"\" labels:#(\"Render\", \"Wire\") offset: [0, 15]\n"
-	ex += " on rdoWire changed z do rPostProcess.showWire show: z\n"
+	ex += " on cbxInvertWire changed z do rPostProcess.showWire show: (rdoWire.state) inv: (cbxInvertWire.checked) op: (spnOpacityWire.value) blnd: (cbxBlendWire.checked)\n"
+	ex += " on spnOpacityWire changed z do rPostProcess.showWire show: (rdoWire.state) inv: (cbxInvertWire.checked) op: (spnOpacityWire.value) blnd: (cbxBlendWire.checked)\n"
+	ex += " on rdoWire changed z do rPostProcess.showWire show: (rdoWire.state) inv: (cbxInvertWire.checked) op: (spnOpacityWire.value) blnd: (cbxBlendWire.checked)\n"
+	ex += " on cbxBlendWire changed z do rPostProcess.showWire show: (rdoWire.state) inv: (cbxInvertWire.checked) op: (spnOpacityWire.value) blnd: (cbxBlendWire.checked)\n"
 	ex += "button btnSave \"Save Image\" offset: [0, 15]\n"
 	ex += " on btnSave pressed do rPostProcess.saveImage()"
 	ex += ")\n"
@@ -1481,13 +1683,15 @@ fn postProcess =
 	AddSubRollout rPostProcess.subRollout1 rPostSettings		
 )
 
-rollout _rStep3  "Render / Post Process"
-(	
-	
-
+rollout _rStep3  "Render / Post Process" category:4
+(		
 	group "Render"
 	(
 		--button btnStartInteractive "Start Interactive"
+		label lblRenderSize "Final Render Size (px):" align: #left
+		spinner spnRenderSizeX "" range: [100, 999999999, 800] fieldWidth: 50 type: #integer align: #right across: 3 offset: [20, 0]
+		label lblX " x " 
+		spinner spnRenderSizeY "" range: [100, 999999999, 800] fieldWidth: 50 type: #integer align: #left offset: [-20, 0]
 		button btnStartRender "Start Render" height: 30 width: 215		
 		checkbox cbxDR "Distributed rendering"
 	)
@@ -1496,7 +1700,10 @@ rollout _rStep3  "Render / Post Process"
 		button btnOpenEditor "Open Editor" height: 30 width: 215
 	)
 	
-	timer tmrStartRender active: false interval: 100
+	on spnRenderSizeX changed v do useSettings "RENDER_SIZE_X" v "w"
+	on spnRenderSizeY changed v do useSettings "RENDER_SIZE_Y" v "w"
+	
+	timer tmrStartRender active: false interval: 200
 	
 	fn getVFB c: 0 = 
 	(	
@@ -1601,7 +1808,7 @@ rollout _rStep3  "Render / Post Process"
 		outputMap.mapList[l] = getVFB c: l
 		outputMap.mapList[l].coords.blur = 0.01
 		outputMap.blendMode[l] =9
-		outputMap.opacity[l] = 100
+		outputMap.opacity[l] = 0
 		outputMap.mask[l] = vfbAlpha
 		outputMap.mapList[l].name = "Wire"
 	)
@@ -1664,7 +1871,7 @@ rollout _rStep3  "Render / Post Process"
 		outputMap.mapList[l] = getVFB c: 7
 		outputMap.mapList[l].coords.blur = 0.01
 		outputMap.blendMode[l] = 9
-		outputMap.opacity[l] = 100
+		outputMap.opacity[l] = 0
 		outputMap.mask[l] = vfbAlpha
 		outputMap.mapList[l].name = "Wire"
 	)
@@ -1747,17 +1954,7 @@ rollout _rStep3  "Render / Post Process"
 	)
 	
 	on _rStep3 open do
-	(
-		r = getRender()
-		
-		if(r == #Scanline) do
-		(
-			_rStep3.cbxDR.enabled = false
-			_rStep3.btnOpenEditor.enabled = false
-			return false
-		)
-		
-		checkDR type: #get				
+	(			
 	)
 	
 	on cbxDR changed v do
@@ -1766,8 +1963,63 @@ rollout _rStep3  "Render / Post Process"
 	)
 )
 
+rollout _rPreset  "Save / Load Preset" category:5
+(	
+	button btnSavePreset "Save" across: 2
+	button btnLoadPreset "Load"
+	
+	global presetList = #(
+		"RENDER_QUALITY",
+		"RENDER_SIZE_X",
+		"RENDER_SIZE_Y",			
+		"AO_SIZE",
+		"LIGHT_HDR",
+		"REFLECT_HDR",
+		"LIGHT_HDR_ANGLE",
+		"LIGHT_HDR_MULT",
+		"REFLECT_HDR_ANGLE",
+		"REFLECT_HDR_MULT",
+		"REFLECT_HDR_ON"
+	)
+	
+	fn savePresetSetting f o = 
+	(
+		v = getMaxVersion()
+		q = useSettings o "str" "r"
+		
+		setIniSetting f v o q
+	)
+	
+	fn loadPresetSetting f o = 
+	(
+		v = getMaxVersion()
+		
+		q = getIniSetting f v o
+		useSettings o q "w"				
+	)
+	
+	on btnSavePreset pressed do
+	(
+		f = getSaveFileName  caption: "Save Preset"  types:"*.mkprev|*.mkprev"
+		
+		if(f == undefined) do return false
+				
+		for s in presetList do savePresetSetting f s
+	)
+	
+	on btnLoadPreset pressed do
+	(
+		f = getOpenFileName  caption: "Save Preset"  types:"*.mkprev|*.mkprev"
+		if(f == undefined) do return false
+				
+		for s in presetList do loadPresetSetting f s
+			
+		rebuildScript()
+	)
+)
 
-rollout _rAbout "About" 
+
+rollout _rAbout "About" category:6
 (
 	label lblName "" 
 	label lblVer "" 
@@ -1776,7 +2028,11 @@ rollout _rAbout "About"
 	label lblCopy ""  height: 30
 	
 	on _rAbout open do
-	(		
+	(	
+		setRenderQuality()
+							
+		rolloutToggle (not isSetupScene())	
+		
 		i = getScriptInfo (getThisScriptFilename())
 			
 		lblName.caption = i[1]
@@ -1790,4 +2046,5 @@ addRollout _rStep0 fFastRender rolledUp:false
 addRollout _rStep1 fFastRender rolledUp:true
 addRollout _rStep2 fFastRender rolledUp:true
 addRollout _rStep3 fFastRender rolledUp:false
+addRollout _rPreset fFastRender rolledUp:true
 addRollout _rAbout fFastRender rolledUp:true 

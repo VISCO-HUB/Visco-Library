@@ -1594,6 +1594,27 @@ rollout _STEP4 "STEP 4: Preview"
 		goStep 5
 	)
 	
+	fn setBitmap b gamma: 0.45 =
+	(
+		if(b == undefined) do return false
+		
+		bs = dotNetclass "System.Windows.Forms.PictureBoxSizeMode"
+		btmPreview.SizeMode = bs.Zoom 
+		
+		if(btmPreview.width > b.width and btmPreview.height > b.height) do btmPreview.SizeMode = bs.CenterImage
+			
+		setClipboardBitmap  b	
+		c = dotNetClass "System.Windows.Forms.Clipboard"
+		img = c.GetImage()	
+		r = dotNetObject "System.Drawing.Rectangle" 0 0 img.width img.height			
+		gu = (dotNetClass "System.Drawing.GraphicsUnit").Pixel			
+		a = dotNetObject "System.Drawing.Imaging.ImageAttributes"
+		a.SetGamma gamma			
+		g = (dotNetClass "System.Drawing.Graphics").FromImage(img)	
+		g.DrawImage img r 0 0 img.width img.height gu a			
+		c.setImage(img)			
+		btmPreview.image = c.GetImage()
+	)
 	
 	fn checkMainPreview =
 	(
@@ -1635,11 +1656,9 @@ rollout _STEP4 "STEP 4: Preview"
 			
 		if(f == undefined or not doesFileExist f) do return false
 		
-		b = openBitMap f		
-		setClipboardBitmap  b
-		clipboard = dotNetClass "System.Windows.Forms.Clipboard"
-		img = clipboard.GetImage()
-		btmPreview.image = img
+		b = openBitMap f	gamma: 2.2	
+		
+		setBitmap b
 		
 		w = b.width as string
 		h = b.height as string

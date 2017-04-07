@@ -5,15 +5,17 @@
 	<div class="quick-fav feedback col-md-4 col-sm-8 col-xs-12">
 		<h3>{{quickFavID.name}}</h3>
 		<ul ng-show="favorites.length">
-			<li ng-repeat="f in favorites">
+			<li ng-repeat="f in favorites" class="quick-fav-item">
 				<label class="pointer"><input type="checkbox" ng-checked="f.products[quickFavID.id]" ng-model="status[f.id]" ng-click="favAddRemove(status[f.id], f.id, quickFavID.id, libType)"> {{f.name}}
-				</label>
+				</label><a ng-href="#/favorite-collection/{{f.id}}" class="quick-fav-view"><span class="glyphicon glyphicon-eye-open" aria-hidden="true"></span> View</a>
 			</li>
 		</ul>
 		<span ng-show="!favorites.length">No collections yet...</span>
 	
 		<hr>
-		<a href="" ng-click="favNewCollection(libType, quickFavID.id)"><span class="glyphicon glyphicon-plus-sign" aria-hidden="true"></span> New Collection</a>
-		<a href="#/profile/favorites" class="pull-right"><span class="glyphicon glyphicon-heart" aria-hidden="true"></span> View Favorites</a>
+		<a href="" ng-click="favNewCollection(libType, quickFavID.id)" class="inline-block"><span class="glyphicon glyphicon-plus-sign" aria-hidden="true"></span> New Collection</a> &nbsp;&nbsp;&nbsp;	
+		<a href="#/profile/favorites" class="inline-block"><span class="glyphicon glyphicon-heart" aria-hidden="true"></span> View Favorites</a>
+		<a href="" ng-click="hideShowQuickFavortites(false)" class="pull-right inline-block"><span class="glyphicon glyphicon-remove" aria-hidden="true"></span> Close</a>
+
 	</div>
 </div>

@@ -16,7 +16,7 @@
 <meta http-equiv="Cache-Control" content="no-cache">
 <meta http-equiv="Expires" content="Sat, 01 Dec 2001 00:00:00 GMT">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="icon" href="img/favicon.ico" type="image/x-icon">
+<link rel="icon" href="/img/favicon.svg" type="image/png">
 <title>Assets Library Admin</title>
 <!--<link rel="stylesheet" type="text/css" href="css/template.css">-->
 <script src="../js/jquery-latest.js"></script>
