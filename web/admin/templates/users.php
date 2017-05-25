@@ -1,3 +1,7 @@
+<script type="text/ng-template" id="sortIcon">
+	<span class="glyphicon" ng-class="reverse ? 'glyphicon-triangle-bottom' : 'glyphicon-triangle-top'" aria-hidden="true"></span>
+</script>
+
 <h1>Users</h1>
 <hr>
 <div class="row hidden-xs">
@@ -56,14 +60,26 @@
 	<table class="table table-hover">
 		<tr class="active">
 			<th width="30px">#</th>
-			<th>User</th>
-			<th>Name</th>
-			<th>Group</th>
-			<th>Office</th>
-			<th>Status</th>
-			<th>Rights</th>
+			<th ng-click="orderByParam('user')" class="pointer">User
+				<span ng-include="'sortIcon'" ng-show="orderUsers=='user'"></span>
+			</th>
+			<th  ng-click="orderByParam('name')" class="pointer">Name
+				<span ng-include="'sortIcon'" ng-show="orderUsers=='name'"></span>
+			</th>
+			<th  ng-click="orderByParam('grp')" class="pointer">Group
+				<span ng-include="'sortIcon'" ng-show="orderUsers=='grp'"></span>
+			</th>
+			<th  ng-click="orderByParam('office')" class="pointer">Office
+				<span ng-include="'sortIcon'" ng-show="orderUsers=='office'"></span>
+			</th>
+			<th  ng-click="orderByParam('status')" class="pointer">Status
+				<span ng-include="'sortIcon'" ng-show="orderUsers=='status'"></span>
+			</th>
+			<th  ng-click="orderByParam('rights')" class="pointer">Rights
+				<span ng-include="'sortIcon'" ng-show="orderUsers=='rights'"></span>
+			</th>
 		</tr>
-		<tr ng-repeat="user in users.users" >
+		<tr ng-repeat="user in users.users | orderBy:orderUsers:reverse" >
 			<td>{{$index + 1}}.</td>
 			<td>{{user.user}}</td>
 			<td>{{user.name}}</td>
@@ -81,7 +97,7 @@
 	</table>
 </div>
 <div class="row text-center">
-	<ul uib-pagination total-items="products.totalitems" ng-model="currentPage" max-size="5" class="pagination-sm" items-per-page="users.perpage" boundary-links="true" force-ellipses="true" ng-click="changePage()">
+	<ul uib-pagination total-items="users.totalitems" ng-model="currentPage" max-size="5" class="pagination-sm" items-per-page="users.perpage" boundary-links="true" force-ellipses="true" ng-click="changePage()">
 	</ul>
 </div>
 <hr>

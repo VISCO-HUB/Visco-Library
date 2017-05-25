@@ -2,7 +2,7 @@
 [INFO] 
 
 NAME = Assets Library
-VERSION = 1.0.5
+VERSION = 1.0.6
 AUTHOR = Vasily Lukyanenko
 DEV = VISCO
 HELP = 
@@ -32,6 +32,10 @@ ICON=#("AssetsLibrary", 1)
 * Changed: Favicon=
 
 
+[1.0.6]
+
++ Added: When open model you can download data for PackModel=
+
 [ABOUT]
 
 Open Assets Library via 3Ds Max=
@@ -47,6 +51,7 @@ global siteUrl = @"http://svg-web-003/"
 global iconFile = @"\\visco.local\data\Instal_Sync\scripts\scripts\img\assets_favicon.ico"
 global trustUrl = siteUrl + @"vault/mxs/mxsTrustUser.php?user=" + sysInfo.username
 global forceRefresh
+global clearIEChache
 
 fn httpGet url =
 (	
@@ -64,6 +69,8 @@ fn httpGet url =
 	
 	return t
 )
+
+fn saveProp p d = try(fileProperties.addProperty #custom p d) catch()
 
  fn useSettings k p w =
 (
@@ -225,13 +232,27 @@ fn setWindowSize =
 	)
 )
 
-fn forceRefresh = 
+fn clearIEChache = 
 (
+	q = queryBox "Clear IE Cache?\n\nWarning: This action will delete temporary Windows files!" title: "Confirm!"
+	if(q) do
+	(
+		cmd = "RunDll32.exe InetCpl.cpl,ClearMyTracksByProcess 8"
+		HiddenDosCommand cmd
+		cmd = "erase \"%LOCALAPPDATA%\\Microsoft\\Windows\\Tempor~1\\*.*\\\" /f /s /q"
+		HiddenDOSCommand  cmd
+		cmd = "for /D %%i in (\"%LOCALAPPDATA%\\Microsoft\\Windows\\Tempor~1\\*\") do RD /S /Q \"%%i\""
+		HiddenDOSCommand  cmd	
+	)
+)
+
+fn forceRefresh = 
+(	
 	for i in 1 to 10 do
 	(
 		wb.refresh()
 		wb.refresh (dotnetclass "System.Windows.Forms.WebBrowserRefreshOption").Completely
-	)
+	)	
 )
 
 fn goBack = wb.GoBack()
@@ -269,16 +290,17 @@ fn onNavigating e =
 
 fn onFocus e = 
 (
-	enableAccelerators = false
+	for i in 1 to 3 do enableAccelerators = false	
 )
 
 fn setTexturesPath path: "" geom: selection type: BitmapTex =
 (
-	for i in geom do
+	for i in geom as array do
 	(
 		for b in getClassInstances type target: i do 
 		(	
-			if(b.filename != undefined and not doesFileExist b.filename) do
+			if(b.filename == undefined) do continue
+			if(findString b.filename path == undefined) do
 			(
 				b.filename = path + b.filename
 			)
@@ -309,7 +331,7 @@ fn showStatusPaste t c: false =
 		label lblStatus "Downloading..." offset: [0, 14] 
 		timer tmrTimer "" active: true interval: 30000
 		
-		on CopyTo open do
+		on PasteStatus open do
 		(
 			lblStatus.caption = statusText
 			tmrTimer.active = timerActive
@@ -324,14 +346,39 @@ fn showStatusPaste t c: false =
 	createDialog PasteStatus 160 50 style: #(#style_border)
 )
 
+fn getCatNameFromPath p end: 4 =
+(
+	d = filterString p "\\"
+	if(d.count <= end) do return false
+	s =  d[d.count - end]
+	s = substituteString s "-" " "
+	return s
+)
+
+fn moveToLayer n sel: #() =
+(
+	l = LayerManager.getLayerFromName n
+	if(l == undefined) do 
+	(
+		l = LayerManager.NewLayer()
+		l.setName n
+	)
+	if(l != undefined) do for i in sel do l.addNode i
+)
+
 fn addFile f mode: #merge =
 (								
 	if(not doesFileExist f) do return messageBox "Error: File not exist!" title: "Warning!"
 	
 	showStatusPaste "Downloading..."
 	p = (getFilenamePath f)
-		
+	
+	catName = getCatNameFromPath f
+	
+	sel = #()
+	
 	disableSceneRedraw()
+			
 	case mode of
 	(
 		#open:
@@ -340,26 +387,35 @@ fn addFile f mode: #merge =
 			checkForSave()
 			resetMaxFile #noPrompt
 			loadMaxFile f useFileUnits: true quiet:true	
+							
+			sel = objects as array			
 			
-			--setTexturesPath path: p geom: objects type: BitmapTex
-			--try(setTexturesPath path: p geom: objects type: CoronaBitmap)catch()
-			setIesPath path: p geom: objects			
+			setIesPath path: p geom: sel	
+			setTexturesPath path: p geom: sel type: BitmapTex
+			try(setTexturesPath path: p geom: sel type: CoronaBitmap)catch()
+			
+			try(select sel)catch()
 		)
 		#xref:
 		(
 			objs = getMAXFileObjectNames f
-			o = xrefs.addnewXrefObject f objs dupMtlNameAction: #autoRename
+			o = xrefs.addNewXrefObject f objs dupMtlNameAction: #autoRename
 			select o
+			sel = selection as array
 		)
 		default: 
 		(
 			mergeMaxFile f #select #promptDups  #promptMtlDups  quiet:true
-	
-			setTexturesPath path: p geom: selection type: BitmapTex
-			try(setTexturesPath path: p geom: selection type: CoronaBitmap)catch()
-			setIesPath path: p geom: selection
-		)
+			sel = selection as array
+			
+			setTexturesPath path: p geom: sel type: BitmapTex
+			try(setTexturesPath path: p geom: sel type: CoronaBitmap)catch()
+			setIesPath path: p geom: sel
+		)	
 	)
+		
+	-- Add objects to layer
+	if(catName != false) do moveToLayer catName sel: sel
 		
 	toolMode.selectioncenter() 
 	enableSceneRedraw()
@@ -376,26 +432,34 @@ fn onExecute e =
 	executeTimer.start()
 )
 
+fn removeHash d = if(d != undefined) then (filterString d "#")[1] else ""
+
 fn onExecuteCommand s e =
-(
+(	
 	executeTimer.stop()
 	
 	t = filterString execCommand.text "="
-	p = if(t[2] != undefined) then (filterString t[2] "#")[1] else ""
+	p = removeHash t[2] 
+	id = removeHash t[3]	
 	
 	case t[1] of
 	(
 		"MERGE_MODEL": addFile p mode: #merge
 		"XREF_MODEL": addFile p mode: #xref
-		"OPEN_MODEL": addFile p mode: #open
+		"OPEN_MODEL": 
+		(			
+			addFile p mode: #open
+			saveProp "externalModelID" id
+		)
 		"MODELNOTEXIST": messageBox _MODELNOTEXIST title: "Error!"
 		"MODELBAD": messageBox _MODELBAD title: "Error!"
 		"GOBACK": goBack()
 		"GOFORWARD": goForward()
 		"FORCEREFRESH": forceRefresh()
+		"CLEARCHACHE": clearIEChache()
 	)
 	
-	execCommand.text = ""		
+	execCommand.text = ""				
 )
 
 dotNet.addEventHandler _ViscoAssetsForm "Resize" onResize

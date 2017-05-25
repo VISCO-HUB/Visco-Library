@@ -2,7 +2,7 @@
 [INFO] 
 
 NAME = Pack Model
-VERSION = 1.0.3
+VERSION = 1.0.6
 AUTHOR = Vasily Lukyanenko
 DEV = VISCO
 HELP = 
@@ -39,6 +39,20 @@ ICON=#("PhysX_Main", 30)
 * Display open dialog when click on preview=
 * Step1 and Step2 swapped=
 
+[1.0.4]
+
+- BugFix: Crash on select category=
+
+[1.0.5]
+
++ Added: Rename Groups option=
+
+[1.0.6]
+
+* Changed: Now script will close when you do reset/open/new scene=
++ Added: Load data about model from WebService DB, if you open model from Assets Library=
++ Added: Generate unique id for each model
+
 [ABOUT]
 
 This script helps to prepare model to upload=
@@ -56,7 +70,7 @@ global _URL = "http://svg-web-003/"
 global _SAVEPATH = @"C:\temp\Assets Library\"
 
 try(closeRolloutFloater rAssetsLibraryModelPack)catch()
-global rAssetsLibraryModelPack = newRolloutFloater "Pack Model" 280 760
+global rAssetsLibraryModelPack = newRolloutFloater "Pack Model" 280 773
 
 /* GLOBALS */
 
@@ -95,6 +109,7 @@ global sManufacturer = ""
 global sModeller = ""
 global sProject = ""
 global sTags = ""
+global sToken = ""
 
 global bRigged = false
 global bAnimated = false
@@ -239,6 +254,36 @@ struct zip
 	)
 )
 
+struct XML
+(
+	xmlDoc,
+	fn load r =
+	(
+		try
+		(
+			xmlDoc = dotNetObject "system.xml.xmlDocument"	
+			xmlDoc.LoadXml r				
+		)
+		catch 
+		(
+			return false
+		)
+		
+		return true
+	),
+	fn get v type: "value"=
+	(
+		try
+		(
+			o = xmlDoc.item["data"].item[v].GetAttribute(type)
+			if(o == undefined) do o = ""
+		)
+		catch(return "")
+		
+		return o		
+	)
+)
+
 /* MAIN FUNCTIONS */
 
 fn trim s c: " " = trimRight (trimLeft s c) c
@@ -248,6 +293,12 @@ fn setPosRelTagsList =
 	p = rAssetsLibraryModelPack.pos				
 	p.x += _STEP2.width + 20
 	try(SetDialogPos _RelTagsList p)catch()
+)
+
+fn rebuildPackModel =
+(	
+	try(closeRolloutFloater rAssetsLibraryModelPack)catch()
+	--try(fileIn (getThisScriptFileName()))catch()
 )
 
 fn conversion s = 
@@ -288,6 +339,23 @@ fn convertFileToUTF8 o n  =
 	s.Close()		
 )
 
+fn generateUniqueID = 
+(
+	c = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890"
+	code = ""
+	
+	sec = 9
+	secNum = 5
+	
+	for i in 1 to sec do 
+	(
+		for ii in 1 to secNum do code += c[random 1 c.count] 
+		if(i != sec) do code += "-"
+	)
+	
+	return code
+)
+
 fn getScriptInfo s releaseInfo: "" =
 (		
 	if(releaseInfo != "") do
@@ -309,7 +377,7 @@ fn getScriptInfo s releaseInfo: "" =
 )
 
 
-fn showTooltip c t =
+fn showTooltip c t title: "Warning!" show: 4000=
 (
 	toolTip = dotnetobject "System.Windows.Forms.ToolTip"
 	toolTip.SetToolTip c t   
@@ -318,9 +386,14 @@ fn showTooltip c t =
 	toolTip.InitialDelay = 100
 	toolTip.AutoPopDelay = 500
 	toolTip.ReshowDelay = 50
-	toolTip.ToolTipTitle = "Warning!"
-	toolTip.Show t c 3000	
-	toolTip.ToolTipIcon = (dotnetclass "System.Windows.Forms.ToolTipIcon").Warning
+	toolTip.ToolTipTitle = title
+	toolTip.Show t c show	
+	case title of
+	(
+		"Warning!": toolTip.ToolTipIcon = (dotnetclass "System.Windows.Forms.ToolTipIcon").Warning
+		"Info!": toolTip.ToolTipIcon = (dotnetclass "System.Windows.Forms.ToolTipIcon").Info
+		"Error!": toolTip.ToolTipIcon = (dotnetclass "System.Windows.Forms.ToolTipIcon").Error
+	)	
 )
 
 fn invalidBitmap b = 
@@ -604,7 +677,7 @@ fn findTag t =
 	return find
 )
 
-fn saveAllProp = 
+fn saveAllProp saveCat: #auto = 
 (
 	saveProp "edtModelName" sModelName
 	saveProp "edtManufacturer" sManufacturer
@@ -612,6 +685,11 @@ fn saveAllProp =
 	saveProp "edtProject" sProject
 	saveProp "edtTags" sTags
 	saveProp "catID" catID
+	saveProp "edtToken" sToken
+	
+	saveProp "edtOverview" sOverview
+	saveProp "edtCustom1" sCustom1
+	saveProp "edtClient" sClient
 		
 	saveProp "cbxRigged" bRigged
 	saveProp "cbxAnimated" bAnimated
@@ -621,17 +699,43 @@ fn saveAllProp =
 	saveProp "cbxUnwrap" bUnwrap
 	saveProp "cbxLights" bLights
 	
-	saveProp "ddlLib" iCat1
-	saveProp "ddlCat" iCat2
-	saveProp "ddlSubCat" iCat3
-	
-	saveProp "catId1" (if(iCat1 > 0) then category1[iCat1][1] else -1)
-	saveProp "catId2" (if(iCat2 > 0) then category2[iCat2][1] else -1)
-	saveProp "catId3" (if(iCat3 > 0) then category3[iCat3][1] else -1)
-		
-	saveProp "category1" (implodeCat category1)
-	saveProp "category2" (implodeCat category2)
-	saveProp "category3" (implodeCat category3)	
+	case (saveCat) of
+	(
+		#auto: (
+			saveProp "ddlLib" iCat1
+			saveProp "ddlCat" iCat2
+			saveProp "ddlSubCat" iCat3
+			
+			saveProp "catId1" (if(iCat1 > 0) then category1[iCat1][1] else -1)
+			saveProp "catId2" (if(iCat2 > 0) then category2[iCat2][1] else -1)
+			saveProp "catId3" (if(iCat3 > 0) then category3[iCat3][1] else -1)
+				
+			saveProp "category1" (implodeCat category1)
+			saveProp "category2" (implodeCat category2)
+			saveProp "category3" (implodeCat category3)	
+		)
+		#force: (
+			saveProp "catId1" catId1
+			saveProp "catId2" catId2
+			saveProp "catId3" catId3
+			
+			saveProp "sPreviewPath" (implode sPreviewPath)
+			saveProp "bMainPreview" (implode bMainPreview)
+		)
+	)
+)
+
+fn getTrueFalse d =
+(
+	if(d == "Yes") do return true
+	return false
+)
+
+
+fn getNA d = 
+(
+	if(d == "N/A") do return ""
+	return d
 )
 
 rollout _STEP1 "STEP 1: Model Transform" 
@@ -668,12 +772,65 @@ rollout _STEP1 "STEP 1: Model Transform"
 		button btnPostiton "Set to Scene Center" tooltip: "Move objects in to center of scene." height: 28
 	)
 	
-	Timer tmrBoxTrick "" pos:[0,0] width:24 height:24 interval:100 active:false
+	timer tmrBoxTrick "" pos:[0,0] width:24 height:24 interval:100 active:false
+	
+	progressBar hr "" height: 3 offset:[0,15]
+	button btnNext "Next >>" align: #right  enabled: true width: 75 height: 28 
+	dotnetcontrol nextWarn "System.Windows.Forms.Button" height:0 width:0 align: #right
+
+	fn getModelById id =
+	(
+		clearListener()
+		url = _URL + "vault/mxs/mxsGetModelByID.php?id=" + id + "&time=" + timeStamp() as string
+		r = httpGet url	
+			
+		x = XML()
+			
+		if(x.load r == false) do return false	
+		if(x.get "responce" != "OK") do return false
+		
+		sModelName = x.get "name"
+		sManufacturer = getNA (x.get "manufacturer")
+		sModeller = getNA (x.get "modeller")
+		sProject = getNA (x.get "project")
+		sTags = x.get "tags"
+		catID = x.get "catid"
+		sToken = x.get "token"
+		sClient = getNA (x.get "client")
+		sCustom1 = getNA (x.get "custom1")
+		sOverview = subStituteString (x.get "overview") "|" "\r\n"
+		
+		bRigged = getTrueFalse (x.get "rigged")
+		bAnimated = getTrueFalse (x.get "animated")
+		bBakedTextures = getTrueFalse (x.get "baked")
+		bGameEngineReady = getTrueFalse (x.get "gameengine")
+		bLods = getTrueFalse (x.get "lods")
+		bUnwrap = getTrueFalse (x.get "unwrap")
+		bLights = getTrueFalse (x.get "lights")
+			
+		catId1 = x.get "cat1" type: "id"
+		catId2 = x.get "cat2" type: "id"
+		catId3 = x.get "cat3" type: "id"
+		
+		sPreviewPath = try(explode (x.get "previews"))catch(#())
+		bMainPreview  = #(true)
+			
+		saveAllProp saveCat: #force
+			
+		m = "Data for this model was downloaded from DB!"	
+		showTooltip nextWarn m title: "Info!" show: 10000
+	)
 	
 	fn setPivot zpos: undefined =
 	(
-		selection.pivot = selection.center
-		if(zpos != undefined) do selection.pivot.z = zpos
+		for i in selection do 
+		(	
+			i.pivot = i.center
+			if(zpos != undefined) do i.pivot.z = zpos
+		)
+		
+		/*selection.pivot = selection.center
+		if(zpos != undefined) do selection.pivot.z = zpos*/
 			
 		ForceCompleteRedraw()
 	)
@@ -682,8 +839,24 @@ rollout _STEP1 "STEP 1: Model Transform"
 	
 	on _STEP1 open do
 	(
+		callbacks.removeScripts id:#postNew_PackModel
+		callbacks.removeScripts id:#postReset_PackModel
+		callbacks.removeScripts id:#filePostOpen_PackModel
+		
+		callbacks.addScript #systemPostNew "rebuildPackModel()" id:#postNew_PackModel
+		callbacks.addScript #systemPostReset "rebuildPackModel()" id:#postReset_PackModel
+		callbacks.addScript #filePostOpen "rebuildPackModel()" id:#filePostOpen_PackModel
+		
+		
 		v = useSettings "CONVERTTOMESH" "bool" "r"	
 		cbxConvertToMesh.checked = if(v == false) then false else true
+		
+		-- Get Model Data from DB
+		externalModelID = getProp "externalModelID"
+		if(externalModelID != "" and externalModelID.count > 0) do 
+		(
+			getModelById externalModelID			
+		)
 	)
 	
 	on btnRemoveIsolatedVerts pressed do
@@ -897,10 +1070,6 @@ rollout _STEP1 "STEP 1: Model Transform"
 		ungroup g		
 	)
 	
-	progressBar hr "" height: 3 offset:[0,15]
-	button btnNext "Next >>" align: #right  enabled: true width: 75 height: 28 
-	dotnetcontrol nextWarn "System.Windows.Forms.Button" height:0 width:0 align: #right
-	
 	on btnNext pressed do 
 	(
 		if(not isSelected()) do return showTooltip nextWarn "Please select model!"
@@ -938,22 +1107,24 @@ rollout _STEP2 "STEP 2: Model Info"
 		dotNetControl edtModeller "System.Windows.Forms.TextBox" height: 25 tabstop: true
 		label lbl4 "Project:" align: #left		
 		dotNetControl edtProject "System.Windows.Forms.TextBox" height: 25 tabstop: true
-		label lbl5 "Tags:" align: #left across: 2 	
+		label lbl5 "Tags:" align: #left across: 2 			
 		dotNetControl lblWarn2 "System.Windows.Forms.Label" text: "*" offset: [-94, 0] width: 10	
 		dotNetControl edtTags "System.Windows.Forms.TextBox" height: 60 tabstop: true across: 2 width: 180 readOnly: true
 		button btnShowRelTags "Edit" align: #right offset: [0, 0] tooltip: "Select tags actual for current category." height: 60 width: 60
+	
+		-- Hidden TextBox with token
+		dotNetControl edtToken "System.Windows.Forms.TextBox" height: 0 width: 0 readOnly: true 
 	)
 	
 	group "Model Properties"
 	(
-		checkbox cbxUnwrap "  Unwrapped"
-		checkbox cbxLights "  Lights"
-		checkbox cbxRigged "  Rigged"
-		checkbox cbxAnimated "  Animated"
+		checkbox cbxUnwrap "  Unwrapped" across: 2
 		checkbox cbxGameEngineReady "  Game Engine Ready"
+		checkbox cbxLights "  Lights" across: 2
 		checkbox cbxBakedTextures "  Baked Textures"
+		checkbox cbxAnimated "  Animated" across: 2
 		checkbox cbxLods "  Lods"
-		
+		checkbox cbxRigged "  Rigged"		
 	)
 		
 	timer tmr1 "Tmr1" active: false interval: 300
@@ -994,7 +1165,11 @@ rollout _STEP2 "STEP 2: Model Info"
 		edtTags.ScrollBars = (dotNetClass "System.Windows.Forms.ScrollBars").Vertical
 		edtTags.MultiLine = true
 		edtTags.WordWrap = true
-	
+		
+		edtToken.readOnly = true
+		edtToken.backColor = edtToken.backColor.gray
+		edtToken.foreColor = edtToken.foreColor.white
+			
 		warnLabels = #(lblWarn1, lblWarn2, lblWarn3, lblWarn4, lblWarn5)
 		bg = getBgColor()
 		txt = getTextColor()
@@ -1117,6 +1292,35 @@ rollout _STEP2 "STEP 2: Model Info"
 				b.SelectionStart = (b.text.count)			
 			)
 			
+			fn addDefaultTagsFromCatName = 
+			(
+				t = #()
+				t[1] = ddlLib.selected
+				t[2] = ddlCat.selected
+				t[3] = ddlSubCat.selected
+				
+				badWords = #(" And ", "and",  "AND", "ANd"," ")
+				
+				tmp = ""
+				for i in t do 
+				(
+					i = trim i		
+					i = toLower i
+					for ii in badWords do  i = substituteString i ii ","					
+					tmp += i + ","
+				)
+				
+				tmp2 = ""
+				for i in filterString tmp "," do tmp2 += i + ","
+							
+				
+				if(lbxTags.items.count == 0) do
+				(
+					lbxTags.items = strToTags tmp2 
+					edtTags.text = tmp2 
+				)
+			)
+			
 			on btnCloseWind pressed do try(destroyDialog _RelTagsList)catch()
 			on _RelTagsList open do 
 			(	
@@ -1133,6 +1337,8 @@ rollout _STEP2 "STEP 2: Model Info"
 				
 				lbxTagsActual.items = relTags
 				lbxTags.items = strToTags edtTags.text 
+				
+				addDefaultTagsFromCatName()
 			)
 			
 			on btnDeleteTag pressed do
@@ -1345,10 +1551,11 @@ rollout _STEP2 "STEP 2: Model Info"
 	
 	on btnNext pressed do 
 	( 						
-		sModelName = edtModelName.text		
-		sManufacturer = edtManufacturer.text
-		sModeller = edtModeller.text
-		sProject = edtProject.text
+		sModelName = trim (edtModelName.text)
+		sManufacturer = trim (edtManufacturer.text)
+		sModeller = trim (edtModeller.text)
+		sProject = trim (edtProject.text)
+		sToken = edtToken.text
 		sTags = edtTags.text
 
 		bRigged = cbxRigged.checked
@@ -1364,8 +1571,8 @@ rollout _STEP2 "STEP 2: Model Info"
 		iCat3 = ddlSubCat.selection
 		
 		if(iCat1 > 0) do catId1 = category1[iCat1][1]
-		if(iCat2 > 0) do catId2 = category2[iCat1][1]
-		if(iCat3 > 0) do catId3 = category3[iCat1][1]
+		if(iCat2 > 0) do catId2 = category2[iCat2][1]
+		if(iCat3 > 0) do catId3 = category3[iCat3][1]
 
 		print catID
 
@@ -1404,13 +1611,19 @@ rollout _STEP2 "STEP 2: Model Info"
 	on _STEP2 open do
 	(	
 		initDotNet()
-
+		
+		edtToken.text = getProp "edtToken"
+		if(edtToken.text.count == 0) then
+		(
+			edtToken.text =generateUniqueID()
+		)
+				
 		edtModelName.text = getProp "edtModelName"
 		edtManufacturer.text = getProp "edtManufacturer" 
 		edtModeller.text =  getProp "edtModeller"
 		edtProject.text =  getProp "edtProject"
 		edtTags.text = getProp "edtTags"
-
+		
 		cbxRigged.checked = getProp "cbxRigged" type: #bool
 		cbxAnimated.checked = getProp "cbxAnimated" type: #bool
 		cbxBakedTextures.checked = getProp "cbxBakedTextures" type: #bool
@@ -1458,10 +1671,10 @@ rollout _STEP2 "STEP 2: Model Info"
 			t = filterString i "|"
 			if(t.count > 1) do
 			(
-				appendIfUnique models t[1]
-				appendIfUnique manufacturers t[2]
-				appendIfUnique projects t[3]
-				appendIfUnique clients t[4]
+				if(t[1] != undefined) do appendIfUnique models t[1]
+				if(t[2] != undefined) do appendIfUnique manufacturers t[2]
+				if(t[3] != undefined) do appendIfUnique projects t[3]
+				if(t[4] != undefined) do appendIfUnique clients t[4]
 			)
 		)
 			
@@ -1817,6 +2030,7 @@ rollout _STEP5 "STEP 5: Pack Model"
 		checkbox cbxRenameTextures "Rename Textures" checked: true
 		checkbox cbxRenameMaterials "Rename Materials" checked: true
 		checkbox cbxRenameObjects "Rename Objects" checked: true
+		checkbox cbxRenameGroups "Rename Groups" checked: true
 	)
 	
 	button btnPackModel "Pack Model" width: 244 height: 45 align: #left across: 2
@@ -1898,6 +2112,9 @@ rollout _STEP5 "STEP 5: Pack Model"
 			
 		v = useSettings "RENMAT" "bool" "r"	
 		cbxRenameMaterials.checked = if(v == false) then false else true
+			
+		v = useSettings "RENGRP" "bool" "r"	
+		cbxRenameGroups.checked = if(v == false) then false else true
 	)
 		
 	fn checkTexturesError =
@@ -1949,9 +2166,10 @@ rollout _STEP5 "STEP 5: Pack Model"
 		for i in 1 to sPreviewPath.count do
 		(
 			p = getFilenameType sPreviewPath[i] 
+			p = toLower p
 			if(doesFileExist sPreviewPath[i]) do 
 			(								
-				if(bMainPreview[i]) then 
+				if(bMainPreview[i] != undefined and bMainPreview[i]) then 
 				(
 					n = (szDir + "main" + p) 
 					copyFile sPreviewPath[i] n
@@ -1989,8 +2207,9 @@ rollout _STEP5 "STEP 5: Pack Model"
 					p = getFilenamePath f
 					ext = getFilenameType f
 										
-					if(cbxRenameTextures.checked) do n = szName + "-" + (getNum iCnt) + ext
-										
+					if(cbxRenameTextures.checked) do n = szName + "-" + (getNum iCnt)
+					n = n + (toLower ext)
+					
 					if(doesFileExist f) do
 					( 
 						ep = findItem oldTexPaths b.filename
@@ -2020,22 +2239,24 @@ rollout _STEP5 "STEP 5: Pack Model"
 	(
 		r = cbxRenameObjects.checked
 		
-		iCnt = 1
+		iObjCnt = 1
+		iGrpCnt = 1
 				
 		for g in objects where isValidNode g do
-		(
+		(								
 			n = g.name
 			if(isGroupHead g and not (isGroupMember g)) then 
-			(	
-				n = szName + "-Group-001" 
+			(					
+				if(cbxRenameGroups.checked) do n = szName + "-Group-"  + (getNum iGrpCnt) 
+				iGrpCnt += 1
 			)
 			else 
 			(
-				if(r) do n = szName + "-" + (getNum iCnt) 
+				if(r) do n = szName + "-" + (getNum iObjCnt) 
+				iObjCnt += 1
 			)
 			
-			g.name = n
-			iCnt += 1
+			g.name = n			
 		)
 	)
 	
@@ -2138,6 +2359,7 @@ rollout _STEP5 "STEP 5: Pack Model"
 		setIniInfo f "INFO" "TYPE" "model" 
 		setIniInfo f "INFO" "CATID" (catID as string) 
 		setIniInfo f "INFO" "NAME" sModelName 
+		setIniInfo f "INFO" "TOKEN" sToken 
 		setIniInfo f "INFO" "FORMAT" v[1] 
 		setIniInfo f "INFO" "RENDER" r[2] 
 		setIniInfo f "INFO" "POLYS" p 
@@ -2173,6 +2395,7 @@ rollout _STEP5 "STEP 5: Pack Model"
 	on cbxRenameTextures changed v do useSettings "RENTEX"	v "w"	
 	on cbxRenameObjects changed v do useSettings "RENOBJ"	v "w"	
 	on cbxRenameMaterials changed v do useSettings "RENMAT"	v "w"	
+	on cbxRenameGroups changed v do useSettings "RENGRP"	v "w"	
 
 	
 	on btnPackModel pressed do

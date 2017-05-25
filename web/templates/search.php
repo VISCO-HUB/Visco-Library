@@ -7,6 +7,7 @@
 		<div modelcard></div>
 	</div>
 </div>
-<h3 ng-show="!products.result.length" class="text-center">Sorry. Nothing found{{searchFilter.cat.name.length ? ' in ' + searchFilter.cat.name : '...'}}</h3>
+<h3 ng-show="!products.result.length && products.currpage" class="text-center">Sorry. Nothing found{{searchFilter.cat.name.length ? ' in ' + searchFilter.cat.name : '...'}}</h3>
+<h3 ng-show="!products.currpage" class="text-center">Searching...</h3>
 <div pagination></div>
 

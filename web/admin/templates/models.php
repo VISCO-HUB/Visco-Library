@@ -20,6 +20,7 @@
 		</ul>
 	</div>
 </div>
+
 <br>
 <br>
 <div class="table-responsive">
@@ -45,7 +46,7 @@
 				|
 				<span ng-show="auth.rights >= 1"><a href="" ng-click="prodDelete(prod.id, prod.name)" >Delete</a>
 				|</span>
-				<a href="/#/model/{{prod.id}}" target="_blank">View</a></td>
+				<a href="/#/model/{{prod.id}}">View</a></td>
 			</td>
 		</tr>
 	</table>

@@ -89,7 +89,7 @@ label {
 }
 
 .btn-primary:active, .btn-primary:active:focus, .btn-primary:focus, .btn-primary.active, .open > .dropdown-toggle.btn-primary {
-    color: #fff;
+    color: #fff !important;
     background-color: #548A2E;
     border-color: #497728;
 }
@@ -112,6 +112,7 @@ label {
 .btn-primary.disabled:hover, .btn-primary[disabled]:hover, fieldset[disabled] .btn-primary:hover, .btn-primary.disabled:focus, .btn-primary[disabled]:focus, fieldset[disabled] .btn-primary:focus, .btn-primary.disabled.focus, .btn-primary[disabled].focus, fieldset[disabled] .btn-primary.focus {
     background-color: #6A6A6A;
     border-color: #5C5C5C;
+	color: #FFF;
 }
 
 .btn-primary:active:hover, .btn-primary.active:hover, .open > .dropdown-toggle.btn-primary:hover, .btn-primary:active:focus, .btn-primary.active:focus, .open > .dropdown-toggle.btn-primary:focus, .btn-primary:active.focus, .btn-primary.active.focus, .open > .dropdown-toggle.btn-primary.focus {

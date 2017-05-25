@@ -16,6 +16,7 @@
 <meta http-equiv="Cache-Control" content="no-cache">
 <meta http-equiv="Expires" content="Sat, 01 Dec 2001 00:00:00 GMT">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#337AB7">
 <link rel="icon" href="/img/favicon.svg" type="image/png">
 <title>Assets Library Admin</title>
 <!--<link rel="stylesheet" type="text/css" href="css/template.css">-->
@@ -31,6 +32,7 @@
 <script type="text/javascript" src="js/app.js"></script>
 <script type="text/javascript" src="../js/bootstrap.min.js"></script>
 <script type="text/javascript" src="../js/ui-bootstrap-tpls-2.1.3.min.js"></script>
+<script type="text/javascript" src="../js/angular-bootstrap-multiselect.min.js"></script>
 <link href="../css/bootstrap.css" rel="stylesheet" type="text/css">
 <link href="css/admin-template.css" rel="stylesheet" type="text/css">
 <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
@@ -49,7 +51,7 @@
 			<div id="navbar3" class="navbar-default">
 				<ul class="nav nav-buttons">
 					<li class="visible-xs-inline visible-sm-inline"><a href="" ng-click="toggleOverlayMenu()" ><span class="glyphicon glyphicon-menu-hamburger"></span></a></li>	
-					<li class="active"><a href="#/" tooltip-popup-delay="200" uib-tooltip="Home" tooltip-placement="bottom"><span class="glyphicon glyphicon-home"></span></a></li>
+					<li class="active"><a href="/" tooltip-popup-delay="200" uib-tooltip="Home" tooltip-placement="bottom"><span class="glyphicon glyphicon-home"></span></a></li>
 					<li ng-show="auth.browser=='MXS'"><a href="" ng-click="mxsGoBack()" tooltip-popup-delay="200" uib-tooltip="Back"><span class="glyphicon glyphicon-arrow-left"></span></a></li>
 					<li ng-show="auth.browser=='MXS'"><a href="" ng-click="mxsGoForward()" tooltip-popup-delay="200" uib-tooltip="Forward"><span class="glyphicon glyphicon-arrow-right"></span></a></li>
 					<li ng-show="auth.browser=='MXS'"><a href="" ng-click="mxsForceRefresh()" tooltip-popup-delay="200" uib-tooltip="Refresh"><span class="glyphicon glyphicon-refresh"></span></a></li>

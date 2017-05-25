@@ -120,6 +120,26 @@ fn getMaxVersion =
 	return v as string
 )
 
+fn setupImageButton btn txt png =
+(
+	c = dotNetClass "System.Drawing.Color" 
+	btn.FlatStyle = dotnetobject "System.Windows.Forms.FlatStyle" Flat
+	btn.FlatAppearance.MouseOverBackColor = c.LightGray
+	
+	p =  getFilenamePath (getThisScriptFileName())		
+	a = dotNetClass "System.Drawing.ContentAlignment"
+	i = dotNetClass "System.Drawing.image"
+	img = i.FromFile (p + @"img\" + png + @".png")		
+	lst = dotNetObject "System.Windows.Forms.ImageList"
+	lst.ImageSize =  dotnetobject "System.Drawing.Size" 36 24
+	lst.images.Add img
+	btn.Text = txt
+	btn.TextAlign = a.MiddleCenter
+	btn.ImageAlign = a.MiddleLeft
+	btn.ImageIndex = 0
+	btn.ImageList = lst
+)
+
  fn useSettings k p w =
 (
 	u = sysInfo.username
@@ -262,9 +282,11 @@ fn setRenderQuality =
 	renderSizeWidth = checkInteger renderSizeWidth 800
 	renderSizeHeight = checkInteger renderSizeHeight 800
 	
+	renderImageFilter = useSettings "RENDER_FILTER" "bool_not" "r"
+	
 	_rStep3.spnRenderSizeX.value = renderSizeWidth
 	_rStep3.spnRenderSizeY.value = renderSizeHeight
-	_rStep0.sldQuality.value = q
+	_rStep3.sldQuality.value = q
 	
 	_rStep3.cbxDR.visible = true
 	_rStep3.btnOpenEditor.visible = true
@@ -303,8 +325,9 @@ fn setRenderQuality =
 			_rStep3.cbxDR.visible = false
 			_rStep3.btnOpenEditor.visible = false
 			
-			rendForce2Side = true
-			scanlineRender.antiAliasFilter = Catmull_Rom()
+			if(renderImageFilter == true) do scanlineRender.antiAliasFilter = Catmull_Rom()
+			
+			rendForce2Side = true			
 			LT = SceneRadiosity.radiosity
 			if(LT  != undefined and classOf LT == Light_Tracer) do
 			(
@@ -327,8 +350,12 @@ fn setRenderQuality =
 			renderSystem.bg_colorRefract = white
 			renderSystem.bg_overrideDirect = on
 			renderSystem.bg_colorDirect = white
-			renderSystem.image_prefilter_type = 3
-			renderSystem.image_prefilter_width  = 1.43
+			
+			if(renderImageFilter == true) do
+			(
+				renderSystem.image_prefilter_type = 3
+				renderSystem.image_prefilter_width  = 1.43
+			)
 		)
 		#Vray:
 		(						
@@ -351,8 +378,13 @@ fn setRenderQuality =
 			renderSystem.colorMapping_brightMult = 1.0
 			renderSystem.environment_gi_on = true
 			renderSystem.environment_gi_color = black
-			renderSystem.filter_on  = on
-			renderSystem.filter_kernel = Catmull_Rom()
+			renderSystem.colorMapping_adaptationOnly = 1
+				
+			if(renderImageFilter == true) do
+			(	
+				renderSystem.filter_on  = on
+				renderSystem.filter_kernel = Catmull_Rom()
+			)
 					
 			case q of 
 			(
@@ -433,6 +465,7 @@ fn rolloutToggle t =
 		return false
 	)
 	
+	_rStep0.open = false
 	addRollout _rStep1 fFastRender rolledUp:true
 	addRollout _rStep2 fFastRender rolledUp:true
 	addRollout _rStep3 fFastRender
@@ -450,26 +483,25 @@ fn rolloutToggle t =
 )
 
 rollout _rStep0  "Basic Setup" category:1
-(
+(		
 	group "Settings"
 	(
+		checkbox cbxUseImageFilter "Use Image Filter"
 		label lblAOSize "AO Size:" across: 2 align: #left
-		spinner spnAOSize "" range: [0.001, 99999999999.0, (units.decodeValue "8.0cm")] type: #worldunits fieldWidth: 50 align: #center offset: [-42, 0]
-		slider sldQuality "Quality:" ticks: 2 range:[0, 2, 0] type: #integer
-		label lblQualityLow "Draft" align: #left across: 3
-		label lblQualityMedium "Preview" align: #center
-		label lblQualityHigh "Final" align: #right
+		spinner spnAOSize "" range: [0.001, 99999999999.0, (units.decodeValue "8.0cm")] type: #worldunits fieldWidth: 50 align: #center offset: [-72, 0]	
 	)
-		
-	button btnSetupScene "Setup Scene" height: 30 width: 215
-		
+	
+	dotnetcontrol btnSetupScene "System.Windows.Forms.Button" height: 40 width: 215
+	
 	fn disableUI d =
 	(
 		for i in _rStep0.controls do i.enabled = d					
 	)	
 	
 	on _rStep0	open do
-	(						
+	(	
+		setupImageButton btnSetupScene "Setup Scene" "settings-01"
+		
 		callbacks.removeScripts id:#renderChange
 		callbacks.removeScripts id:#postNew
 		callbacks.removeScripts id:#postReset
@@ -493,39 +525,46 @@ rollout _rStep0  "Basic Setup" category:1
 		callbacks.removescripts id:#selectionSetChanged
 	)
 		
-	on btnSetupScene pressed do
+	on btnSetupScene Click do
 	(		
 		q = setupRenderEngine()
 		if(q == #none) do return false
 		
-		deleteDomes()
-		deleteSkyLights()
+		isUsedHDRI = _rStep1.isUsedHDRI() 
+		
+		if(isUsedHDRI != true) do
+		(
+			deleteDomes()
+			deleteSkyLights()
+		)
 		
 		r = getRender()
 						
 		if(r == #unknown) do return messageBox "Please assign Corona or V-Ray Renderer!" title: "Warning!" 
-			
-		_rStep1.setHDRI()
-		
+				
 		--_rStep1.firstLoad()
 					
 		fileProperties.addProperty #custom "MakePreviewSetup" true
-			
+					
 		rolloutToggle true
 		
+		if(isUsedHDRI != true ) then _rStep1.setHDRI() else _rStep1.loadHDR()
+		
 		setRenderQuality()
+		
+		_rStep1.setupScene()
+		
+		_rStep0.open = false
 	)
 			
 	on spnAOSize changed v do
 	(
 		useSettings "AO_SIZE" v "w"
-	)
+	)	
 	
-	on sldQuality changed v do
-	(	
-		useSettings "RENDER_QUALITY" v "w"
-				
-		setRenderQuality()
+	on cbxUseImageFilter changed v do
+	(
+		useSettings "RENDER_FILTER" v "w"
 	)
 )
 
@@ -818,6 +857,40 @@ rollout _rStep1  "HDRI" category:2
 		)			
 	)
 	
+	fn isUsedHDRI = 
+	(
+		r = getRender()
+		
+		case r of 
+		(
+			#Corona: 
+			(
+				if(renderSystem.bg_source == 1) do
+				(
+					h = getHDR renderSystem.bg_texmap
+					
+					if(h != undefined and doesFileExist h.filename and lightHDRPath != h.filename) do return true
+				)
+			)
+			#VRay:
+			(	
+				dome = getDome()				
+				if(dome != undefined) do 
+				(
+					h = getHDR dome.texmap
+							print "----"
+						print (h.filename)
+						print "++"
+						print (lightHDRPath)
+						print "----"		
+					if(h != undefined and doesFileExist h.filename and lightHDRPath != h.filename) do return true
+				)
+			)
+		)
+		
+		return false
+	)
+	
 	fn setHDRI =
 	(
 		f = getFilenamePath  (getThisScriptFilename ()) + @"hdri\" 
@@ -832,10 +905,13 @@ rollout _rStep1  "HDRI" category:2
 		lightHDRPath = if(f1 != "")	then f1 else lightHDRPath
 		reflectHDRPath = if(f2 != "") then f2 else reflectHDRPath	
 			
+		setReflHDR = useSettings "REFLECT_HDR_ON" "bool_not" "r"
+			
 		case r of 
 		(
 			#Corona: 
-			(
+			(				
+			
 				renderSystem.bg_source = 1
 				
 				if(doesFileExist lightHDRPath) do
@@ -856,7 +932,7 @@ rollout _rStep1  "HDRI" category:2
 				
 				if(doesFileExist reflectHDRPath) do
 				(
-					renderSystem.bg_overrideReflect = true			
+					renderSystem.bg_overrideReflect = setReflHDR			
 					reflectHDR = CoronaBitmap()
 					reflectHDR.filename = reflectHDRPath
 					renderSystem.bg_texmapReflect = reflectHDR
@@ -907,14 +983,13 @@ rollout _rStep1  "HDRI" category:2
 					a = useSettings "LIGHT_HDR_MULT" "string" "r"	
 					setMult dome.texmap a	
 
-					a = useSettings "REFLECT_HDR_ON" "bool_not" "r"						
-					dome.affect_reflections = not a
+					dome.affect_reflections = not setReflHDR
 				)
 				
 				if(doesFileExist reflectHDRPath) do
 				(
-					renderSystem.environment_rr_on = true			
-					renderSystem.environment_rr_map_on = true			
+					renderSystem.environment_rr_on = setReflHDR			
+					renderSystem.environment_rr_map_on = setReflHDR			
 									
 					
 					reflectHDR = BitmapTex()
@@ -937,6 +1012,7 @@ rollout _rStep1  "HDRI" category:2
 	fn useReflect =
 	(
 		c = useSettings "REFLECT_HDR_ON" "bool_not" "r"	
+
 		cbxUseReflect.checked = c
 		
 		r = getRender()
@@ -982,16 +1058,14 @@ rollout _rStep1  "HDRI" category:2
 	fn setupScene = 
 	(
 		if(renderSystem == undefined) do return messageBox "Please assign correct render!" title: "Warning!"
-				
-		defaultView()
-				
-		setHDRI()
+						
+		--setHDRI()
 		
 		useReflect()
 				
 		addVFB_Elements()
-				
-		setRenderQuality()			
+
+		defaultView()		
 	)
 	
 	fn firstLoad = 
@@ -1011,8 +1085,11 @@ rollout _rStep1  "HDRI" category:2
 						
 		s = useSettings "AO_SIZE" "int" "r"
 		if(s != 0) do _rStep0.spnAOSize.value = s
+		
+		s = useSettings "RENDER_FILTER" "bool_not" "r"
+		_rStep0.cbxUseImageFilter.checked = s
 	)
-	
+		
 	on btnLightHDR pressed do
 	(
 		f = getOpenFileName  caption: "Select Light HDR" types: "*.hdr|*.hdr|*.exr|*.exr"
@@ -1195,8 +1272,8 @@ rollout _rStep2  "Highlights" category:3
 		spinner spnDist "Dist.:" range: [0, 99999999, (units.decodeValue "150.0cm")] fieldWidth: 60 type: #worldunits  align: #right offset: [0, 10] scale: 1.0
 		spinner spnScale "Scale.:" range: [0, 99999999, 1.0] fieldWidth: 60 type: #float  scale: 0.05 offset: [0, 10] align: #right 
 	)
-	
-	button btnPlace "Place Highlight" width: 215 height: 30
+		
+	dotnetcontrol btnPlace "System.Windows.Forms.Button" height: 40 width: 215
 	
 	timer tmrInteractive active: false 
 		
@@ -1430,6 +1507,8 @@ rollout _rStep2  "Highlights" category:3
 	
 	on _rStep2 open do
 	(
+		setupImageButton btnPlace "Place Highlight" "place-02"
+		
 		r = getRender()
 		if(r == #Scanline) do
 		(
@@ -1451,7 +1530,7 @@ rollout _rStep2  "Highlights" category:3
 	on lbxLights selected a do getParams()	
 
 	
-	on btnPlace pressed do
+	on btnPlace Click do
 	(			
 		placeObj = getCurrentLight()
 		
@@ -1496,7 +1575,7 @@ fn postProcess =
 		
 		timer tmrShowRender "" active: false
 				
-		fn preRenderImageFromMap = renderMap outputMap size:[800, 800] filter: false scale: 1.0 gamma: 2.2
+		fn preRenderImageFromMap = renderMap outputMap size:[renderWidth, renderHeight] filter: false scale: 1.0 gamma: 2.2
 		
 		fn setBitmap b =
 		(
@@ -1685,6 +1764,13 @@ fn postProcess =
 
 rollout _rStep3  "Render / Post Process" category:4
 (		
+	group "Render Quality"
+	(
+		slider sldQuality "" ticks: 2 range:[0, 2, 0] type: #integer
+		label lblQualityLow "Draft" align: #left across: 3
+		label lblQualityMedium "Preview" align: #center
+		label lblQualityHigh "Final" align: #right
+	)
 	group "Render"
 	(
 		--button btnStartInteractive "Start Interactive"
@@ -1692,16 +1778,27 @@ rollout _rStep3  "Render / Post Process" category:4
 		spinner spnRenderSizeX "" range: [100, 999999999, 800] fieldWidth: 50 type: #integer align: #right across: 3 offset: [20, 0]
 		label lblX " x " 
 		spinner spnRenderSizeY "" range: [100, 999999999, 800] fieldWidth: 50 type: #integer align: #left offset: [-20, 0]
-		button btnStartRender "Start Render" height: 30 width: 215		
+		--button btnStartRender "Start Render" height: 30 width: 215		
+		dotnetcontrol btnStartRender "System.Windows.Forms.Button" height: 40 width: 215
+		
 		checkbox cbxDR "Distributed rendering"
 	)
 	group "Post Process"
 	(
-		button btnOpenEditor "Open Editor" height: 30 width: 215
+		--button btnOpenEditor "Open Editor" height: 30 width: 215
+		
+		dotnetcontrol btnOpenEditor "System.Windows.Forms.Button" height: 40 width: 215
 	)
 	
 	on spnRenderSizeX changed v do useSettings "RENDER_SIZE_X" v "w"
 	on spnRenderSizeY changed v do useSettings "RENDER_SIZE_Y" v "w"
+	
+	on sldQuality changed v do
+	(	
+		useSettings "RENDER_QUALITY" v "w"
+				
+		setRenderQuality()
+	)
 	
 	timer tmrStartRender active: false interval: 200
 	
@@ -1719,7 +1816,7 @@ rollout _rStep3  "Render / Post Process" category:4
 			#VRay: b = vrayVFBGetChannelBitmap c 
 		)
 				
-		nb = bitmap 800 800 color: white 
+		nb = bitmap renderWidth renderHeight color: white 
 		copy b nb
 		
 		t = timeStamp()
@@ -1931,13 +2028,13 @@ rollout _rStep3  "Render / Post Process" category:4
 		max quick render
 	)
 	
-	on btnStartRender pressed do 
+	on btnStartRender Click do 
 	(	
 		r = getRender()
 		
 		setRenderQuality()
 				
-		if(_rStep0.sldQuality.value == 0 and r == #Corona) do
+		if(_rStep3.sldQuality.value == 0 and r == #Corona) do
 		(
 			startInteractive()
 			return false
@@ -1946,15 +2043,17 @@ rollout _rStep3  "Render / Post Process" category:4
 		tmrStartRender.active = true		
 	)
 		
-	on btnOpenEditor pressed do 
+	on btnOpenEditor Click do 
 	(			
 		try(setupPostProcess()) catch()		
 		--try(postProcess()) catch(messageBox "Please press \"Setup Scene\" for add default render elements!" title: "Warning!")
 		postProcess()
 	)
 	
-	on _rStep3 open do
+	on _rStep3 open do		
 	(			
+		setupImageButton btnStartRender "Start Render" "kettle-01"
+		setupImageButton btnOpenEditor "Edit Render" "filter-02"
 	)
 	
 	on cbxDR changed v do
@@ -2043,7 +2142,7 @@ rollout _rAbout "About" category:6
 )
 
 addRollout _rStep0 fFastRender rolledUp:false
-addRollout _rStep1 fFastRender rolledUp:true
+addRollout _rStep1 fFastRender rolledUp:false
 addRollout _rStep2 fFastRender rolledUp:true
 addRollout _rStep3 fFastRender rolledUp:false
 addRollout _rPreset fFastRender rolledUp:true

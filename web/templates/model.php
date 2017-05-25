@@ -25,7 +25,7 @@
 		<h3 class="capitalize">{{prod.name}}</h3>
 		<button type="button" class="btn btn-default custom-button-gray button-fixed button-rating" ng-class="{'highlight': product.userrate}" uib-tooltip="Rate model" ng-click="rateProduct(prod.id, libType)"> &nbsp;&nbsp;</button>&nbsp;
 		<button type="button" class="btn btn-default custom-button-gray button-fixed button-heart" uib-tooltip="Add to favorite" ng-click="hideShowQuickFavortites(prod)"> &nbsp;&nbsp;</button>&nbsp;
-		<button type="button" class="btn btn-default custom-button-gray button-fixed button-download" uib-tooltip="Download model" ng-click="downloadUrl(prod.id, libType)" ng-class="{'disabled': auth.rights < 0}"> &nbsp;&nbsp;</button>&nbsp;
+		<button type="button" class="btn btn-default custom-button-gray button-fixed button-download" uib-tooltip="Download model" ng-click="downloadUrl(prod.id, libType)" ng-show="auth.rights >= 0"> &nbsp;&nbsp;</button>&nbsp;
 		<a ng-href="admin/#/models-edit/{{prod.id}}/1" class="btn btn-default custom-button-gray button-fixed button-edit" uib-tooltip="Edit" ng-show="auth.rights > 0"> &nbsp;&nbsp;</a>&nbsp;
 		<hr>
 		<ul class="nav nav-tabs nav-justified">
@@ -39,7 +39,7 @@
 		<div ng-show="tabinfo2=='info'" class="text-muted">
 			<div class="capitalize"><strong>Date:</strong> {{tm(prod.date)}}</div>
 			<div class="capitalize"><strong>Downloads:</strong> {{prod.downloads}}</div>
-			<div class="capitalize"><strong>Rating:</strong> {{product.rating}}</div>
+			<div class="capitalize"><strong>Rating:</strong> <a>{{product.rating}}</a></div>
 			<br>
 			<div class="capitalize"><strong>Manufacturer:</strong> {{isNA(prod.manufacturer)}}</div>		
 			<div class="capitalize"><strong>Project:</strong> {{isNA(prod.project)}}</div>
@@ -68,11 +68,12 @@
 			<div><strong>Tags:</strong> {{prod.tags}}</div>
 		</div>
 		<hr>
-		<button type="button" ng-click="downloadUrl(prod.id, libType)" class="btn btn-block margin-0" ng-show="auth.browser!='MXS'" ng-class="{'disabled': auth.rights < 0, 'btn-danger': prodError[prod.id], 'btn-primary': !prodError[prod.id]}">
+		<button type="button" ng-click="downloadUrl(prod.id, libType)" class="btn btn-block margin-0" ng-show="auth.browser!='MXS' && auth.rights >= 0" ng-class="{ 'btn-danger': prodError[prod.id], 'btn-primary': !prodError[prod.id]}">
 			<span ng-show="!prodError[prod.id]">Download</span>
 			<span ng-show="prodError[prod.id]==1">File Not Found!</span>
 			<span ng-show="prodError[prod.id]==2">No Access!</span>
 		</button>
+
 		<table class="dropup margin-0" tooltip-placement="right" ng-show="auth.browser=='MXS'" width="100%">
 			<tr>
 			<td>

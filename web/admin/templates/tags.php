@@ -1,6 +1,18 @@
 <h1>Tags</h1>	
 <hr>
-
+<div class="row">
+<form ng-submit="findTag(tagsList.filter.search)">
+	<div class="col-sm-6 col-sm-offset-3">
+		<div class="input-group">
+		  <input type="text" class="form-control" placeholder="Search for..." ng-model="tagsList.filter.search">
+		  <span class="input-group-btn">
+			<button type="submit" class="btn btn-primary" type="button">Go!</button>
+		  </span>
+		</div>
+	</div>
+</form>
+</div>
+<br>
 <div class="table-responsive">
 	<table class="table table-hover">
 		<tr class="active">

@@ -13,7 +13,7 @@
 <ul class="nav nav-tabs">
 	  <li class="size-17" ng-class="{active: libType==1}"><a href="" ng-click="changeTab(1)">Models</a></li>
 	  <li class="size-17" ng-class="{active: libType==2}"><a href="" ng-click="changeTab(2)">Textures</a></li>	  
-	</ul>
+	</ul>	
 	<ul class="side-menu" ng-show="libType==1">
 		<li ng-repeat="cat in categories" ng-if="libType==cat.type && cat.status==1">
 			<a ng-href="#/models/{{cat.id}}/1" ng-class="{active: menuItemActive[cat.id]}" class="pointer">{{cat.name}}</a>

@@ -98,14 +98,15 @@
 			$F = '';
 			
 			$SPECIALS = ['-', '"', '+', '~', '*'];
+						
 			FOREACH($FIND AS $V) {				
 				$PREFIX = IN_ARRAY($V[0], $SPECIALS) ? $V[0] : '+';
 				$POSTFIX = '* ';
 				
-				//$V = STR_REPLACE($SPECIALS, '', $V);
+				//$V = STR_REPLACE($SPECIALS, '', $V);				
 				$F .= $PREFIX . SELF::STRIP($V) . $POSTFIX;
 			}
-			
+				
 			$M = [];
 			$PRIORITY = 0;
 			FOREACH($COL AS $V) {
@@ -113,7 +114,7 @@
 				$M[] = $V . '_match * ' . ($P ? $P : '');
 				$PRIORITY++;
 			}
-			
+						
 			$MATCH = [];
 			FOREACH($COL AS $V){								
 				$VAL = SELF::STRIP($V);
@@ -621,9 +622,8 @@
 			FOREACH($CATEGORIES AS $CATEGORY) {			
 				IF($CATEGORY->parent == $PARENT) {
 					
-					// Check rights!
-					$PREM = ARRAY_FILTER(EXPLODE(';', $CATEGORY->premissions));					
-					IF(COUNT($PREM) AND !IN_ARRAY($AUTH['user']->grp, $PREM ) AND !$AUTH['user']->rights > 0) CONTINUE;
+					// Check rights!									
+					IF(!ACCESS::BYGROUP($CATEGORY)) CONTINUE;
 					
 					$I['name'] = $CATEGORY->name;
 					$I['id'] = $CATEGORY->id;
@@ -634,6 +634,7 @@
 					$I['type'] = $CATEGORY->type;
 					$I['sort'] = $CATEGORY->sort;
 					$I['editors'] = IMPLODE(';', ARRAY_FILTER(EXPLODE(';', $CATEGORY->editors)));
+					$I['access'] = $AUTH['user']->rights > 0;
 										
 					FOREACH($CATEGORIES AS $SUBCAT) {
 						IF($SUBCAT->parent == $CATEGORY->id)
@@ -788,9 +789,16 @@
 			IF(!ISSET($DATA->type) OR !IS_NUMERIC($DATA->type)) RETURN $ERROR;
 			
 			$TABLE = SELF::TYPE($DATA->type);
+						
 			
-			$SET['pending'] = 0;
 			$WHERE['id'] = $DATA->id;
+			$SET['pending'] = 0;
+			
+			$RESULT = DB::SELECT($TABLE, $WHERE);
+			IF($PROD = $RESULT->fetch_object()) {
+				$SET['pending'] = $PROD->pending ? 0 : 1;
+			}
+						
 			DB::UPDATE($TABLE, $SET, $WHERE);
 			
 			RETURN $SUCCESS;
@@ -1221,6 +1229,30 @@
 			
 			RETURN JSON_ENCODE($OUT);					
 		}
+		
+		PUBLIC STATIC FUNCTION EXTRACTIDS($CATEGORIES, $ID) {
+			
+			$P = '';
+			
+			FOREACH($CATEGORIES AS $CATEGORY) {			
+				IF($CATEGORY->id == $ID) {
+			
+					$P .= $CATEGORY->id . '|' . $CATEGORY->name . ';';
+										
+					FOREACH($CATEGORIES AS $SUBCAT) {
+						IF($SUBCAT->id == $CATEGORY->parent)
+						{
+							$FLAG = TRUE;
+							BREAK;
+						}
+					}
+					
+					IF($FLAG) $P .= SELF::EXTRACTIDS($CATEGORIES, $CATEGORY->parent);
+				}
+			}
+			
+			RETURN $P;
+		}
 	}
 	
 	///////////////////////////////////////////////////////
@@ -1228,6 +1260,17 @@
 	///////////////////////////////////////////////////////
 	
 	CLASS ACCESS {
+		
+		PUBLIC STATIC FUNCTION BYGROUP ($CATEGORY) {
+			
+			$AUTH = $GLOBALS['AUTH'];
+			$USER = $AUTH['user'];
+			
+			$PREM = ARRAY_FILTER(EXPLODE(';', $CATEGORY->premissions));					
+			IF(COUNT($PREM) AND !IN_ARRAY($USER->grp, $PREM) AND $USER->rights < 0) RETURN FALSE;
+			RETURN TRUE;
+		}
+		
 		PUBLIC STATIC FUNCTION GETSUBIDS($CATEGORIES, $PARENT) {				
 			$IDS = [];
 			$IDS[] = $PARENT;
@@ -1417,9 +1460,9 @@
 			$TYPE = PRODUCTS::TYPE($DATA->type);
 			$PRODPAGE = PRODUCTS::TYPE($DATA->type, PRODUCTPAGE);
 						
-			$COL = [];
-			$COL[] = 'name';
+			$COL = [];			
 			$COL[] = 'tags';
+			$COL[] = 'name';
 			
 			$CURPAGE = 1;
 						
@@ -1579,7 +1622,7 @@
 		}
 		
 		PUBLIC STATIC FUNCTION GET($DATA) {
-			
+						
 			IF(!ISSET($DATA->type))RETURN '{}';
 			$TYPE = PRODUCTS::TYPE($DATA->type);
 			IF(!$TYPE) RETURN '{}';
@@ -1594,6 +1637,9 @@
 			$LIMIT['end'] = 5;
 						
 			FOREACH($CATEGORIES AS $CAT) {															
+			
+				IF(!ACCESS::BYGROUP($CAT)) CONTINUE;
+			
 				IF($CAT->parent == 0) {
 					FOREACH($CATEGORIES AS $C) {
 						IF($C->parent == $CAT->id) {							
@@ -1607,7 +1653,8 @@
 				}
 			}
 						
-			FOREACH($IDS AS $K => $V) {			
+			FOREACH($IDS AS $K => $V) {	
+		
 				FOREACH($V['sub'] AS $K2 => $V2) {
 					$WHERE = [];
 					
@@ -1686,17 +1733,18 @@
 			$TXT = STRIP_TAGS($DATA->txt);
 			$TXT = STR_REPLACE('\n\n', '\n', $TXT);
 			IF(!COUNT($TXT) OR EMPTY($TXT)) RETURN $ERROR;
+			$SUBJECT = DB::STRIP($DATA->subject);
 						
 			$MSG = 'Feedback send by ' . $AUTH->user . '<br><br>';
-			$MSG .= '<b>' . DB::STRIP($DATA->subject) . '</b><br><br>';
+			$MSG .= '<b>' . $SUBJECT . '</b><br><br>';
 			$MSG .= '<pre>' . $TXT. '</pre><br>';
 			$MSG .= '<div>
 				<a href="mailto:' . $AUTH->user . MAILDOMAIN . '">Send Reply</a>				
 			</div>';
 			
 			$BUG = $DATA->bug ? 1 : 0;
-			
-			MSGSYSTEM::ADD('Feedback', $MSG, $BUG);
+			IF($BUG) $SUBJECT = 'Bug Report: ' . $SUBJECT;
+			MSGSYSTEM::ADD($SUBJECT, $MSG, $BUG);
 			
 			RETURN $SUCCESS;
 		}		

@@ -63,13 +63,28 @@
 			RETURN $RESULT;
 		}
 		
-		PUBLIC STATIC FUNCTION SELECTLIKE($TABLE, $COL, $FIND) {		
+		PUBLIC STATIC FUNCTION SELECTLIKE($TABLE, $COL, $FIND, $LIMIT = NULL, $SORT = NULL, $SORTTYPE = NULL, $CNT = NULL) {		
 			
 			$MYSQLI = $GLOBALS['MYSQLI'];
-						
-			$QUERY = "SELECT * FROM `" . $TABLE . "` WHERE `" . SELF::STRIP($COL) . "` LIKE '%" . SELF::STRIP($FIND) ."%';";			
-		
+			$ATTACHLIMIT = '';
+			IF($LIMIT) $ATTACHLIMIT = ' LIMIT ' . SELF::STRIP($LIMIT['start']) . ", " . SELF::STRIP($LIMIT['end']);			
+
+			$ATTACHSORT = '';
+			IF($SORT) $ATTACHSORT = ' ORDER BY ' . SELF::STRIP($SORT) . ($SORTTYPE ? ' ' . $SORTTYPE : ' ');
+			
+			$M = '*';
+			IF($CNT) $M = 'COUNT(*) AS cnt';
+			
+			$QUERY = "SELECT " . $M . " FROM `" . $TABLE . "` WHERE `" . SELF::STRIP($COL) . "` LIKE '%" . SELF::STRIP($FIND) ."%' " . $ATTACHSORT . " " . $ATTACHLIMIT . ";";			
+				
 			$RESULT = $MYSQLI->query($QUERY);
+			
+			IF($CNT) {
+				$RESULT = $MYSQLI->query($QUERY);
+				$ROW = mysqli_fetch_assoc($RESULT);
+		
+				RETURN $ROW['cnt'];
+			}
 		
 			RETURN $RESULT;
 		}
@@ -1215,7 +1230,7 @@
 			$LIMIT['start'] = ($CURPAGE - 1) * $DATA->perpage;
 			$LIMIT['end'] = $DATA->perpage;
 		
-			$RESULT = DB::SELECT($TYPE, $WHERE, NULL, TRUE, $LIMIT, $ACCESS);
+			$RESULT = DB::SELECT($TYPE, $WHERE, 'date', TRUE, $LIMIT, $ACCESS, TRUE);
 			$PRODUCTS = DB::TOARRAY($RESULT);
 						
 			$ROWS = DB::CNT($TYPE, $WHERE, TRUE, $ACCESS);						
@@ -1414,8 +1429,8 @@
 			RETURN $ERROR ;
 		}
 		
-		PUBLIC STATIC FUNCTION GETPREVIEWPATH($NAME, $SIZE) {
-			RETURN IMG_PATH . $NAME . '_' . $SIZE . 'x' . $SIZE . '.jpg';
+		PUBLIC STATIC FUNCTION GETPREVIEWPATH($NAME, $SIZE, $NOTROOT = NULL) {
+			RETURN (!$NOTROOT ? IMG_PATH : '') . $NAME . '_' . $SIZE . 'x' . $SIZE . '.jpg';
 		}
 		
 		PUBLIC STATIC FUNCTION PRODDELPREVIEW($DATA) {			
@@ -1721,21 +1736,31 @@
 						
 			$CURPAGE = 1;
 						
+						
 			IF($DATA->page > 0) $CURPAGE = $DATA->page;
 						
 			$LIMIT['start'] = ($CURPAGE - 1) * $DATA->perpage;
 			$LIMIT['end'] = $DATA->perpage;
 		
-			$RESULT = DB::SELECT('tags', [], NULL, NULL, $LIMIT);
-			$TAGS = DB::TOARRAY($RESULT);
+			IF(!$DATA->filter->search) {			
+				$RESULT = DB::SELECT('tags', [], NULL, NULL, $LIMIT);
+				$TAGS = DB::TOARRAY($RESULT);
 						
-			$ROWS = DB::CNT('tags', []);						
+				$ROWS = DB::CNT('tags', []);
+			} ELSE {
+				$RESULT = DB::SELECTLIKE('tags', 'name', $DATA->filter->search, $LIMIT, 'name', 'ASC');
+				$TAGS = DB::TOARRAY($RESULT);
+				
+				$ROWS =  DB::SELECTLIKE('tags', 'name', $DATA->filter->search, NULL, 'name', 'ASC', TRUE);
+			}
+			
 			$NUMPAGES = $ROWS;
 			
 			$OUT['currpage'] = $CURPAGE;
 			$OUT['totalitems'] = $NUMPAGES;
 			$OUT['perpage'] = $DATA->perpage;					
 			$OUT['tags'] = $TAGS;		
+			$OUT['filter'] = $DATA->filter;		
 			
 			RETURN JSON_ENCODE($OUT);
 		}
@@ -1771,7 +1796,7 @@
 				$ACTUALTAGS = COUNT($INFO['TAGS']) ? $INFO['TAGS'] : $MODEL->tags;
 				
 				$CATNAMES = CAT::GETPRODCAT($CATEGORIES, $MODEL->catid);
-				$T = TAGS::PROCESSTAGS($ACTUALTAGS, $CATNAMES);					
+				$T = TAGS::PROCESSTAGS($ACTUALTAGS);					
 				$SET['tags'] = IMPLODE(', ', $T);
 				DB::UPDATE($TYPE, $SET, $WHERE, TRUE);
 			}
@@ -1845,16 +1870,16 @@
 			IF(!ISSET($DATA->tag)) RETURN $ERROR;
 			IF(!ISSET($DATA->newtag)) RETURN $ERROR;
 			IF(STRLEN($DATA->newtag) < 2) RETURN $WRONG;
-			/*			
+			
+			$DEL[] = $DATA->tag;
+			DB::DEL('tags', $DEL, 'name');
+			
 			$SET['name'] = TRIM($DATA->newtag);						
 			$CNT = DB::INSERT('tags', $SET);
 			IF($CNT == 0) RETURN $EXIST;
-							
-			$DEL[] = $DATA->tag;
-			DB::DEL('tags', $DEL, 'name');*/
-			
-			$RESULT = DB::SELECT('category');
-			$CATEGORIES = DB::TOARRAY($RESULT);
+						
+			//$RESULT = DB::SELECT('category');
+			//$CATEGORIES = DB::TOARRAY($RESULT);
 						
 			FOREACH(LIBTYPES AS $TYPE) {			
 				$RESULT = DB::SELECTLIKE($TYPE, 'tags', $DATA->tag);
@@ -1875,12 +1900,12 @@
 					$WHERE['id'] = $PROD->id;
 					
 					// UPDATE INI
-					$P = PRODUCTS::PRODPATH($PROD->catid, $CATEGORIES, $PROD);
-					$INI = $P . INFOINI;
+					//$P = PRODUCTS::PRODPATH($PROD->catid, $CATEGORIES, $PROD);
+					//$INI = $P . INFOINI;
 					
-					FS::UPDATEINI($INI, 'INFO', 'TAGS', $SET['tags']);
-					FS::UPDATEZIP($P, $INI, INFOINI);									
-					//DB::UPDATE($TYPE, $SET, $WHERE);
+					//FS::UPDATEINI($INI, 'INFO', 'TAGS', $SET['tags']);
+					//FS::UPDATEZIP($P, $INI, INFOINI);									
+					DB::UPDATE($TYPE, $SET, $WHERE);
 				}
 			}		
 			
@@ -2068,6 +2093,302 @@
 			RETURN $SUCCESS;		
 		
 		}				
+	}
+	
+	///////////////////////////////////////////////////////
+	// EMAILSYSTEM CLASS
+	///////////////////////////////////////////////////////
+	
+	CLASS EMAILSYSTEM {
+		PUBLIC STATIC FUNCTION SENDMAIL($DATA) {
+			$ERROR = '{"responce": "EMAILERROR"}';
+			$SUCCESS = '{"responce": "EMAILOK"}';
+			$NOUSERS = '{"responce": "EMAILNOUSERS"}';
+			$MYSQLI = $GLOBALS['MYSQLI'];
+			
+			IF(!ISSET($DATA->content) OR !ISSET($DATA->subject)) RETURN $ERROR;
+			
+			$SUBJECT = $DATA->subject;
+			$CONTENT = $DATA->content;
+			$FORCE = $DATA->force;
+			$EMAILS = [];
+			$USERS = [];
+						
+			$USERSEL = $DATA->userSelect;
+			
+			$ATTACH = " AND `notification`=1";
+			IF($FORCE === TRUE) $ATTACH = '';
+			
+			// SELECT USERS
+			IF(IS_ARRAY($USERSEL) AND COUNT($USERSEL)) {
+				$WHERE = [];
+					
+				FOREACH($USERSEL AS $U) IF($U->user) $WHERE[] = "`user`='" . $U->user . "'";
+								
+				$QUERY = "SELECT * FROM `users` WHERE (" . IMPLODE(' OR ', $WHERE) . ") " . $ATTACH . ";";					
+				$RESULT = $MYSQLI->query($QUERY);
+					
+				$USERS = DB::TOARRAY($RESULT);							
+			} ELSE IF(ISSET($DATA->filter->grp)) {
+				$GRP = $DATA->filter->grp;
+				
+				$QUERY = "SELECT * FROM `users` WHERE `grp`='" . $GRP . "' " . $ATTACH . ";";					
+								
+				$RESULT = $MYSQLI->query($QUERY);
+					
+				$USERS = DB::TOARRAY($RESULT);
+			} ELSE {							
+				$QUERY = "SELECT * FROM `users` WHERE `user` IS NOT NULL " . $ATTACH . ";";					
+					
+				$RESULT = $MYSQLI->query($QUERY);
+					
+				$USERS = DB::TOARRAY($RESULT);
+			}
+			// // // // // // //
+			
+			FOREACH($USERS AS $T) $EMAILS[] = $T->user . MAILDOMAIN;
+			
+			IF(!COUNT($EMAILS)) RETURN $NOUSERS;
+			
+			RETURN SELF::SEND($SUBJECT, $CONTENT, $EMAILS);
+		}
+		
+		PUBLIC STATIC FUNCTION GETLASTPRODUCT($DAYS, $ID, $CNT) {
+			$TIME = TIME() - $DAYS * 86400;
+			
+			$MYSQLI = $GLOBALS['MYSQLI'];			
+			$QUERY = "SELECT * FROM `" . LIBTYPES[$ID] . "` WHERE `date` > " . $TIME . " ORDER BY `date` DESC;";					
+			$RESULT = $MYSQLI->query($QUERY);			
+			
+			IF(!$RESULT) RETURN '';
+			
+			$PRODUCTS = DB::TOARRAY($RESULT);
+			
+			IF(!COUNT($PRODUCTS)) RETURN '';
+			$ATTACH = '';
+			
+			IF(!$CNT) $ATTACH .= '<h1>Assets added for the last ' . $DAYS . ' days</h1>';
+			
+			FOREACH($PRODUCTS AS $PROD) {
+				$PREVIEWS = EXPLODE(';', $PROD->previews);
+				IF(!COUNT($PREVIEWS)) CONTINUE;
+				
+				$IMG = PRODUCTS::GETPREVIEWPATH($PREVIEWS[0], IMG_THUMB, TRUE);
+				
+				$ATTACH .= '<a href="' . HOSTNAME . '#/' . PRODUCTPAGE[1] . '/' . $PROD->id . '">';
+				$ATTACH .= '<img src="' . HOSTNAME . 'images/' . $IMG . '" width="' . IMG_THUMB . '">';
+				$ATTACH .= '</a>';							
+			}
+			
+			RETURN $ATTACH;
+		}
+				
+		PUBLIC STATIC FUNCTION GETIMG($URL, $CNT) {
+			$ATTACH = '';
+			IF(!$CNT) $ATTACH .= '<h1>Attached images</h1>';
+			$ATTACH .= '<a href="' . $URL . '"><img src="' . $URL . '" width="' . IMG_THUMB . '"></a>';			
+			RETURN $ATTACH;
+		}
+		
+		PUBLIC STATIC FUNCTION GETFAVORITE($ID, $CNT) {
+			$WHERE['shareid'] = $ID;
+			$RESULT = DB::SELECT('favorites', $WHERE);
+			
+			IF(!$RESULT) RETURN '';
+			
+			$FAV = $RESULT->fetch_object();
+			
+			IF(!$FAV) RETURN '';
+			
+			$ATTACH = '';
+			IF(!$CNT) $ATTACH .= '<h1>Shared Collection</h1>';
+			$ATTACH .= '
+				<table border="0" cellspacing="0" cellpadding="0" class="shared-collection">
+					<tr>
+						<td><a href="' . HOSTNAME . '#/favorite-share/' . $FAV->shareid . '">' . $FAV->name . ' (' . COUNT(EXPLODE(';', $FAV->products)) . ')</a></td>
+						<td>' . $FAV->shareid . '</td>
+					</tr>
+				</table><br>';
+			RETURN $ATTACH;
+		}
+		
+		PUBLIC STATIC FUNCTION ATTACH($CONTENT) {
+			$WORDS = [];
+			$WORDS[0] = 'lastassets';
+			$WORDS[1] = 'img';
+			$WORDS[2] = 'favorite';
+			
+			$ATTACH = '';
+			
+			FOREACH($WORDS AS $W) {
+				$OUT = [];
+				PREG_MATCH_ALL('/\[' . $W . '\:.*\]/miU', $CONTENT, $OUT);
+				IF(!COUNT($OUT)) CONTINUE;
+				
+				$LASTASSETS = 0;
+				$IMG = 0;
+				$FAVORITE = 0;
+				
+				FOREACH($OUT[0] AS $O) {
+					$J = EXPLODE(':', $O);					
+					$K = TRIM($J[0], '[');					
+					UNSET($J[0]);
+					
+					$V = TRIM(IMPLODE(':', $J), ']');
+					
+					SWITCH($K) {				
+						CASE $WORDS[0]: 
+						{
+							$ATTACH .= SELF::GETLASTPRODUCT($V, 1, $LASTASSETS);
+							// ADD TEXTURES IN FUTURE;
+							//$ATTACH .= SELF::GETLASTPRODUCT($V, 2, $LASTASSETS);
+							$LASTASSETS++;
+						}
+						BREAK;
+						BREAK;
+						CASE $WORDS[1]: {
+							$ATTACH .= SELF::GETIMG($V, $IMG);
+							$IMG++;
+						}
+						BREAK;
+						CASE $WORDS[2]: {
+							$ATTACH .= SELF::GETFAVORITE($V, $FAVORITE);
+							$FAVORITE++;
+						}
+						BREAK;
+					}
+				}
+			}
+			
+			RETURN $ATTACH;
+		}
+		
+		PUBLIC STATIC FUNCTION SEND($SUBJECT, $CONTENT, $USERS) {
+			
+			$ERROR = '{"responce": "EMAILERROR"}';
+			$SUCCESS = '{"responce": "EMAILOK"}';
+							
+			$HEADERS = [];
+			$HEADERS[] = "MIME-Version: 1.0";
+			$HEADERS[] = "Content-type: text/html; charset=iso-8859-1";
+			$HEADERS[] = "From: noreply@visco.no";
+			$HEADERS[] = "Reply-To: " . IMPLODE(',', $USERS); 
+			$HEADERS[] = "Subject: " . $SUBJECT;
+			$HEADERS[] = "X-Mailer: PHP/" . PHPVERSION();
+				
+			
+			$ATTACH = SELF::ATTACH($CONTENT);
+			
+			// REMOVE ALL IN BRACKETS
+			$CONTENT = PREG_REPLACE('/\[[a-z]*\:.*\]/miU', '', $CONTENT);
+			$CONTENT = TRIM($CONTENT);
+			// REPLACE BRAKE LINE TO BR
+			$CONTENT = PREG_REPLACE('/\\n/m', '<br />', $CONTENT);
+					
+			$BODY = '<!doctype html>
+				<html>
+				<head>
+				<meta charset="utf-8">
+				<title>Untitled Document</title>
+				<style>
+				body, html {
+					padding: 0;
+					margin: 0;
+					font-family: Segoe, "Segoe UI", "DejaVu Sans", "Trebuchet MS", Verdana, sans-serif;
+					color: #777;
+					background: #F5F5F5
+				}
+				td {
+					padding: 20px;
+					background-color: #FFF;
+				}
+				.title-head {
+					color: #888;
+					font-size: 24px;
+					margin: 20px;
+					vertical-align: middle;
+					font-weight: 100;
+					display: inline-block;
+				}
+				img {
+					vertical-align: middle;
+					margin: 10px;
+					outline: none;
+				}
+				.footer {
+					background : #F5F5F5;
+					color: #888;
+					font-size: 11px;
+					font-family: Gotham, "Helvetica Neue", Helvetica, Arial, sans-serif;
+					line-height: 16px;
+				}
+				a, a:visited {
+					color: #8EC961;
+					text-decoration: underline;
+					outline: none;
+				}
+				a:hover {
+					color: #66A338;
+				}
+				.attach, .attach td {
+					padding: 0;
+				}
+				h1 {
+					font-weight: 100;
+					font-size: 24px;
+				}
+				.text-center {
+					text-align: center;
+				}
+				.show-border {
+					border-top: 5px solid #888;	
+				}
+				.shared-collection {
+					border-collapse: collapse;
+				}
+				.shared-collection td {
+					border: 1px solid #DADADA;
+					padding: 12px;
+				}
+				</style>
+				</head>
+
+				<body>
+				<br>
+				<br>
+				<div style="display: none">Please do not reply to this message</div>
+				<table width="80%" border="0" cellspacing="0" cellpadding="0" align="center" class="show-border">
+					<tr valign="middle">
+						<td><table border="0" cellspacing="0" cellpadding="0">
+						<tr>
+							<td valign="middle" style="padding: 0"><img style="margin: 0" src="' . HOSTNAME . 'visco_logo.png" alt="logo" height="44px"></td>
+							<td valign="middle" style="padding: 0; padding-left: 20px;"><span class="title-head">Assets Library</span></td>
+						</tr>
+				</table>
+
+						</td>
+					</tr>
+					<tr>
+						<td>
+				' . $CONTENT .  '<br>' . $ATTACH . '</td>
+				</tr>
+				</table>
+				<br /><br /><table width="100%" border="0" cellspacing="0" cellpadding="0" class="footer" align="center" style="background: #F5F5F5; color: #888; font-size: 11px; font-family: Gotham, "Helvetica Neue", Helvetica, Arial, sans-serif; line-height: 16px;"><tbody><tr>
+				<td style="padding: 20px; background-color: #FFF;">&copy; ' . DATE('Y') . ' - VISCO. ALL RIGHTS RESERVED.</td>
+				   <td align="right" style="padding: 20px; background-color: #FFF;">
+				<a href="' . HOSTNAME . '/#/profile/profile" style="color: #8EC961; text-decoration: underline;">Unsubscribe</a> of this newsletter instantly.</td>
+				  </tr></tbody></table>
+
+				</td></tr></table>
+				</body>
+				</html>
+			';
+			
+			$MESSAGE = WORDWRAP($BODY, 70, "\r\n");
+			$SEND = MAIL(IMPLODE(',', $USERS), $SUBJECT , $MESSAGE, IMPLODE("\r\n", $HEADERS)); 
+			IF(!$SEND) RETURN $ERROR;
+			RETURN $SUCCESS;						
+		}
 	}
 	
 	///////////////////////////////////////////////////////

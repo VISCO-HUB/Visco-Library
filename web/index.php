@@ -16,6 +16,7 @@
 <meta http-equiv="Cache-Control" content="no-cache">
 <meta http-equiv="Expires" content="Sat, 01 Dec 2001 00:00:00 GMT">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#7BC144">
 <link rel="icon" href="/img/favicon.png" type="image/png">
 <title>Assets Library</title>
 <!--<link rel="stylesheet" type="text/css" href="css/template.css">-->
@@ -50,8 +51,16 @@
 					<li class="hidden-xs"><a href="#/"><span class="glyphicon glyphicon-home"></span></a></li>					
 					<li ng-show="auth.browser=='MXS'"><a href="" ng-click="mxsGoBack()"><span class="glyphicon glyphicon-arrow-left"></span></a></li>
 					<li ng-show="auth.browser=='MXS'"><a href="" ng-click="mxsGoForward()"><span class="glyphicon glyphicon-arrow-right"></span></a></li>
-					<li ng-show="auth.browser=='MXS'"><a href="" ng-click="mxsForceRefresh()"><span class="glyphicon glyphicon-refresh"></span></a></li>
-					<li class="visible-xs-inline"><a href="" ng-click="toggleOverlayMenu()" ><span class="glyphicon glyphicon-menu-hamburger"></span></a></li>										
+					
+					
+					<li class="dropdown" ng-show="auth.browser=='MXS'"> <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false"><span class="glyphicon glyphicon-refresh"></span></a>
+						<ul class="dropdown-menu" role="menu">
+							<li><a href="" ng-click="mxsForceRefresh()">Refresh Page</a></li>
+							<li><a href="" ng-click="mxsClearIeCache()">Clear IE Cache</a></li>
+						</ul>
+					</li>
+					
+					<li class="visible-xs-inline" ng-show="!isHome"><a href="" ng-click="toggleOverlayMenu()" ><span class="glyphicon glyphicon-menu-hamburger"></span></a></li>										
 					<li class="dropdown" ng-show="auth.rights >= 0"> <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false"><span class="glyphicon glyphicon-cog"></span></a>
 						<ul class="dropdown-menu" role="menu">
 							<li class="dropdown-header">Hi, {{auth.name || auth.user}}</li>
@@ -87,11 +96,12 @@
 </div>
 
 <div class="container">
-	<div class="col-sm-4 col-md-4 col-lg-3 col-xlg-2" ng-controller="menuCtrl"  ng-class="isHome ? 'hidden visible-xs' : 'col-sm-4 col-md-4 col-lg-3 hidden-xs col-xlg-3 col-xxlg-2'">		
+	<div class="col-lg-6 col-lg-offset-3 col-md-6 col-md-offset-3 col-sm-12 col-xlg-4 col-xlg-offset-4 padding-0" search ng-if="isHome"></div>
+	<div class="col-sm-4 col-md-4 col-lg-3 col-xlg-2" ng-controller="menuCtrl"  ng-class="isHome ? 'hidden visible-xs' : 'col-sm-4 col-md-4 col-lg-3 hidden-xs col-xlg-3 col-xxlg-2'">				
 		<div menu></div>
 	</div>
 	<div class="" ng-class="isHome ? 'col-sm-12 col-md-12 col-lg-12' : 'col-sm-8 col-md-8 col-lg-9 col-xs-12 col-xlg-9 col-xxlg-10'">
-		<div ng-view></div>
+		<div ng-view autoscroll="true"></div>
 	</div>
 </div>
 <br>

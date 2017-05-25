@@ -394,6 +394,8 @@ app.controller("userCtrl", function ($scope, $rootScope, $location, $timeout, $r
 
 	
 app.controller("searchCtrl", function ($scope, vault, $rootScope, $location, $routeParams, $timeout, $cookieStore) {
+	
+	
 	$rootScope.isHome = false;
 	
 	$scope.page = $routeParams.page;
@@ -965,6 +967,10 @@ app.run(function($rootScope, $location, $routeParams, $timeout, $cookieStore, va
 	$rootScope.mxsForceRefresh = function(){
 		vault.sendCommandMXS('FORCEREFRESH');
 	}	
+	
+	$rootScope.mxsClearIeCache = function(){
+		vault.sendCommandMXS('CLEARCHACHE');
+	}	
 		
 	$rootScope.constructionAlert = function() {
 		alert('This option under construction!');
@@ -1181,7 +1187,8 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 	}
 	
 	// SIMPLIFY POST PROCEDURE
-	var HttpPost = function(query, json) {		
+	var HttpPost = function(query, json) {	
+
 		return $http({
 			url: hostname + 'vault/handle.php?query=' + query + '&time=' + new Date().getTime(),
 			method: "POST",
@@ -1248,6 +1255,7 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 	
 	var getCat = function() {
 		httpGet('CATGET').then(function(r){									
+			console.log(r.data);
 			$rootScope.categories = r.data;
 		},
 		function(r){
@@ -1364,7 +1372,7 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 					break;
 				}
 				
-				sendCommandMXS(cmd, r.data.file)
+				sendCommandMXS(cmd, r.data.file + '=' + id)
 			}
 				
 			if(r.data.responce == 'MODELNOTEXIST') {

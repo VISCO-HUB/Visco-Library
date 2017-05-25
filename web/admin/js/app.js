@@ -23,7 +23,7 @@ document.addEventListener("contextmenu", function(e){
 
 /* APP */
 
-var app = angular.module('app', ['ngRoute', 'ngSanitize', 'ngCookies', 'ui.bootstrap', 'angularFileUpload', 'chart.js', 'ngAnimate']);
+var app = angular.module('app', ['ngRoute', 'ngSanitize', 'ngCookies', 'ui.bootstrap', 'angularFileUpload', 'chart.js', 'ngAnimate', 'btorfs.multiselect']);
 
 
 // CONFIG 
@@ -63,6 +63,10 @@ app.config(function($routeProvider, $sceProvider) {
 	.when('/textures/:page', {
         templateUrl : "templates/textures.php",
 		controller: 'texturesCtrl',
+    })
+	.when('/emailing', {
+        templateUrl : "templates/emailing.php",
+		controller: 'emailingCtrl',
     })
 	.when('/tags/:page', {
         templateUrl : "templates/tags.php",
@@ -146,9 +150,11 @@ app.controller('uploadCtrl', function($scope, FileUploader, vault, $rootScope) {
 		{
             name: 'zipFilter',
             fn: function(item /*{File|FileLikeObject}*/, options) {
-                console.log(item.type);
+               
 				var type = '|' + item.type.slice(item.type.lastIndexOf('/') + 1) + '|';
-                return '|x-zip-compressed|'.indexOf(type) !== -1;
+                var t = '|x-zip-compressed|'.indexOf(type) !== -1;
+				if(!t) {alert('Supported only *.zip format!\n\nIf you uploaded zip archive and you see this message, you have a problem with the definition of this format. You need to reinstall 7Zip or edit the registry.\n\nDownload registry fix: ' + hostname + 'fix/zip-reg.zip')}
+				return t;
             }
 		}
 	);
@@ -342,6 +348,14 @@ app.controller('usersCtrl', function($scope, vault, $rootScope, $location, $rout
 		$scope.usersGet($scope.page, $rootScope.perpage, $rootScope.usersFilter);
 	}
 	
+	$scope.orderUsers = '';
+	$scope.reverse = false;
+		
+	$scope.orderByParam = function(x) {
+		$scope.reverse = !$scope.reverse;
+		$scope.orderUsers = x;		
+	};
+	
 	$scope.usersSetParam = function(param, value, id) {
 		if($rootScope.auth.id == id) {
 			alert('You can\'t change parameters for itself!');
@@ -357,12 +371,17 @@ app.controller('usersCtrl', function($scope, vault, $rootScope, $location, $rout
 	
 	$scope.changeFilter = function(f) {
 		if(!$rootScope.usersFilter) {$rootScope.usersFilter = {}};
+		$location.path('/users/1');	
 		
 		angular.forEach(f, function(value, key) {
 			$rootScope.usersFilter[key] = value;
 		});
 		
 		$scope.usersGet($scope.page, $rootScope.perpage, $rootScope.usersFilter);
+	}
+	
+	$scope.changePage = function() {							
+		$location.path('/users/' + $scope.currentPage);		
 	}
 	
 	
@@ -391,6 +410,16 @@ app.controller('tagsCtrl', function($scope, vault, $rootScope, $location, $route
 	
 	$scope.tagsGet = function(page, perpage, filter) {
 		vault.tagsGet(page, perpage, filter);
+	}
+		
+	$scope.findTag = function(t) {
+		if(!$rootScope.tagsFilter) {$rootScope.tagsFilter = {}};
+		
+		
+		$location.path('/tags/1');	
+		$rootScope.tagsFilter.search = t;
+		
+		$scope.tagsGet($scope.page, $rootScope.perpage, $rootScope.tagsFilter);
 	}
 	
 	$scope.changePerPage = function(p) {		
@@ -480,6 +509,151 @@ app.controller('commentsCtrl', function($scope, vault, $rootScope, $location, $r
 		$location.path('/comments/' + $scope.currentPage);		
 	}
 
+});
+
+	//EMAILING
+app.controller('emailingCtrl', function($scope, vault, $rootScope, $location, $routeParams, $timeout, $cookieStore) {
+	$rootScope.addCrumb('Emailing', '#/emailing');
+	
+	$scope.data = {
+		userSelect: {},
+		content: '',
+		subject: '',
+		templates: ['Default', 'Last Assets For 7 days'],
+		currenttpl: -1,
+		filter: {},
+		force: false
+	}
+	$rootScope.users = {
+		users: []
+	}
+	
+	$scope.sendEmail = function(data) {
+		var uCnt = data.userSelect.length ? data.userSelect.length : 'All';
+		var uGrp = data.filter.grp ? data.filter.grp : 'All'
+		
+		if(!data.content.length || !data.subject.length) {
+			vault.showMessage('Please fill correct all data!', 'warning');			
+			return false;
+		}
+		
+		if(!confirm('Do you really want to send mail for ' + uCnt + ' users from group ' + uGrp + ' ?')){
+			return false;
+		}
+		
+		vault.sendEmail(data);
+	}
+		
+	$scope.changeTemplate = function(id) {
+		
+		if($scope.data.content.length > 0) {
+			if(!confirm('Do you really want to change template?\nThis action resets the message text!')){
+				return false;
+			}
+		}
+		
+		$scope.data.currenttpl = id;		
+				
+		switch(id)
+		{			
+			case 0: {
+				$scope.data.subject = 'Notification';
+				$scope.data.content = '';				
+			}
+			break;	
+			case 1: {
+				$scope.data.subject = 'New Models';
+				$scope.data.content = 'You got this letter because you were subscribed to the Visco Assets Library news!';									
+				$scope.data.content += '\n[lastassets:7]';		
+			}
+			break;	
+			default: {
+				$scope.data.subject = '';
+				$scope.data.content = '';										
+			}			
+			break;				
+		}			
+	}
+	
+	$scope.attachToMail = function(type) {
+		
+		var question = '';
+		switch(type)
+		{				
+			case 'lastassets': question = 'Enter days for last models!';
+			break;
+			case 'img': question = 'Enter image url with "http://"!';
+			break;
+			case 'favorite': question = 'Enter favorite id!';
+			break;
+			default: return false;
+			break;
+		}
+		
+		var param = prompt(question, '');			
+		if(!param) {return false;}
+		if(!param.length) {			
+			vault.showMessage('Please enter correct parameter!', 'warning');
+		
+			return false;
+		}
+		
+		var error = false;
+		
+		switch(type)
+		{				
+			case 'lastassets': {
+				if(param.match(/[^0-9]/)) {					
+					error = true;
+				}
+			}
+			break;
+			break;
+			case 'img': {
+				error = true;
+				if(param.match(/([a-z\-_0-9\/\:\.]*\.(jpg|jpeg|png|gif))/i)) {					
+					error = false;
+				}
+			}
+			break;
+			case 'favorite': {
+				if(param.match(/[^0-9A-Za-z]/)) {					
+					error = true;
+				}
+			}
+			break;			
+		}
+		
+		if(error) {
+			vault.showMessage('Please enter correct parameter!', 'warning');
+			return false;
+		}
+		
+		$scope.data.content += '\n[' + type + ':' + param + ']';
+	}
+		
+	$scope.page = $routeParams.page;
+	$rootScope.section = '/emailing';
+		
+	
+	$scope.usersGet = function(filter){				
+		vault.usersGet(1, 100000, filter);
+	};
+	
+	$scope.changeFilter = function(f) {
+		if(!$rootScope.usersFilter) {$rootScope.usersFilter = {}};
+				
+		angular.forEach(f, function(value, key) {
+			$rootScope.usersFilter[key] = value;
+		});
+			
+		$scope.data.userSelect = {};
+		$scope.data.filter = $rootScope.usersFilter;
+		$scope.usersGet($rootScope.usersFilter);
+	}
+	
+	$scope.usersGet($rootScope.usersFilter);
+	vault.usersGetFilter();
 });
 
 	//TEXTURES
@@ -708,7 +882,7 @@ app.controller('msgCtrl', function($scope, vault, $rootScope, $location, $routeP
 	}
 
 	$scope.msgSetParam = function(param, value, id) {
-		vault.msgSetParam(param, value, id);
+		vault.msgSetParam(param, value, id, $scope.page, $rootScope.perpage, $rootScope.msgFilter);
 	}	
 	
 	$scope.msgDelete = function(id, name) {
@@ -1126,6 +1300,12 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 			break;
 			case 'TAGSREFRESHBAD': s.error = 'Error when updating tags!';
 			break;
+			case 'EMAILOK': s.success = 'Email send!';
+			break;
+			case 'EMAILERROR': s.error = 'An error occurred while sending email!';
+			break;
+			case 'EMAILNOUSERS': s.warning = 'You can\'t send email for selected users!';
+			break;
 		}
 		
 		$rootScope.msg = s;
@@ -1326,7 +1506,8 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		
 		HttpPost('USERSGET', json).then(function(r){						
 			console.log(r.data);
-			$rootScope.users = r.data;									
+			$rootScope.users = r.data;	
+						
 			responceMessage(r.data);
 		},
 		function(r){
@@ -1667,6 +1848,19 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		});
 	}
 	
+	var sendEmail = function(data) {
+					
+		var json = data;
+		
+		HttpPost('SENDEMAIL', json).then(function(r){									
+				
+			responceMessage(r.data);			
+		},
+		function(r){
+			responceMessage(r);
+		});
+	}
+	
 	var catSort = function(id, sort) {		
 		var json = {'id': id, 'sort': sort};
 		
@@ -1833,6 +2027,7 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		downloadLogGet: downloadLogGet,
 		commentsGet: commentsGet,
 		commentDelete: commentDelete,
+		sendEmail: sendEmail,
 		tm: tm
 	};
 });

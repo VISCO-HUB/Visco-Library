@@ -52,8 +52,8 @@
 	IF(($INFO['TYPE'] != 'model') AND ($INFO['TYPE'] != 'texture')) DIE($BADZIP);
 	
 	// GET CATEGORIES
-	$RESULT = DB::SELECT('category');
-	$CATEGORIES = DB::TOARRAY($RESULT);
+	/*$RESULT = DB::SELECT('category');
+	$CATEGORIES = DB::TOARRAY($RESULT);*/
 	
 	// !!!! MUST ADD CHEK FOR ALL FILES!
 	$ID = $INFO['CATID'];
@@ -64,8 +64,10 @@
 	$MOVETO .= CAT::CLEAR($INFO['RENDER']) . '\\';
 	FS::CREATEDIR($MOVETO);
 
+	/*
 	$CATNAMES  = [];
 	$CATNAMES = CAT::GETPRODCAT($CATEGORIES, $ID);
+	*/
 		
 	IF(!FS::ISDIREMPTY($MOVETO) AND !$ISREPLACE) DIE($REPLASE);
 	
@@ -99,6 +101,7 @@
 		$SET['overview'] = $INFO['OVERVIEW'];
 		$SET['custom1'] = $INFO['CUSTOM1'];
 		$SET['client'] = $INFO['CLIENT'];
+		$SET['token'] = $INFO['TOKEN'];
 		$SET['status'] = 1;
 		$SET['pending'] = 1;
 		$SET['date'] = TIME();
@@ -106,7 +109,7 @@
 		$SET['tags'] = '';
 		$T = [];
 		
-		$T = TAGS::PROCESSTAGS($INFO['TAGS'], $CATNAMES);
+		$T = TAGS::PROCESSTAGS($INFO['TAGS']);
 				
 		$SET['tags'] = IMPLODE(', ', $T);
 		$T2 = [];

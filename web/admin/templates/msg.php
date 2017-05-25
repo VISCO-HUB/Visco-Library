@@ -13,6 +13,7 @@
 			<th width="30px">#</th>
 			<th>Subject</th>
 			<th>Status</th>
+			<th></th>
 			<th>Date</th>
 			<th>By User</th>
 			<th>Actions</th>
@@ -20,11 +21,18 @@
 		<tr ng-repeat="msg in messages.messages" >
 			<td>{{$index + 1}}.</td>
 			<td>
-				<img src="img/bug.svg" class="icon-bug" ng-show="msg.bug==1"> <a href="" ng-click="setCurrentMessage(msg)" ng-class="{'text-bug': msg.bug==1}">{{msg.bug==1 ? 'Bug Report' : msg.subject}}</a>								
+				<img src="img/bug.svg" class="icon-bug" ng-show="msg.bug==1"> <a href="" ng-click="setCurrentMessage(msg)" ng-class="{'text-bug': msg.bug==1}"><span ng-style="{'color':  msg.fixedbug==1 ? '#34ca34' : ''}">{{msg.subject}}</span></a>								
 			</td>
 			<td>
-				<span ng-show="msg.viewed==0" class="label label-success pointer text-blink">Unread</span> 			
+				<span ng-show="msg.viewed!=1" class="label label-success pointer text-blink">Unread</span> 			
 				<span ng-show="msg.viewed==1" class="label label-default">Read</span> 			
+			</td>
+			<td>
+				<div ng-show="msg.bug==1">
+					<span ng-show="msg.fixedbug==1" class="label label-success pointer"  ng-click="msgSetParam('fixedbug', 0, msg.id)">Fixed</span> 
+					<span ng-show="msg.fixedbug!=1" class="label label-danger pointer text-blink" ng-click="msgSetParam('fixedbug', 1, msg.id)">Not Fixed</span> 
+				</div>
+			</td>
 			<td>{{tm(msg.date)}} </td>
 			<td>{{msg.user}}</td>
 			<td><a href="" ng-click="msgDelete(msg.id, msg.subject)">Delete</a></td>			

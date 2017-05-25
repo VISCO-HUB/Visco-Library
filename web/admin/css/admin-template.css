@@ -17,6 +17,10 @@ input, textarea {
 	user-select: text !important;
 }
 
+.inline-block {
+	display: inline-block;
+}
+
 .table > tbody > tr > td {
 	vertical-align: middle;
 }
@@ -47,11 +51,6 @@ h1, h2, h3, h4 {
 	margin-top: 40px;
 }
 
-
-.form-control:focus {
-	border-color: #82C13A;
-	box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.075), 0 0 8px rgba(130, 193, 58, 0.6);
-}
 .form-control.warning {
 	border-color: #cc6969;
 	box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.075), 0 0 8px rgba(195, 60, 60, 0.3);
