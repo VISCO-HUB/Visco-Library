@@ -2,7 +2,7 @@
 [INFO] 
 
 NAME = Pack Model
-VERSION = 1.0.6
+VERSION = 1.0.7
 AUTHOR = Vasily Lukyanenko
 DEV = VISCO
 HELP = 
@@ -51,7 +51,12 @@ ICON=#("PhysX_Main", 30)
 
 * Changed: Now script will close when you do reset/open/new scene=
 + Added: Load data about model from WebService DB, if you open model from Assets Library=
-+ Added: Generate unique id for each model
++ Added: Generate unique id for each model=
+
+
+[1.0.7]
+
+- BugFix: Not save Custom 1 option=
 
 [ABOUT]
 
@@ -686,11 +691,7 @@ fn saveAllProp saveCat: #auto =
 	saveProp "edtTags" sTags
 	saveProp "catID" catID
 	saveProp "edtToken" sToken
-	
-	saveProp "edtOverview" sOverview
-	saveProp "edtCustom1" sCustom1
-	saveProp "edtClient" sClient
-		
+			
 	saveProp "cbxRigged" bRigged
 	saveProp "cbxAnimated" bAnimated
 	saveProp "cbxBakedTextures" bBakedTextures
@@ -715,6 +716,10 @@ fn saveAllProp saveCat: #auto =
 			saveProp "category3" (implodeCat category3)	
 		)
 		#force: (
+			saveProp "edtOverview" sOverview
+			saveProp "edtCustom1" sCustom1
+			saveProp "edtClient" sClient
+			
 			saveProp "catId1" catId1
 			saveProp "catId2" catId2
 			saveProp "catId3" catId3
@@ -1574,8 +1579,6 @@ rollout _STEP2 "STEP 2: Model Info"
 		if(iCat2 > 0) do catId2 = category2[iCat2][1]
 		if(iCat3 > 0) do catId3 = category3[iCat3][1]
 
-		print catID
-
 		if(catID == -1) do return showTooltip lblWarn5 "Please select the category!"
 		if(sModelName.count == 0) do return showTooltip edtModelName "Please enter correct model name!"
 		if(sTags.count == 0) do 	return showTooltip edtTags "Please enter few tags!" 
@@ -1749,9 +1752,10 @@ rollout _STEP3 "STEP 3: Model Review"
 	
 	on btnPrev pressed do 
 	(	
-		sOverview = edtOverview.text
-		sCustom1 = edtCustom1.text
-		sClient = edtClient.text
+		saveProp "edtOverview" sOverview
+		saveProp "edtCustom1" sCustom1
+		saveProp "edtClient" sClient
+		
 		goStep 2		
 	)
 	on btnNext pressed do 

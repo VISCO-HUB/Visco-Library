@@ -1269,8 +1269,7 @@ rollout _rStep2  "Highlights" category:3
 		spinner spnW "W:" range: [0, 99999999, (units.decodeValue "80.0cm")] fieldWidth: 60 type: #worldunits across: 2 align: #left offset: [14, 0]
 		spinner spnH "H:" range: [0, 99999999, (units.decodeValue "50.0cm")] fieldWidth: 60 type: #worldunits  align: #right
 		spinner spnMult "Mult.:" range: [0, 999999, 1.0] fieldWidth: 60 type: #float align: #left offset: [0, 10] across: 2 scale: 0.5
-		spinner spnDist "Dist.:" range: [0, 99999999, (units.decodeValue "150.0cm")] fieldWidth: 60 type: #worldunits  align: #right offset: [0, 10] scale: 1.0
-		spinner spnScale "Scale.:" range: [0, 99999999, 1.0] fieldWidth: 60 type: #float  scale: 0.05 offset: [0, 10] align: #right 
+		spinner spnDist "Dist.:" range: [0, 99999999, (units.decodeValue "150.0cm")] fieldWidth: 60 type: #worldunits  align: #right offset: [0, 10] scale: 1.0		
 	)
 		
 	dotnetcontrol btnPlace "System.Windows.Forms.Button" height: 40 width: 215
@@ -1381,7 +1380,6 @@ rollout _rStep2  "Highlights" category:3
 		d = getUserProp l "HiglightDistance" 
 		if(d != undefined) do spnDist.value = d
 		
-		spnScale.value = l.scale.z
 	)
 		
 	fn setParams =
@@ -1415,9 +1413,6 @@ rollout _rStep2  "Highlights" category:3
 		
 		in coordsys local move l [0, 0, v]
 		setUserProp l "HiglightDistance" m
-
-		s = spnScale.value
-		l.scale = [s, s, s]
 	)
 	
 	fn autoSelectLight =
@@ -1500,7 +1495,6 @@ rollout _rStep2  "Highlights" category:3
 	on spnH changed v do setParams()
 	on spnMult changed v do setParams()
 	on spnDist changed v do setParams()
-	on spnScale changed v do setParams()
 		
 	on btnAdd pressed do addLight()
 	on btnRemove pressed do removeLight()
@@ -1514,7 +1508,6 @@ rollout _rStep2  "Highlights" category:3
 		(
 			_rStep2.spnW.visible = false
 			_rStep2.spnH.visible = false
-			_rStep2.spnScale.visible = false
 		)
 		
 		buildList undefined undefined

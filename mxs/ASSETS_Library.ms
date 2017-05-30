@@ -53,6 +53,36 @@ global trustUrl = siteUrl + @"vault/mxs/mxsTrustUser.php?user=" + sysInfo.userna
 global forceRefresh
 global clearIEChache
 
+struct XML
+(
+	xmlDoc,
+	fn load r =
+	(
+		try
+		(
+			xmlDoc = dotNetObject "system.xml.xmlDocument"	
+			xmlDoc.LoadXml r				
+		)
+		catch 
+		(
+			return false
+		)
+		
+		return true
+	),
+	fn get v type: "value"=
+	(
+		try
+		(
+			o = xmlDoc.item["data"].item[v].GetAttribute(type)
+			if(o == undefined) do o = ""
+		)
+		catch(return "")
+		
+		return o		
+	)
+)
+
 fn httpGet url =
 (	
 	t = ""
@@ -107,6 +137,7 @@ global _ViscoAssetsForm
 global _FILLREPORT = "\n1. Open full model info\n2. Go to comments\n3. Check the button \"Send As Bug Report\"\n3. Fill the form\n4. Press the button \"Send\""
 global _MODELNOTEXIST = "This model not exist!\n\nPlease notify administrator about this issue:" + _FILLREPORT
 global _MODELBAD = "This model not exist in data base!\n\nPlease notify administrator about this issue:" + _FILLREPORT
+global _BADRESPONCE = "Can not connect to the server!\nCheck your network connection and try again!"
 
 try(_ViscoAssetsForm.close())catch()	
 	
@@ -366,9 +397,31 @@ fn moveToLayer n sel: #() =
 	if(l != undefined) do for i in sel do l.addNode i
 )
 
-fn addFile f mode: #merge =
-(								
-	if(not doesFileExist f) do return messageBox "Error: File not exist!" title: "Warning!"
+fn addFile id mode: #merge =
+(		
+	clearListener()
+	url = siteUrl + "vault/mxs/mxsAddModel.php?id=" + id + "&user=" + sysInfo.username + "&time=" + timeStamp() as string
+	r = httpGet url	
+		
+	x = XML()
+		
+	if(x.load r == false) do return messageBox _BADRESPONCE title: "Error!"	
+	resp = x.get "responce"
+	
+	if(resp != "MODELOK") do
+	(
+		case resp of
+		(
+			"MODELNOTEXIST": messageBox _MODELNOTEXIST title: "Error!"
+			"MODELBAD": messageBox _MODELBAD title: "Error!"
+		)
+		
+		return false
+	)
+
+	f = x.get "file"
+	
+	if(not doesFileExist f) do return messageBox _MODELNOTEXIST title: "Error!"
 	
 	showStatusPaste "Downloading..."
 	p = (getFilenamePath f)
@@ -440,6 +493,31 @@ fn onExecuteCommand s e =
 	
 	t = filterString execCommand.text "="
 	p = removeHash t[2] 
+		
+	case t[1] of
+	(
+		"MERGE_MODEL": addFile p mode: #merge
+		"XREF_MODEL": addFile p mode: #xref
+		"OPEN_MODEL": 
+		(			
+			addFile p mode: #open
+			saveProp "externalModelID" p
+		)		
+		"GOBACK": goBack()
+		"GOFORWARD": goForward()
+		"FORCEREFRESH": forceRefresh()
+		"CLEARCHACHE": clearIEChache()
+	)
+	
+	execCommand.text = ""				
+)
+/*
+fn onExecuteCommand s e =
+(	
+	executeTimer.stop()
+	
+	t = filterString execCommand.text "="
+	p = removeHash t[2] 
 	id = removeHash t[3]	
 	
 	case t[1] of
@@ -460,7 +538,7 @@ fn onExecuteCommand s e =
 	)
 	
 	execCommand.text = ""				
-)
+)*/
 
 dotNet.addEventHandler _ViscoAssetsForm "Resize" onResize
 dotNet.addEventHandler _ViscoAssetsForm "Move" onMove
