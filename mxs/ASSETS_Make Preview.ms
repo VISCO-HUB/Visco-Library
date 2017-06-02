@@ -2,7 +2,7 @@
 [INFO] 
 
 NAME = Make Preview
-VERSION = 1.0.5
+VERSION = 1.0.6
 AUTHOR = Vasily Lukyanenko
 DEV = VISCO
 HELP = 
@@ -39,6 +39,11 @@ ICON=#("PhysX_Main", 3)
 + Added: Disable steps when scene not setup=
 + Added: Choose renderer on Setup Scene=
 
+[1.0.6]
+
++ Added: HDRI Library=
+* Changed: Render / Post process now floating
+
 [ABOUT]
 
 This script helps to quickly make previews=
@@ -63,6 +68,8 @@ global _rStep1
 global _rStep2
 global _rStep3
 global _rPreset
+
+global _MAKE_PREVIEW_ADMINS = #("v.lukyanenko", "e.astafiev")
 
 global 	blendOptions = #(
 	"Normal",
@@ -118,6 +125,13 @@ fn getMaxVersion =
 	v = 2000 + ((v[1] / 1000) - 2)
 	
 	return v as string
+)
+
+fn setPosStep3 =
+(
+	p = fFastRender.pos				
+	p.x += _rStep0.width + 20
+	try(SetDialogPos _rStep3 p)catch()
 )
 
 fn setupImageButton btn txt png =
@@ -247,6 +261,403 @@ fn setupRenderEngine =
 	createDialog _rChooserRenderEngine 200 170 modal: true parent: _rStep0.hwnd
 	
 	return renderEngineSelect
+)
+
+
+fn openHdriLibrary =
+(
+	global rHdriLib	
+	global _SELECTED = undefined
+		
+	try(destroyDialog rHdriLib)catch()
+
+	rollout rHdriLib "HDRI Library"
+	(
+		button btnCategory "Loading..." align: #left height: 25 across: 2 width: 160
+		button btnOpenHDRI "Open" lign: #right height: 25 width: 100 offset: [105, 0]
+			
+		dotNetControl lbxHdriLibrary "System.Windows.Forms.ListView" height:665 width: 665 offset: [-13, 0]	
+		
+		global _CURRENT_CAT = "All"
+		global _IS_USER_ADMIN = false
+		global _DB_HDRI = ""
+		global _HDRI_PATH = ""
+		global _HDRI_EXT = ".hdr"
+		
+		fn lbxSetSpacing lv leftPadding topPadding =
+		(
+			local hWnd = lv.handle
+			local LVM_SETICONSPACING = 0x1000 + 53
+			local lParam = bit.or (bit.shift topPadding 16) leftPadding
+			windows.SendMessage hWnd LVM_SETICONSPACING 0 lParam			
+		)
+		
+		fn openHDRI = getOpenFileName title: "Open HDRI" types:"HDRI (*.hdr)|*.hdr"
+		
+		fn getCategories = getIniSetting _DB_HDRI
+		fn getCategoryHDRI c = getIniSetting _DB_HDRI c
+		fn delFindKey k = for i in getCategories() do delIniSetting _DB_HDRI i k
+		
+		fn rcCheckCategory c =
+		(		
+			rHdriLib.bindHdriLibraryRC()
+			return (_CURRENT_CAT == c) as string			
+		)
+		
+		fn renderHdriPreview p pp = 
+		(	
+			b = renderMap (bitmapTex filename:p) size:[160, 120] filter: true scale: 1.0 gamma: 2.2 display: false
+			b.filename = pp
+			save b
+		)
+		
+		fn getActiveID =
+		(
+			c = lbxHdriLibrary.SelectedItems.Count - 1
+			
+			id = 0
+			
+			for i = 0 to c do 
+			(		
+				id = lbxHdriLibrary.SelectedItems.Item[i].Index + 1			
+			)
+
+			return id
+		)
+		
+		fn setThumbs f =
+		(	
+			lbxHdriLibrary.Clear()
+			
+			if(f.count == false) do return false
+			
+			imgList = dotNetObject "System.Windows.Forms.ImageList"
+			imgList.ColorDepth = imgList.ColorDepth.Depth24Bit
+			imgList.ImageSize = dotNetObject "System.Drawing.Size" 160 120
+					
+			for i in f do 
+			(
+				b = openBitMap  i
+
+				if(b == undefined) do
+				(
+					rebuildHdri = (trimRight i ".jpg") + _HDRI_EXT
+					renderHdriPreview rebuildHdri i
+					b = openBitMap  i
+				)
+				if(b == undefined) do continue
+				
+				img = undefined
+				
+				for i in 1 to 5 do
+				(
+					setClipboardBitmap  b
+					c = dotNetClass "System.Windows.Forms.Clipboard"
+					img = c.GetImage()	
+					if(img != undefined) do exit
+				)
+				
+				try(imgList.Images.Add img)catch()
+			)
+						
+			lbxHdriLibrary.Clear()
+			lbxHdriLibrary.LargeImageList  = imgList
+			
+			for i in 1 to f.count do
+			(
+				ListViewOps.AddLvItem lbxHdriLibrary pTextItems:#((getFilenameFile f[i])) pImgIndex:(i-1)			
+			)				
+		)
+		
+		fn initHdriLibDotNet = 
+		(
+			lbxHdriLibrary.Clear()
+			lbxHdriLibrary.View = (dotNetClass "System.Windows.Forms.View").LargeIcon 
+			lbxHdriLibrary.ShowItemTooltips = true
+			lbxHdriLibrary.GridLines = true	
+			lbxHdriLibrary.MultiSelect = false
+			lbxSetSpacing lbxHdriLibrary 160 140
+		)
+		
+		
+		fn getContent c =
+		(
+			delIniSetting _DB_HDRI c ""
+			h = #()
+			if(c == "All") then
+			(
+				for c in getCategories() do join h  (getCategoryHDRI c)
+			) else (
+				h = getCategoryHDRI c
+			)
+											
+			s = #()
+			for i in h where i.count != 0 do
+			(
+				if(doesFileExist (_HDRI_PATH + i)) then
+				(
+					append s (_HDRI_PATH + (getFileNameFile i) + ".jpg")
+				)
+				else
+				(
+					delFindKey i
+				)
+			)
+			
+			setThumbs s
+		)
+		
+		fn changeCategory c =
+		(
+			getContent c
+			
+			_CURRENT_CAT = c
+			btnCategory.caption = "Category: " + c
+		)
+		
+		fn dnChangeCategory sender arg =
+		(
+			c = sender.tag
+			changeCategory c
+		)
+		
+		fn getSelectedName =
+		(	
+			c = lbxHdriLibrary.SelectedItems.Count - 1
+			
+			n = undefined
+			
+			for i = 0 to c do 
+			(		
+				n = lbxHdriLibrary.SelectedItems.Item[i].Text
+			)
+
+			return n	
+		)
+		
+		fn createCategory =
+		(
+			try(destroyDialog rHdriLib_CreateCategory)catch()
+			
+			rollout rHdriLib_CreateCategory "Crete Category"
+			(
+				label lbl1 "Category Name:" align: #left
+				edittext edtCatName ""
+				button btnCreate "Create" width: 170 height: 25 align: #center offset: [0, 25]
+				
+				fn createCat n = 
+				(
+					if(matchPattern n pattern: "All" or n.count == 0) do return messageBox "Please enter correct name!" title: "Warning!"
+					
+					setIniSetting _DB_HDRI n "" ""
+					
+					changeCategory n
+					
+					try(destroyDialog rHdriLib_CreateCategory)catch()
+				)
+				
+				on btnCreate pressed do
+				(
+					n = edtCatName.text
+					createCat n
+				)
+				
+				on rHdriLib_CreateCategory open do
+				(
+					setFocus edtCatName
+				)
+				
+				on edtCatName entered n do createCat n
+					
+			)
+			
+			createDialog rHdriLib_CreateCategory 200 110 modal: true			
+		)
+			
+		fn addHDRI = 
+		(
+			f = openHDRI()
+			if(f == undefined) do return false
+			
+			n = filenameFromPath f
+			ff =  _HDRI_PATH + n
+			if(doesFileExist ff) do return messageBox "HDRI with this name already exist!" title:"Warning!"
+			
+				
+			copyFile f ff	
+			if(not doesFileExist ff) do return messageBox "Error while uploading HDRI!" title:"Warning!"
+					
+			preview = _HDRI_PATH + getFileNameFile f + ".jpg"
+			renderHdriPreview f 	preview	
+			
+			if(not doesFileExist preview) do return messageBox "Error while creating preview!" title:"Warning!"
+			
+			setIniSetting _DB_HDRI _CURRENT_CAT n ""
+			
+			changeCategory _CURRENT_CAT
+		)
+		
+		fn moveHdriTo sender arg  =
+		(
+			c = sender.tag
+					
+			n = getSelectedName()
+			if(n == undefined) do return messageBox "Please select HDRI" title: "Warning!"
+			n = n + _HDRI_EXT
+			delIniSetting _DB_HDRI _CURRENT_CAT n
+			setIniSetting _DB_HDRI c n ""
+			
+			changeCategory _CURRENT_CAT
+		)
+		
+		fn deleteCategory =
+		(
+			q = queryBox ("Do you really want to delete category: " + _CURRENT_CAT + " ?") title: "Confirm!"
+			if(not q) do return false
+			c = getCategoryHDRI _CURRENT_CAT
+			
+			if(c.count > 0) do return messageBox "This category contain HDRI!\nPlease move or delete them first!" title: "Warning"
+			
+			delIniSetting _DB_HDRI _CURRENT_CAT
+			
+			changeCategory "All"
+		)
+		
+		fn deleteHdri =
+		(
+			q = queryBox "Do you really want to delete HDRI?" title: "Confirm!"
+			if(not q) do return false
+			
+			n = getSelectedName()
+			if(n == undefined) do return messageBox "Please select HDRI from list!" title: "Warning!"
+						
+			for i in getFiles (_HDRI_PATH + "*") where (getFileNameFile i) == n do 
+			(
+				setFileAttribute i #readOnly false
+				deleteFile i
+			)
+			
+			delFindKey (n + _HDRI_EXT)
+			
+			changeCategory _CURRENT_CAT
+		)
+		
+		fn bindHdriLibraryRC =
+		(
+			if(_IS_USER_ADMIN == false) do return false
+			_ENABLE_MENU = _CURRENT_CAT != "All"
+
+			id = getActiveID()
+			
+			rcHdriLibrary = dotNetObject "System.Windows.Forms.ContextMenuStrip"	
+					
+			t = rcHdriLibrary.Items.Add("Add New HDRI")
+			t.enabled = _ENABLE_MENU
+			dotNet.addEventHandler (t) "Click" addHDRI
+			
+			t = rcHdriLibrary.Items.Add("Delete HDRI")
+			t.enabled = id != 0
+			dotNet.addEventHandler (t) "Click" deleteHdri
+			rcHdriLibrary.Items.Add("-")
+			dotNet.addEventHandler (rcHdriLibrary.Items.Add("Create New Category")) "Click" createCategory
+		
+			t = rcHdriLibrary.Items.Add("Delete Category: " + _CURRENT_CAT)
+			t.enabled = _ENABLE_MENU
+			dotNet.addEventHandler (t) "Click" deleteCategory
+			
+			
+			subMenu = rcHdriLibrary.Items.Add("Move To Category")
+			subMenu.enabled = _ENABLE_MENU
+			if(id == 0 and _ENABLE_MENU)	do subMenu.enabled = false				
+			
+			for i in getCategories() do
+			(	
+				j = subMenu.DropDownItems.Add(i)
+				j.tag = i
+				dotNet.addEventHandler (j) "Click" moveHdriTo
+			)
+						
+			lbxHdriLibrary.ContextMenuStrip = rcHdriLibrary	
+		)
+				
+		
+		fn showCat =
+		(		
+			rcShowCategories = dotNetObject "System.Windows.Forms.ContextMenuStrip"	
+			
+			t = rcShowCategories.Items.Add("All")
+			t.tag = "All"
+			dotNet.addEventHandler (t) "Click" dnChangeCategory
+			rcShowCategories.Items.Add("-")
+			
+				
+			for i in getCategories()	 do
+			(	
+				t = rcShowCategories.Items.Add(i)
+				t.tag = i
+				dotNet.addEventHandler (t) "Click" dnChangeCategory
+			)	
+				
+				
+				
+			rp = getDialogPos rHdriLib
+			
+			px = rp.x + btnCategory.pos.x + 9
+			py = rp.y + btnCategory.pos.y + 56
+				
+			rcShowCategories.Show px py							
+		)
+					
+		on rHdriLib open do
+		(		
+			_HDRI_PATH = getFilenamePath  (getThisScriptFilename()) + @"hdri\"
+			_DB_HDRI = _HDRI_PATH + @"db.ini"
+					
+			initHdriLibDotNet()
+			
+			u = sysInfo.username
+			if(findItem _MAKE_PREVIEW_ADMINS u != 0) do _IS_USER_ADMIN = true
+						
+			changeCategory  "All"
+			bindHdriLibraryRC()
+		)
+		
+		on btnCategory pressed do
+		(
+			showCat()
+		)
+		
+		on lbxHdriLibrary DoubleClick do
+		(
+			n = getSelectedName()
+			
+			if(n == undefined) then 
+			(
+				_SELECTED = undefined
+			) else
+			(
+				_SELECTED = _HDRI_PATH + n + _HDRI_EXT
+			)
+						
+			try(destroyDialog rHdriLib)catch()
+		)
+		
+		on btnOpenHDRI pressed do
+		(
+			_SELECTED = openHDRI()
+			
+			try(destroyDialog rHdriLib)catch()
+		)
+		
+		on lbxHdriLibrary MouseUp do
+		(		
+			bindHdriLibraryRC()
+		)
+	)
+
+	createDialog rHdriLib 660 700 modal: true
+	
+	return _SELECTED
 )
 
 fn deleteDomes =
@@ -394,7 +805,7 @@ fn setRenderQuality =
 					
 					renderSystem.imageSampler_shadingRate = 2				
 					renderSystem.twoLevel_baseSubdivs = 1				
-					renderSystem.twoLevel_fineSubdivs = 4				
+					renderSystem.twoLevel_fineSubdivs = 2				
 					renderSystem.twoLevel_threshold = 0.015									
 					renderSystem.gi_primary_type = 2				
 					renderSystem.gi_secondary_type = 2
@@ -407,7 +818,7 @@ fn setRenderQuality =
 					
 					renderSystem.imageSampler_shadingRate = 15				
 					renderSystem.twoLevel_baseSubdivs = 1				
-					renderSystem.twoLevel_fineSubdivs = 8				
+					renderSystem.twoLevel_fineSubdivs = 4				
 					renderSystem.twoLevel_threshold = 0.001								
 					renderSystem.gi_primary_type = 2				
 					renderSystem.gi_secondary_type = 2
@@ -460,16 +871,18 @@ fn rolloutToggle t =
 		removeRollout _rStep1 fFastRender
 		removeRollout _rStep2 fFastRender
 		removeRollout _rStep3 fFastRender
-		removeRollout _rPreset fFastRender
+		removeRollout _rPreset fFastRender 
+		try(destroyDialog _rStep3)catch()
 		
 		return false
 	)
 	
 	_rStep0.open = false
-	addRollout _rStep1 fFastRender rolledUp:true
-	addRollout _rStep2 fFastRender rolledUp:true
-	addRollout _rStep3 fFastRender
+	addRollout _rStep1 fFastRender rolledUp:false
+	addRollout _rStep2 fFastRender rolledUp:false
+	--addRollout _rStep3 fFastRender
 	addRollout _rPreset fFastRender rolledUp:true
+	createDialog _rStep3 200 300 style: #(#style_titlebar, #style_border) parent: _rStep0.hwnd
 	
 	r = getRender()
 	
@@ -497,6 +910,11 @@ rollout _rStep0  "Basic Setup" category:1
 	(
 		for i in _rStep0.controls do i.enabled = d					
 	)	
+	
+	on _rStep0 moved p do
+	(
+		setPosStep3()
+	)
 	
 	on _rStep0	open do
 	(	
@@ -1092,7 +1510,8 @@ rollout _rStep1  "HDRI" category:2
 		
 	on btnLightHDR pressed do
 	(
-		f = getOpenFileName  caption: "Select Light HDR" types: "*.hdr|*.hdr|*.exr|*.exr"
+		--f = getOpenFileName  caption: "Select Light HDR" types: "*.hdr|*.hdr|*.exr|*.exr"
+		f = openHdriLibrary()
 		if(f == undefined) do return false
 		
 		useSettings "LIGHT_HDR" f "w"	
@@ -1102,7 +1521,8 @@ rollout _rStep1  "HDRI" category:2
 	
 	on btnReflectHDR pressed do
 	(
-		f = getOpenFileName  caption: "Select Reflect HDR" types: "*.hdr|*.hdr|*.exr|*.exr"
+		--f = getOpenFileName  caption: "Select Reflect HDR" types: "*.hdr|*.hdr|*.exr|*.exr"
+		f = openHdriLibrary()
 		if(f == undefined) do return false
 		
 		useSettings "REFLECT_HDR" f "w"	
@@ -1579,17 +1999,31 @@ fn postProcess =
 			
 			if(btmPreview.width > b.width and btmPreview.height > b.height) do btmPreview.SizeMode = bs.CenterImage
 				
-			setClipboardBitmap  b	
+			img = undefined
+			
 			c = dotNetClass "System.Windows.Forms.Clipboard"
-			img = c.GetImage()	
+			
+			for i in 1 to 10 do
+			(
+				setClipboardBitmap  b	
+				
+				img = c.GetImage()					
+				if(img != undefined) do exit
+			)
+								
 			r = dotNetObject "System.Drawing.Rectangle" 0 0 img.width img.height			
 			gu = (dotNetClass "System.Drawing.GraphicsUnit").Pixel			
 			a = dotNetObject "System.Drawing.Imaging.ImageAttributes"
 			a.SetGamma 0.45			
 			g = (dotNetClass "System.Drawing.Graphics").FromImage(img)	
 			g.DrawImage img r 0 0 img.width img.height gu a			
-			c.setImage(img)			
-			btmPreview.image = c.GetImage()
+			
+			for i in 1 to 10 do
+			(
+				c.setImage(img)			
+				btmPreview.image = c.GetImage()
+				if(c.GetImage() != undefined) do exit
+			)
 		)
 		
 		fn clearRender = 
@@ -1772,7 +2206,7 @@ rollout _rStep3  "Render / Post Process" category:4
 		label lblX " x " 
 		spinner spnRenderSizeY "" range: [100, 999999999, 800] fieldWidth: 50 type: #integer align: #left offset: [-20, 0]
 		--button btnStartRender "Start Render" height: 30 width: 215		
-		dotnetcontrol btnStartRender "System.Windows.Forms.Button" height: 40 width: 215
+		dotnetcontrol btnStartRender "System.Windows.Forms.Button" height: 40 width: 175
 		
 		checkbox cbxDR "Distributed rendering"
 	)
@@ -1780,7 +2214,20 @@ rollout _rStep3  "Render / Post Process" category:4
 	(
 		--button btnOpenEditor "Open Editor" height: 30 width: 215
 		
-		dotnetcontrol btnOpenEditor "System.Windows.Forms.Button" height: 40 width: 215
+		dotnetcontrol btnOpenEditor "System.Windows.Forms.Button" height: 40 width: 175
+	)
+	timer tmrSetPos "" active: false interval: 300
+	
+	on _rStep3 moved p do
+	(
+		tmrSetPos.active = false
+		tmrSetPos.active = true	
+	)
+	
+	on tmrSetPos tick do
+	(
+		setPosStep3()	
+		tmrSetPos.active = false
 	)
 	
 	on spnRenderSizeX changed v do useSettings "RENDER_SIZE_X" v "w"
@@ -2047,6 +2494,8 @@ rollout _rStep3  "Render / Post Process" category:4
 	(			
 		setupImageButton btnStartRender "Start Render" "kettle-01"
 		setupImageButton btnOpenEditor "Edit Render" "filter-02"
+		
+		setPosStep3()
 	)
 	
 	on cbxDR changed v do
@@ -2136,7 +2585,7 @@ rollout _rAbout "About" category:6
 
 addRollout _rStep0 fFastRender rolledUp:false
 addRollout _rStep1 fFastRender rolledUp:false
-addRollout _rStep2 fFastRender rolledUp:true
-addRollout _rStep3 fFastRender rolledUp:false
+addRollout _rStep2 fFastRender rolledUp:false
+--addRollout _rStep3 fFastRender rolledUp:false
 addRollout _rPreset fFastRender rolledUp:true
 addRollout _rAbout fFastRender rolledUp:true 

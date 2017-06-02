@@ -546,7 +546,7 @@ fn isValidText t component =
 	return true
 )
 
-fn getMaxVersion =
+fn getActuatlMaxVersion =
 (
 	v = maxVersion()
 	v = (v[1] / 1000) - 2
@@ -770,6 +770,7 @@ rollout _STEP1 "STEP 1: Model Transform"
 		button btnSetPivotCenter "Center" tooltip: "Set pivot point in center of objects." align: #left width: 50 height: 28
 		label lblOr2 "or" width: 10 offset: [-6,6]
 		button btnSetPivotTop "Top" tooltip: "Set pivot point in center and top of objects." align: #left offset: [-15,0] width: 50 height: 28
+		checkbox cbxOnePivotForAll "One Pivot For All" tooltip: "All selected objects will have same pivot point."
 	)
 	
 	group "4. Position"
@@ -826,17 +827,31 @@ rollout _STEP1 "STEP 1: Model Transform"
 		showTooltip nextWarn m title: "Info!" show: 10000
 	)
 	
-	fn setPivot zpos: undefined =
-	(
-		for i in selection do 
-		(	
-			i.pivot = i.center
-			if(zpos != undefined) do i.pivot.z = zpos
+	fn setPivot p: #bottom =
+	(				
+		if(cbxOnePivotForAll.checked) then (
+			for i in selection as array do 
+			(	
+				i.pivot = selection.center			
+				pivotPoint = case p of
+				(
+					#bottom: i.pivot.z = selection.min.z
+					#top: i.pivot.z = selection.max.z
+				)					 
+			)
+		) else
+		(
+			for i in selection as array do 
+			(	
+				i.pivot = i.center			
+				pivotPoint = case p of
+				(
+					#bottom: i.pivot.z = i.min.z
+					#top: i.pivot.z = i.max.z				
+				)					 
+			)
 		)
 		
-		/*selection.pivot = selection.center
-		if(zpos != undefined) do selection.pivot.z = zpos*/
-			
 		ForceCompleteRedraw()
 	)
 	
@@ -1045,22 +1060,22 @@ rollout _STEP1 "STEP 1: Model Transform"
 	on btnSetPivotBotton pressed do
 	(
 		if(not isSelected()) do return false
-			
-		setPivot zpos:selection.min.z
+		
+		setPivot p: #bottom
 	)
 	
 	on btnSetPivotTop pressed do
 	(
 		if(not isSelected()) do return false
 			
-		setPivot zpos:selection.max.z
+		setPivot p: #top
 	)
 	
 	on btnSetPivotCenter pressed do
 	(
 		if(not isSelected()) do return false
 			
-		setPivot()
+		setPivot p: #center
 	)
 	
 	on btnPostiton pressed do
@@ -1202,7 +1217,7 @@ rollout _STEP2 "STEP 2: Model Info"
 	(
 		--catID = -1
 		url = _URL + "vault/mxs/mxsGetRelTags.php?id=" + id as string + "&time=" + timeStamp() as string
-		r = httpGet url
+		r = httpGet url		
 		t = for i in filterString r ";" collect trim i
 		return t
 	)
@@ -1331,7 +1346,6 @@ rollout _STEP2 "STEP 2: Model Info"
 			(	
 				setPosRelTagsList()		
 				relTags = getRelTagsList catID
-				sort relTags
 								
 				if(relTags.count == 0) do 
 				(				
@@ -2103,7 +2117,7 @@ rollout _STEP5 "STEP 5: Pack Model"
 		_lblUnwrap.text = getYesNo bUnwrap
 		_lblLights.text = getYesNo bLights
 		_lblLods.text = getYesNo bLods
-		_lblFormat.text = (getMaxVersion())[1]
+		_lblFormat.text = (getActuatlMaxVersion())[1]
 		_lblCustom1.text = getNA sCustom1
 		_lblClient.text = getNA sClient
 			
@@ -2352,7 +2366,7 @@ rollout _STEP5 "STEP 5: Pack Model"
 	(
 		f = szDir + "info.tmp"
 		n = szDir + "info.ini"
-		v = getMaxVersion()
+		v = getActuatlMaxVersion()
 		r = getCurrRender()
 		p = polyCount geometry
 		d = getDim geometry
@@ -2414,7 +2428,7 @@ rollout _STEP5 "STEP 5: Pack Model"
 		
 		_selection = selection as array 	
 			
-		v = getMaxVersion()
+		v = getActuatlMaxVersion()
 		r = getCurrRender()	
 			
 		-- Set paths
