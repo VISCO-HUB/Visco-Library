@@ -2,7 +2,7 @@
 [INFO] 
 
 NAME = Assets Library
-VERSION = 1.0.6
+VERSION = 1.0.7
 AUTHOR = Vasily Lukyanenko
 DEV = VISCO
 HELP = 
@@ -35,6 +35,10 @@ ICON=#("AssetsLibrary", 1)
 [1.0.6]
 
 + Added: When open model you can download data for PackModel=
+
+[1.0.7]
+
+- BugFix: Auto Login=
 
 [ABOUT]
 
@@ -159,10 +163,11 @@ try(_ViscoAssetsForm.icon = dotNetObject "System.Drawing.Icon" iconFile)catch()
 wbTrust = dotNetObject "System.Windows.Forms.WebBrowser"
 wbTrust.size =dotNetObject "System.Drawing.Size" 0 0
 wbTrust.location = dotNetObject "System.Drawing.Point" -100 -100
-wbTrust.url = dotNetObject "System.Uri" trustUrl
+	
+wbTrust2 = dotNetObject "System.Windows.Forms.WebBrowser"
+wbTrust2.size =dotNetObject "System.Drawing.Size" 0 0
+wbTrust2.location = dotNetObject "System.Drawing.Point" -100 -100
 
-httpGet trustUrl	
-sleep 0.2
 
 execCommand = dotNetObject "System.Windows.Forms.Textbox"			
 execCommand.size = dotNetObject "System.Drawing.Size" 0 0
@@ -172,9 +177,15 @@ global wb = dotNetObject "System.Windows.Forms.WebBrowser"
 wb.size = _ViscoAssetsForm.ClientSize
 --wb.AllowWebBrowserDrop  = true
 wb.location = dotNetObject "System.Drawing.Point" 0 0
-wb.url = dotNetObject "System.Uri" siteUrl
 wb.ObjectForScripting = execCommand
 
+fn getUri s = dotNetObject "System.Uri" s	
+
+
+fn loadUrl =
+(
+	wb.url = getUri siteUrl	
+)
 	
 _ViscoAssetsForm.controls.add  execCommand
 _ViscoAssetsForm.controls.add  wbTrust
@@ -312,11 +323,28 @@ fn onLoad s e =
 	setWindowPos()
 	setWindowSize()
 	setWindowState()
+	
+	wbTrust.Navigate (trustUrl)
+)
+
+fn getUrl = (
+	if(wb.url != undefined) then
+	(
+		return (wb.url).toString()
+	) 
+	
+	return ""
 )
 
 fn onNavigating e =
+(	
+	enableAccelerators = false	
+)
+
+
+fn onCompleted e =
 (
-	enableAccelerators = false
+
 )
 
 fn onFocus e = 
@@ -547,6 +575,9 @@ dotNet.addEventHandler _ViscoAssetsForm "Closing" onClose
 dotnet.addEventHandler wb "gotFocus" onFocus
 dotnet.addEventHandler wb "Click" onFocus
 dotNet.addEventHandler wb "Navigating" onNavigating
+dotNet.addEventHandler wb "DocumentCompleted" onCompleted
+dotNet.addEventHandler wbTrust "DocumentCompleted" loadUrl
+
 dotNet.addEventHandler execCommand "TextChanged" onExecute
 dotnet.addEventHandler executeTimer "tick" onExecuteCommand
 

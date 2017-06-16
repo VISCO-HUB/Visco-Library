@@ -58,7 +58,7 @@ app.config(function($routeProvider, $sceProvider) {
     })
 	.when('/msg/:page', {
         templateUrl : "templates/msg.php",
-		controller: 'msgCtrl',
+		controller: 'adminMsgCtrl',
     })	
 	.when('/textures/:page', {
         templateUrl : "templates/textures.php",
@@ -161,7 +161,7 @@ app.controller('uploadCtrl', function($scope, FileUploader, vault, $rootScope) {
 	
 	uploader.onSuccessItem = function(fileItem, response, status, headers) {
 		vault.deleteMessage();
-		console.log(response);
+		
 		angular.forEach(uploader.queue, function(item, key) {
 			if(fileItem.file.name == item.file.name) {					
 				uploader.queue[key].isReplace = false;
@@ -237,7 +237,7 @@ app.controller('uploadCtrl', function($scope, FileUploader, vault, $rootScope) {
 	
 	$rootScope.dataMonthDownload = [];
 	$rootScope.labelsMonthDownload = [];
-	$rootScope.labelsUserColors = ['#35A9E1', '#FF5555', '#FABB3C', '#67C3EF', '#8064A2', '#4BACC6', '#F79646', '#2C4D75', '#C0504D'];
+	$rootScope.labelsUserColors = ['#35A9E1', '#FF5555', '#FABB3C', '#4BACC6', '#F79646', '#2C4D75', '#C0504D', '#FABB3C', '#8064A2', '#4BACC6', '#F79646', '#2C4D75', '#C0504D'];
 	$rootScope.dataUserDownload = [];
 	$rootScope.labelsUserDownload = [];
 	
@@ -296,7 +296,7 @@ app.controller('uploadCtrl', function($scope, FileUploader, vault, $rootScope) {
 		animateScale: false,
 		percentageInnerCutout: 50,
 		legend: {
-			display: true,
+			display: false,
 			position: 'bottom',
 			fullWidth: false
 		}
@@ -330,19 +330,25 @@ app.controller('usersCtrl', function($scope, vault, $rootScope, $location, $rout
 		$scope.currentPage = $scope.page;
 	}, 50);
 	
+	$scope.tab = 'users';
+	$scope.changeTab = function(t) {		
+		$scope.getData();
+		$scope.tab = t;
+	}
 	
-	if(!$cookieStore.get('perpage')) {		
-		$cookieStore.put('perpage', 50);	
+	if(!$cookieStore.get('perpage-users')) {		
+		$cookieStore.put('perpage-users', 250);	
 	};
 	
-	$rootScope.perpage = $cookieStore.get('perpage');
+	$rootScope.perpage = $cookieStore.get('perpage-users');
 
 	$scope.usersGet = function(page, perpage, filter){				
-		vault.usersGet(page, perpage, filter);
+		//vault.usersGet(page, perpage, filter);
+		vault.usersGet(1, 100000, filter);
 	};
 	
 	$scope.changePerPage = function(p) {		
-		$cookieStore.put('perpage', p);
+		$cookieStore.put('perpage-users', p);
 		$rootScope.perpage = p;		
 		
 		$scope.usersGet($scope.page, $rootScope.perpage, $rootScope.usersFilter);
@@ -385,8 +391,67 @@ app.controller('usersCtrl', function($scope, vault, $rootScope, $location, $rout
 	}
 	
 	
-	$scope.usersGetFilter();
-	$scope.usersGet($scope.page, $rootScope.perpage, $rootScope.usersFilter);
+	$scope.usersAddGroup = function(){
+		var name = prompt('Please enter new group name!', '');			
+		
+		if(!name || !name.length) {			
+			vault.showMessage('Please enter the name!', 'warning');
+		
+			return false;
+		}
+		
+		if(name.match(/[^a-zA-Z0-9-:()_ ]/)) {
+			vault.showMessage('Group has wrong format!', 'warning');
+			
+			return false;
+		}
+		
+		vault.usersAddGroup(name);
+	}
+	
+	
+	$scope.usersRenameGroup = function(id, oldname){
+		var name = prompt('Rename group ' + oldname + ':', oldname);			
+		
+		if(!name || !name.length) {			
+			vault.showMessage('Please enter the name!', 'warning');
+		
+			return false;
+		}
+		
+		if(name.match(/[^a-zA-Z0-9-:()_ ]/)) {
+			vault.showMessage('Group has wrong format!', 'warning');
+			
+			return false;
+		}
+		
+		vault.usersRenameGroup(id, name);
+	}
+	
+	$scope.usersGetGroups = function() {
+		vault.usersGetGroups();
+	}
+			
+	$scope.usersDelGroup = function(id, name) {
+		if(!confirm('Do you really want to delete group: \"' + name + '\"?\n\nWARNING!\nThis action will delete this group permanently!')){
+			return false;
+		}
+		
+		vault.usersDelGroup(id, name);
+	}
+	
+	$scope.usersToggleGroup = function(userid, groupid) {
+		vault.usersToggleGroup(userid, groupid);
+	}
+	
+	$scope.getData = function() {
+		//$scope.usersGetFilter();
+		$scope.usersGet($scope.page, $rootScope.perpage, $rootScope.usersFilter);
+		//$scope.usersGetGroups();
+	}
+
+	$scope.getData();
+	
 });
  
 
@@ -528,9 +593,10 @@ app.controller('emailingCtrl', function($scope, vault, $rootScope, $location, $r
 		users: []
 	}
 	
+	
 	$scope.sendEmail = function(data) {
 		var uCnt = data.userSelect.length ? data.userSelect.length : 'All';
-		var uGrp = data.filter.grp ? data.filter.grp : 'All'
+		var uGrp = data.filter.grp ? data.filter.grp : -1;
 		
 		if(!data.content.length || !data.subject.length) {
 			vault.showMessage('Please fill correct all data!', 'warning');			
@@ -677,7 +743,7 @@ app.controller('texturesCtrl', function($scope, vault, $rootScope, $location, $r
 });
  
   	// MODELS
-app.controller("modelsEditCtrl", function ($scope, $rootScope, $routeParams, vault) {
+app.controller("modelsEditCtrl", function ($scope, $rootScope, $routeParams, vault, FileUploader) {
 	vault.getGlobal();
 	vault.catGet();
 			
@@ -691,6 +757,10 @@ app.controller("modelsEditCtrl", function ($scope, $rootScope, $routeParams, vau
 	$rootScope.addCrumb('Edit Model', '');
 	
 	$rootScope.deleteMsg();
+	
+	$scope.openModel = function(id) {
+		vault.sendCommandMXS('OPEN_MODEL', id);
+	}
 	
 	$scope.productGet = function(){			
 		vault.productInfo($scope.type, id);		
@@ -715,12 +785,12 @@ app.controller("modelsEditCtrl", function ($scope, $rootScope, $routeParams, vau
 	}
 	
 	$scope.yesno = function(s) {
-		if(s) {return 'Yes';}
+		if(s && s != 'No') {return 'Yes';}
 		return 'No';
 	}
 	
 	$scope.productChangeName = function(catid, oldname) {
-		var n = prompt('Please enter new name!', '');			
+		var n = prompt('Please enter new name!', oldname);			
 		
 		if(!n || !n.length) {			
 			vault.showMessage('Please enter the product name!', 'warning');
@@ -731,12 +801,8 @@ app.controller("modelsEditCtrl", function ($scope, $rootScope, $routeParams, vau
 		vault.productChangeName(n, oldname, id, catid, $scope.type);
 	}
 	
-	$scope.productChangeOverview = function() {
-		var o = prompt('Please enter new overview!', '');			
-		
-		if(!o || !o.length) {			
-			vault.showMessage('Please enter the product overview!', 'warning');
-		
+	$scope.productChangeOverview = function(o) {
+		if(!confirm('Do you really want to change description?\n\n' + o)){
 			return false;
 		}
 		
@@ -773,6 +839,57 @@ app.controller("modelsEditCtrl", function ($scope, $rootScope, $routeParams, vau
 		$scope.pid = 0;
 	}
 	
+	// UPLOAD
+	var uploaderImg = $scope.uploaderImg = new FileUploader({
+		url: hostname + 'admin/vault/upload.preview.php?id=' + id + '&type=' + $scope.type
+	});
+	
+	uploaderImg.onAfterAddingFile = function(fileItem) {
+        uploaderImg.uploadAll();
+		//console.info('onAfterAddingFile', fileItem);
+    };
+	
+	uploaderImg.onWhenAddingFileFailed = function(item /*{File|FileLikeObject}*/, filter, options) {
+        //console.info('onWhenAddingFileFailed', item, filter, options);
+		vault.showMessage('Allowed only *.jpg files!', 'error');
+	};
+	
+	uploaderImg.onCompleteItem = function(fileItem, response, status, headers) {
+		//console.info('onCompleteItem', fileItem, response, status, headers);
+			
+		if(response.response == 'DONE')	{
+			vault.showMessage('Preview uploaded!', 'success');
+		}
+		
+		if(response.response == 'FAILED')	{
+			vault.showMessage('Error while uploading preview!', 'error');
+		}
+		
+		if(response.response == 'MOVEERROR')	{
+			vault.showMessage('Preview uploaded but not moved to preview folder!', 'error');
+		}
+		
+		uploaderImg.clearQueue();
+		console.log(response)	
+			
+		$scope.productGet();	
+		
+	};
+	
+	uploaderImg.onErrorItem = function(fileItem, response, status, headers) {
+        //console.info('onErrorItem', fileItem, response, status, headers);
+	};
+			
+	uploaderImg.filters.push({
+		name: 'imageFilter',
+		fn: function(item /*{File|FileLikeObject}*/, options) {
+			var type = '|' + item.type.slice(item.type.lastIndexOf('/') + 1) + '|';
+			z = '|jpg|jpeg|'.indexOf(type) !== -1;
+			return z;
+		}
+	});
+	//
+	
 	
 	$scope.pid = 0;
 	$scope.choosePreview = function(i){$scope.pid = i;}
@@ -789,6 +906,10 @@ app.controller("modelsEditCtrl", function ($scope, $rootScope, $routeParams, vau
 	}, 50);
 	
 	
+	$scope.openModel = function(id) {
+		vault.sendCommandMXS('OPEN_MODEL', id);
+	}
+	
 	if(!$cookieStore.get('perpage')) {		
 		$cookieStore.put('perpage', 50);	
 	};
@@ -798,22 +919,30 @@ app.controller("modelsEditCtrl", function ($scope, $rootScope, $routeParams, vau
 	$scope.type = 1;
 			
 	$scope.productsGet = function(page, perpage, type, filter){				
+		f = $cookieStore.get('modelFilter');
+		if(!filter && f) {
+			filter = f;
+		}
+		
 		vault.productsGet(page, perpage, type, filter);
 	};
 	
 	$scope.changePerPage = function(p) {		
 		$cookieStore.put('perpage', p);
 		$rootScope.perpage = p;		
-		
+				
 		$scope.productsGet($scope.page, $rootScope.perpage, $scope.type, $rootScope.modelFilter);
 	}
 		
 	$scope.changeFilter = function(f) {
 		if(!$rootScope.modelFilter) {$rootScope.modelFilter = {}};
 		
+		$location.path('/models/1');	
 		angular.forEach(f, function(value, key) {
 			$rootScope.modelFilter[key] = value;
 		});
+		
+		$cookieStore.put('modelFilter', $rootScope.modelFilter);
 		
 		$scope.productsGet($scope.page, $rootScope.perpage, $scope.type, $rootScope.modelFilter);
 	}
@@ -843,7 +972,13 @@ app.controller("modelsEditCtrl", function ($scope, $rootScope, $routeParams, vau
  
 	// MSG CTRL
 	
-app.controller('msgCtrl', function($scope, vault, $rootScope, $location, $routeParams, $timeout, $cookieStore, $sce) {
+	// MSG
+app.controller("msgCtrl", function ($scope, $rootScope, vault) {
+	$rootScope.msg = {};
+});	
+	
+app.controller('adminMsgCtrl', function($scope, vault, $rootScope, $location, $routeParams, $timeout, $cookieStore, $sce) {
+	
 	$rootScope.addCrumb('Messages', '#/msg');
 	
 	$scope.page = $routeParams.page;
@@ -909,6 +1044,10 @@ app.controller('msgCtrl', function($scope, vault, $rootScope, $location, $routeP
 		
 		vault.msgSetParam('viewed', '1', msg.id, $scope.page, $rootScope.perpage, $rootScope.msgFilter);
 		
+		$('html, body').animate({
+			scrollTop: ($('#message').offset().top)
+		}, 50);
+		
 		$scope.currentMessage = $scope.renderHtml(msg.msg);
 		$scope.currentSubject = msg.subject;
 		var p = msg.img ? vault.getPreviews(msg.img, 'medium')[0] : null;
@@ -948,16 +1087,21 @@ app.controller("categoryEditCtrl", function ($scope, $rootScope, $routeParams, v
 		vault.catAdd(n, parentid, type);
 	}
 	
-	$scope.addEditor = function(id, user) {		
-		vault.catAddEditor(id, user);
+	$scope.checkGroup = function(find, groups) {
+		var o = false;
+		angular.forEach(groups, function(value, key) {
+			if(value.id == find) {o = true;}
+		});
+		
+		return o;
 	}
 	
-	$scope.addPermission = function(id, grp) {		
-		vault.catAddPermission(id, grp);
+	$scope.toggleEditor = function(id, user) {		
+		vault.catToggleEditor(id, user);
 	}
-	
-	$scope.removePermission = function(id, grp) {		
-		vault.catRemovePermission(id, grp);
+		
+	$scope.togglePermission = function(id, grp) {		
+		vault.catTogglePermission(id, grp);
 	}
 	
 	$scope.removeEditor = function(id, user) {
@@ -965,7 +1109,7 @@ app.controller("categoryEditCtrl", function ($scope, $rootScope, $routeParams, v
 	}
 		
 	$scope.catChangeDesc = function(id) {
-		var n = prompt('Please enter description!', '');			
+		var n = prompt('Please enter description!', $rootScope.categories[id].desc);			
 		
 		if(!n || !n.length) {			
 			vault.showMessage('Please enter library path!', 'warning');
@@ -989,7 +1133,10 @@ app.controller("categoryEditCtrl", function ($scope, $rootScope, $routeParams, v
 	}
 	
 	$scope.catChangeName = function(id) {				
-		var n = prompt('Please enter the name!', '');			
+		name = '';
+		if($rootScope.categories[id]) {name = $rootScope.categories[id].name};
+		
+		var n = prompt('Please enter the name!', name);			
 		
 		if(!n || !n.length) {			
 			vault.showMessage('Please enter the name!', 'warning');
@@ -1032,6 +1179,7 @@ app.controller("categoryEditCtrl", function ($scope, $rootScope, $routeParams, v
 app.controller("categoryCtrl", function ($scope, $rootScope, vault) {
 	vault.getGlobal();
 	vault.catGet();
+	vault.usersGetFilter();
 	
 	$rootScope.addCrumb('Libraries', '#/category');
 	
@@ -1059,6 +1207,15 @@ app.controller("categoryCtrl", function ($scope, $rootScope, vault) {
 		
 		$scope.adminCatSetParam('description', n, id);
 	}
+	
+	$scope.checkGroup = function(find, groups) {
+		var o = false;
+		angular.forEach(groups, function(value, key) {
+			if(value.id == find) {o = true;}
+		});
+		
+		return o;
+	}
 		
 	$scope.libDel = function(id, name) {				
 		if(!name) {name = '';}
@@ -1076,6 +1233,10 @@ app.controller("categoryCtrl", function ($scope, $rootScope, vault) {
 	$scope.catSetParam = function(param, value, id) {
 	
 		vault.catSetParam(param, value, id);
+	}
+	
+	$scope.togglePermission = function(id, grp) {		
+		vault.catTogglePermission(id, grp);
 	}
 });
 
@@ -1306,6 +1467,16 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 			break;
 			case 'EMAILNOUSERS': s.warning = 'You can\'t send email for selected users!';
 			break;
+			case 'GROUPSBAD': s.warning = 'Error while get groups!';
+			break;
+			case 'GROUPADDBAD': s.error = 'Error whire add group!';
+			break;
+			case 'GROUPSEXIST': s.error = 'Group already exist!';
+			break;			
+			case 'GROUPRENOK': s.success = 'Group renamed success!';
+			break;
+			case 'GROUPRENBAD': s.error = 'Error while renaming group!';
+			break;
 		}
 		
 		$rootScope.msg = s;
@@ -1335,8 +1506,7 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		$templateCache.removeAll();
 		HttpPost('SIGNIN', json).then(function(r){						
 			var m = r.data.responce;
-			console.log(r.data);
-			
+						
 			if(m == 'USEROK') {
 				$timeout(function(){
 					$rootScope.goHome();
@@ -1367,6 +1537,73 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 	
 	// ADMIN
 	
+	var usersGetGroups = function() {
+		var json = {'type': 'all'};
+		
+		HttpPost('GETGROUPS', json).then(function(r){						
+			
+			$rootScope.userFilterList.grp = r.data;
+			responceMessage(r.data);
+		},
+		function(r){
+			responceMessage(r);
+		});
+	}
+	
+	var usersAddGroup = function(name) {
+		var json = {'name': name};
+		
+		HttpPost('GROUPADD', json).then(function(r){						
+		
+			usersGetGroups();
+			responceMessage(r.data);
+		},
+		function(r){
+			responceMessage(r);
+		});
+	}
+	
+	var usersToggleGroup = function(userid, groupid) {
+		var json = {'userid': userid, 'groupid': groupid};
+		
+		HttpPost('GROUPTOGGLE', json).then(function(r){						
+		
+			//usersGet(1, 100000, null);
+			
+			usersInfo(userid);
+			responceMessage(r.data);
+		},
+		function(r){
+			responceMessage(r);
+		});
+	}
+	
+	var usersRenameGroup = function(id, name) {
+		var json = {'id': id, 'name': name};
+		
+		HttpPost('GROUPRENAME', json).then(function(r){						
+		
+			usersGetGroups();
+			responceMessage(r.data);
+		},
+		function(r){
+			responceMessage(r);
+		});
+	}
+	
+	var usersDelGroup = function(id, name) {
+		var json = {'id': id, 'name': name};
+		
+		HttpPost('GROUPDEL', json).then(function(r){						
+		
+			usersGetGroups();
+			responceMessage(r.data);
+		},
+		function(r){
+			responceMessage(r);
+		});
+	}
+	
 	
 	var catGet = function(parentid) {
 		if(parentid == null) {parentid = 0;}
@@ -1374,8 +1611,9 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		var json = {'parentid': parentid};
 		
 		HttpPost('CATGET', json).then(function(r){						
-			console.log(r.data)
+			
 			$rootScope.categories = r.data;
+			usersGetFilter();
 			responceMessage(r.data);
 		},
 		function(r){
@@ -1402,10 +1640,10 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		var json = {'page': page, 'type': type, 'perpage': perpage, 'filter': filter};
 		
 		HttpPost('PRODGET', json).then(function(r){						
-			console.log(r.data);
+			
 			$rootScope.products = r.data;						
 			if(r.data.products) {
-				console.log(r.data.products) 
+				
 				if(r.data.pending > 0 && $rootScope.auth.rights == 2) {showMessage('Please check pending models!', 'warning')}
 				$rootScope.product = r.data.products[0]
 			};			
@@ -1421,7 +1659,7 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		var json = {'page': page, 'perpage': perpage, 'filter': filter};
 		
 		HttpPost('TAGSGET', json).then(function(r){						
-			console.log(r.data);			
+			
 			$rootScope.tagsList = r.data;									
 			responceMessage(r.data);
 		},
@@ -1435,7 +1673,7 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		var json = {'page': page, 'perpage': perpage, 'filter': filter};
 		
 		HttpPost('COMMENTSGET', json).then(function(r){						
-			console.log(r.data);			
+			
 			$rootScope.commentsList = r.data;									
 			responceMessage(r.data);
 		},
@@ -1448,7 +1686,7 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		var json = {'id': id};
 		
 		HttpPost('COMMENTSDEL', json).then(function(r){						
-			console.log(r.data);
+			
 			
 			commentsGet(page, perpage, filter);
 			responceMessage(r.data);
@@ -1463,7 +1701,7 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		var json = {'page': page, 'perpage': perpage, 'filter': filter};
 		
 		HttpPost('DOWNLOADLOGGET', json).then(function(r){						
-			console.log(r.data);			
+			
 			$rootScope.donwloadLog = r.data;									
 			responceMessage(r.data);
 		},
@@ -1476,7 +1714,7 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		var json = {'tag': t};
 		
 		HttpPost('TAGSDEL', json).then(function(r){						
-			console.log(r.data);
+			
 			
 			tagsGet(page, perpage, filter);
 			responceMessage(r.data);
@@ -1490,8 +1728,7 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		var json = {'tag': oldtag, 'newtag': newtag};
 		
 		HttpPost('TAGSCHANGE', json).then(function(r){						
-			console.log(r.data);
-			
+						
 			tagsGet(page, perpage, filter);
 			responceMessage(r.data);
 		},
@@ -1505,8 +1742,9 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		var json = {'page': page, 'perpage': perpage, 'filter': filter};
 		
 		HttpPost('USERSGET', json).then(function(r){						
-			console.log(r.data);
 			$rootScope.users = r.data;	
+			
+			usersGetFilter();
 						
 			responceMessage(r.data);
 		},
@@ -1573,7 +1811,9 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 			$rootScope.product = r.data;									
 			if(r.data.info) {
 				$rootScope.product.previews = getPreviews(r.data.info.previews, 'huge');				
-				$rootScope.product.previewNames = r.data.info.previews.split(';');				
+				$rootScope.product.previewNames = r.data.info.previews.split(';');	
+				if(r.data.info.overview) {$rootScope.product.info.overview = r.data.info.overview.split('|').join('\n').split('\\n').join('\n');}
+				
 			}
 			
 			if($rootScope.products && r.data.info) {					
@@ -1595,7 +1835,7 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		var json = {'param': param, 'value': value, 'id': id, 'type': type};
 		
 		HttpPost('PRODSETPARAM', json).then(function(r){												
-			console.log(r.data)
+			
 			productInfo(type, id);		
 		},
 		function(r){
@@ -1608,7 +1848,7 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		var json = {'name': name, 'id': id, 'type': type, 'catid': catid, 'oldname': oldname};
 		
 		HttpPost('PRODSETNAME', json).then(function(r){												
-			console.log(r.data)
+			
 			responceMessage(r.data);
 			productInfo(type, id);		
 		},
@@ -1660,7 +1900,7 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		var json = {'id': id, 'type': type};
 		
 		HttpPost('PRODDELETE', json).then(function(r){												
-			console.log(r.data)
+			
 			responceMessage(r.data);
 			productsGet(page, perpage, type, filter)		
 		},
@@ -1686,7 +1926,7 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		var json = {'id': id, 'name': name, 'type': type};
 		
 		HttpPost('PRODDELPREVIEW', json).then(function(r){												
-			console.log(r.data)
+			console.log(r);
 			responceMessage(r.data);
 			productInfo(type, id);		
 		},
@@ -1718,7 +1958,7 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		
 		HttpPost('CATADD', json).then(function(r){						
 			catGet();
-			console.log(r.data)
+			
 			responceMessage(r.data);
 		},
 		function(r){
@@ -1726,12 +1966,12 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		});
 	}
 	
-	var catAddEditor = function(id, user) {
+	var catToggleEditor = function(id, user) {
 		var json = {'id': id, 'user': user};
 		
-		HttpPost('CATADDEDITOR', json).then(function(r){						
+		HttpPost('CATTOGGLEEDITOR', json).then(function(r){						
 			catGet();
-			console.log(r.data)
+						
 			responceMessage(r.data);
 		},
 		function(r){
@@ -1744,46 +1984,33 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		
 		HttpPost('CATDELDITOR', json).then(function(r){						
 			catGet();
-			console.log(r.data)
+			
 			responceMessage(r.data);
 		},
 		function(r){
 			responceMessage(r);
 		});
 	}
-	
-	var catRemovePermission = function(id, grp) {
+		
+	var catTogglePermission = function(id, grp) {
 		var json = {'id': id, 'grp': grp};
 		
-		HttpPost('CATDELGRP', json).then(function(r){						
+		HttpPost('CATTOGGLEGRP', json).then(function(r){						
 			catGet();
-			console.log(r.data)
+						
 			responceMessage(r.data);
 		},
 		function(r){
 			responceMessage(r);
 		});
 	}
-	
-	var catAddPermission = function(id, grp) {
-		var json = {'id': id, 'grp': grp};
 		
-		HttpPost('CATADDGRP', json).then(function(r){						
-			catGet();
-			console.log(r.data)
-			responceMessage(r.data);
-		},
-		function(r){
-			responceMessage(r);
-		});
-	}
-	
 	var catDel = function(id) {				
 		var json = {'id': id};
 		
 		HttpPost('CATDEL', json).then(function(r){						
 			catGet();
-			console.log(r.data)
+			
 			responceMessage(r.data);
 		},
 		function(r){
@@ -1795,7 +2022,7 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		var json = {'param': param, 'value': value, 'id': id};
 		
 		HttpPost('CATSETPARAM', json).then(function(r){									
-			console.log(r.data)
+			
 			catGet();		
 		},
 		function(r){
@@ -1825,7 +2052,7 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		HttpPost('TAGSREFRESH', json).then(function(r){									
 			getGlobal();
 			
-				console.log(r.data)
+				
 			responceMessage(r.data);			
 		},
 		function(r){
@@ -1840,7 +2067,7 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		
 		HttpPost('CATRENAME', json).then(function(r){									
 			catGet();
-			console.log(r.data)	
+			
 			responceMessage(r.data);			
 		},
 		function(r){
@@ -1866,7 +2093,7 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		
 		HttpPost('CATSORT', json).then(function(r){									
 			catGet();
-			console.log(r.data)	
+			
 			responceMessage(r.data);			
 		},
 		function(r){
@@ -1880,7 +2107,7 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		
 		HttpPost('MSGGETCNT', json).then(function(r){												
 			
-			console.log(r.data)				
+			
 			$rootScope.msgCnt = r.data;
 			responceMessage(r.data);			
 		},
@@ -1898,6 +2125,7 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 			if(r.data.notview != undefined) {
 				$rootScope.msgCnt['cnt'] = r.data.notview;
 			}
+				
 			
 			responceMessage(r.data);
 		},
@@ -1911,7 +2139,7 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		var json = {'param': param, 'value': value, 'id': id};
 		
 		HttpPost('MSGSETPARAM', json).then(function(r){															
-			msgGet(page, perpage, filter);
+			msgGet(page, perpage, filter);						
 		},
 		function(r){
 			responceMessage(r);
@@ -1975,14 +2203,14 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 			$rootScope.labelsUserDownload = l3;
 			//$rootScope.labelsUserColors = c3;
 									
-			console.log(r.data)
+			
 			responceMessage(r.data);	
 		},
 		function(r){
 			responceMessage(r);
 		});
 	}
-			
+					
 	return {
 		showMessage: showMessage,
 		deleteMessage: deleteMessage,
@@ -1990,11 +2218,10 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		signOut: signOut,
 		catGet: catGet,
 		catDel: catDel,
-		catAddEditor: catAddEditor,
+		catToggleEditor: catToggleEditor,
 		catRemoveEditor: catRemoveEditor,
 		catAdd: catAdd,
-		catRemovePermission: catRemovePermission,
-		catAddPermission: catAddPermission,
+		catTogglePermission: catTogglePermission,
 		getGlobal: getGlobal,
 		globalsChange: globalsChange,
 		catSetParam: catSetParam,
@@ -2028,6 +2255,11 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		commentsGet: commentsGet,
 		commentDelete: commentDelete,
 		sendEmail: sendEmail,
+		usersAddGroup: usersAddGroup,
+		usersGetGroups: usersGetGroups,
+		usersDelGroup: usersDelGroup,
+		usersRenameGroup: usersRenameGroup,
+		usersToggleGroup: usersToggleGroup,
 		tm: tm
 	};
 });

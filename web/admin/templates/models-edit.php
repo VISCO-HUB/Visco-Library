@@ -8,8 +8,15 @@
 <div ng-show="product.responce"><h3 class="text-center">You have no access!</h3></div>
 
 <div ng-show="product.info">
+
+<div class="row">
+	<a class="btn btn-default pull-right" href="/#/model/{{product.info.id}}">View</a>
+	<a class="btn btn-default pull-right" href="" ng-show="auth.browser=='MXS'" ng-click="openModel(product.info.id)">Open</a>
+</div>
+
 <h1>Edit: {{product.info.name}}</h1>
 <hr>
+
 <h2><small>Status:</small></h2>
 <div class="btn-group" data-toggle="buttons">
 	<button type="button" class="btn" ng-class="product.info.status == 1 ? 'btn-success' : 'btn-default'" ng-click="prodSetParam('status', '1')">&nbsp;ON&nbsp;</button>
@@ -35,15 +42,15 @@
 <hr>
 <h2><small>Preview:</small></h2>
 <img ng-src="{{product.previews[pid]}}" class="img-responsive admin-preview"> <br>
+
+<br><br>
 <div class="dropdown clr">
-	<div class="btn-group">
-		<button type="button" class="btn btn-default">{{product.previewNames[pid]}}</button>
-		<button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span class="caret"></span><span class="sr-only">Toggle Dropdown</span></button>
-		<ul class="dropdown-menu" role="menu" aria-labelledby="dropdownMenu">
-			<li ng-repeat="name in product.previewNames"><a href="" ng-click="choosePreview($index)">{{name}}</a></li>
-		</ul>
-	</div>
+	<button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">{{product.previewNames[pid]}} <span class="caret"></span></button> 
+	<ul class="dropdown-menu" role="menu" aria-labelledby="dropdownMenu">
+		<li ng-repeat="name in product.previewNames"><a href="" ng-click="choosePreview($index)">{{name}}</a></li>
+	</ul>
 </div>
+
 <div class="btn-group">
 	<button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Actions <span class="caret"></span></button>
 	<ul class="dropdown-menu">
@@ -52,12 +59,30 @@
 		<li role="presentation"><a href="" ng-click="removePreview(product.previewNames[pid])"><span class="glyphicon glyphicon-remove-circle text-danger"></span> Delete Preview</a></li>
 	</ul>
 </div>
+<br><br>
+
+<hr>
+<h2><small>Upload New Preview:</small></h2>
+
+<div ng-show="uploaderImg.queue[0].progress">
+Upload progress:
+<div class="progress" style="margin-bottom: 0;">
+	<div class="progress-bar" role="progressbar" ng-style="{ 'width': uploaderImg.queue[0].progress  + '%' }"></div>
+</div>
+</div>
+<br>
+<label>
+<span type="button" class="btn btn-success"><span class="glyphicon glyphicon-plus" aria-hidden="true"></span> Upload New Preview</span>
+<input type="file" nv-file-select="" uploader="uploaderImg" class="hidden">
+</label>
+
 <hr>
 <h2><small>Description:</small></h2>
 <div class="form-group">
-	<textarea class="form-control" cols="20" rows="5" disabled ng-bind-html="product.info.overview.split('|').join('\n')"></textarea>
+	<textarea class="form-control" cols="20" rows="5" ng-model="product.info.overview"></textarea>
 	<br>
-	<button type="submit" class="btn btn-primary" ng-click="productChangeOverview()">Change</button>
+	<button type="submit" class="btn btn-primary" ng-click="productChangeOverview(product.info.overview)">Save Description</button>
+	
 </div>
 <hr>
 <h2><small>Tags:</small></h2>

@@ -1,3 +1,9 @@
+<script type="text/ng-template" id="groups">
+	<div class="btn-group margin-10-2">
+		<span class="label label-simple">{{dispgrp}}</span>		
+	</div>
+</script>
+
 <ul class="nav nav-tabs">
   <li ng-class="{'active': tab=='profile'}"><a href="#/profile/profile">Main</a></li>
   <li ng-class="{'active': tab=='favorites'}"><a href="#/profile/favorites">Favorites</a></li>
@@ -32,9 +38,12 @@
 			</tr>
 			<tr>
 				<td>Group: </td>
-				<td><strong>{{profile.grp}}</strong></td>
+				<td>
+					<span ng-show="profile.grpname.length" ng-repeat="dispgrp in profile.grpname" ng-include="'groups'"></span> 					
+					<span ng-show="!profile.grpname.length" ng-init="dispgrp='None'" ng-include="'groups'"></span> 	
+				</td>
 			</tr>
-			<tr>
+			<tr ng-show="false">
 				<td>Office: </td>
 				<td><strong>{{profile.office}}</strong></td>
 			</tr>

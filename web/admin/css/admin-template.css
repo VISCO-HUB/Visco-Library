@@ -82,7 +82,7 @@ h1, h2, h3, h4 {
 	display: block;
 	padding: 15px;
 	overflow-y: auto;
-	height: 300px;
+	height: 600px;
 	margin: 20px 0;
 }
 .admin-cat-hierarchy ul {
@@ -397,7 +397,7 @@ h1, h2, h3, h4 {
 	margin-right: -10px;
 }
 .dropdown-submenu:hover>a:after {
-	border-left-color: #ffffff;
+	border-left-color: #000;
 }
 .dropdown-submenu.pull-left {
 	float: none;
@@ -538,4 +538,48 @@ h1, h2, h3, h4 {
 .side-menu-popup.ng-hide{
 	margin-left: -101%;
 	transition: 0s linear all;
+}
+
+.btn-xxs, .btn-group-xxs > .btn {
+	padding: 0px 3px;
+	font-size: 10px;
+	line-height: 1.5;
+}
+
+.label-simple {
+	background-color: #FFF;
+	border: 1px solid #CCC !important;
+	color: #333 !important;
+	font-weight: normal;
+}
+
+ul.legend {
+	margin: 0;
+	padding: 0;
+	margin-top: 10px;	
+}
+
+.legend li {
+	/*display: inline-block;*/
+	list-style: none;
+	margin: 0 5px;
+	color: #787878;
+	font-size: 12px;
+	margin: 4px 0;
+	padding-left: 47px;
+	position: relative;
+}
+
+.legend li .color {
+	width: 40px;
+	height: 13px;
+	margin-right: 5px;
+	position: absolute;
+	left: 0;
+	top: 1px;
+}
+
+.href-clear, .href-clear:hover, .href-clear:focus {
+	text-decoration: none !important;
+	outline: none !important;
 }

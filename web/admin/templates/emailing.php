@@ -3,18 +3,17 @@
 
 <div class="alert alert-info" role="alert">
 <span class="glyphicon glyphicon-info-sign" aria-hidden="true"></span>
-  Send mail for <strong>{{data.userSelect.length ? data.userSelect.length: 'All'}}</strong> users  {{usersFilter.grp.length &&  usersFilter.grp != 'All' ? 'in group ' + usersFilter.grp : 'from All groups'}}!
+  Send mail for <strong>{{data.userSelect.length ? data.userSelect.length: 'All'}}</strong> users  {{users.filter.grp != -1 ? 'in group ' + users.filter.grpname : 'from All groups'}}!
  </div>
-
 
 <div class="dropdown clr padding-5">Group:
 	<div class="btn-group">
-		<button type="button" class="btn btn-default">{{users.filter.grp}}</button>
+		<button type="button" class="btn btn-default">{{users.filter.grpname}}</button>
 		<button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span class="caret"></span><span class="sr-only">Toggle Dropdown</span></button>
 		<ul class="dropdown-menu" role="menu" aria-labelledby="dropdownMenu" style="z-index: 1001">
-			<li><a href="" ng-click="changeFilter({'grp': 'All'})">All</a></li>
+			<li><a href="" ng-click="changeFilter({'grp': '-1'})">All</a></li>
 			<li class="divider"></li>
-			<li ng-repeat="sub in userFilterList.grp"> <a tabindex="-1" href="" ng-click="changeFilter({'grp': sub.grp})">{{sub.grp}}</a> </li>
+			<li ng-repeat="sub in userFilterList.grp"> <a tabindex="-1" href="" ng-click="changeFilter({'grp': sub.id})">{{sub.name}}</a> </li>
 		</ul>
 	</div>
 </div>

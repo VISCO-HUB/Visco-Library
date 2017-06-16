@@ -1,3 +1,9 @@
+<script type="text/ng-template" id="groups">
+	<div class="btn-group margin-10-2">
+		<span class="label label-simple">{{dispgrp}}</span>		
+	</div>
+</script>
+
 <h3>{{userProfile.name}}</h3>
 <div ng-show="userProfile">
 <div class="pull-left text-center">
@@ -29,9 +35,12 @@
 			</tr>
 			<tr>
 				<td>Group: </td>
-				<td><strong>{{userProfile.grp}}</strong></td>
+				<td>
+					<span ng-show="userProfile.grpname.length" ng-repeat="dispgrp in userProfile.grpname" ng-include="'groups'"></span> 					
+					<span ng-show="!userProfile.grpname.length" ng-init="dispgrp='None'" ng-include="'groups'"></span> 	
+				</td>
 			</tr>
-			<tr>
+			<tr ng-show="false">
 				<td>Office: </td>
 				<td><strong>{{userProfile.office}}</strong></td>
 			</tr>

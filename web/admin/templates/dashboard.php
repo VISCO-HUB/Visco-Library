@@ -1,53 +1,66 @@
 <h1>Dashboard</h1>
 <hr>
+<a href="#/models/1" class="href-clear">
 <div class="col-md-6 col-sm-6 col-lg-6">
 	<div class="dashboard-card blue">
 		<div class="big-font">{{dashBoardInfo.mdl}}</div>
 		<div class="icon"><span class="glyphicon glyphicon glyphicon-lamp" aria-hidden="true"></span></div>
 		<div>Models</div>
-		<div class="bottom"><a href="#/models/1">More Info <span class="glyphicon glyphicon-circle-arrow-right"></span></a></div>
+		<div class="bottom"></div>
 	</div>
 </div>
+</a>
+<a href="#/textures/1" class="href-clear">
 <div class="col-md-6 col-sm-6 col-lg-6">
 	<div class="dashboard-card green">
 		<div class="big-font">{{dashBoardInfo.tex}}</div>
 		<div class="icon"><span class="glyphicon glyphicon-picture" aria-hidden="true"></span></div>
 		<div>Textures</div>
-		<div class="bottom"><a href="#/textures/1">More Info <span class="glyphicon glyphicon-circle-arrow-right"></span></a></div>
+		<div class="bottom"></div>
 	</div>
 </div>
+</a>
+<a ng-href="{{auth.rights==2 ? '#/users/1' : ''}}" class="href-clear">
 <div class="col-md-6 col-sm-6 col-lg-6 clearfix">
 	<div class="dashboard-card yellow">
 		<div class="big-font">{{dashBoardInfo.urs}}</div>
 		<div class="icon"><span class="glyphicon glyphicon-user" aria-hidden="true"></span></div>
 		<div>Users</div>
-		<div class="bottom" ng-show="auth.rights==2"><a href="#/users/1">More Info <span class="glyphicon glyphicon-circle-arrow-right"></span></a></div>
+		<div class="bottom"></div>
 	</div>
 </div>
+</a>
+<a ng-href="{{auth.rights==2 ? '#/comments/1' : ''}}" class="href-clear">
 <div class="col-md-6 col-sm-6 col-lg-6">
 	<div class="dashboard-card red">
 		<div class="big-font">{{dashBoardInfo.cmt}}</div>
 		<div class="icon"><span class="glyphicon glyphicon-comment" aria-hidden="true"></span></div>
 		<div>Comments</div>
-		<div class="bottom" ng-show="auth.rights==2"><a href="#/comments/1">More Info <span class="glyphicon glyphicon-circle-arrow-right"></span></a></div>
+		<div class="bottom"></div>
 	</div>
 </div>
+</a>
+<a href class="href-clear">
 <div class="col-md-6 col-sm-6 col-lg-6">
 	<div class="dashboard-card color2">
 		<div class="big-font">{{dashBoardInfo.space}}</div>
 		<div class="icon"><span class="glyphicon glyphicon-hdd" aria-hidden="true"></span></div>
-		<div>Free Space</div>
-		<div class="bottom" ng-show="auth.rights==2"><a href="">Free: {{dashBoardInfo.free_space}} | Total: {{dashBoardInfo.total_space}}</a></div>
+		<div>Free Space <br><br>Total: {{dashBoardInfo.total_space}} | Free: {{dashBoardInfo.free_space}}
+		</div>
+		<div class="bottom"></div>
 	</div>
 </div>
+</a>
+<a href="" ng-click="changeTabRow1(4)" class="href-clear">
 <div class="col-md-6 col-sm-6 col-lg-6">
 	<div class="dashboard-card color3">
 		<div class="big-font">{{dashBoardInfo.today}}</div>
 		<div class="icon"><span class="glyphicon glyphicon-download-alt" aria-hidden="true"></span></div>
 		<div>Today Downloaded</div>
-		<div class="bottom" ng-show="auth.rights==2"><a href="" ng-click="changeTabRow1(4)">More Info <span class="glyphicon glyphicon-circle-arrow-right"></span></a></div>
+		<div class="bottom"></div>
 	</div>
 </div>
+</a>
 <br style="clear: both">
 <div ng-if="auth.rights==2">
 	<hr>
@@ -82,8 +95,17 @@
 		</div>
 	</div>
 	<div ng-show="tabRow1==3">
-		<canvas id="bar" class="chart-doughnut" chart-data="dataUserDownload" chart-labels="labelsUserDownload" chart-dataset-override="datasetOverride3" chart-options="options3" chart-colors="labelsUserColors"> </canvas>
-		<div id="js-legend" class="chart-legend"></div>
+		<div class="col-md-8">
+			<canvas id="bar" class="chart-doughnut" chart-data="dataUserDownload" chart-labels="labelsUserDownload" chart-dataset-override="datasetOverride3" chart-options="options3" chart-colors="labelsUserColors"> </canvas>
+		</div>
+		<div class="col-md-4">
+			<br>
+			<ul class="legend">
+				<li ng-repeat="l in labelsUserDownload"><span class="color" ng-style="{'background-color': labelsUserColors[$index]}"></span>{{l}}: <b>{{dataUserDownload[$index]}}</b></li>
+			</ul>
+			<br>
+		</div>
+		
 	</div>
 	<div ng-show="tabRow1==4">
 		<div class="table-responsive">

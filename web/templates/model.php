@@ -1,3 +1,9 @@
+<script type="text/ng-template" id="tags">
+	<a href="#/search/{{tag | encode}}/-1/1/1" class="btn-group margin-2-2 href-clear">		
+		<span class="label label-simple">{{tag}}</span>	
+	</a>
+</script>
+
 <div ng-show="product.product.name.length">
 	<div class="col-md-12 col-lg-8 col-sm-12 col-xs-12">
 	<div class="prod-gallery-frame">
@@ -14,7 +20,7 @@
 		</ul>
 		<br>
 		<div ng-show="tabinfo=='desc'">
-			<pre ng-show="prod.overview" class="first-capitalize decription">{{prod.overview.split('|').join('\n')}}</pre>
+			<pre ng-show="prod.overview" class="first-capitalize decription" ng-bind-html="prod.overview | br | linky:'_blank':{rel: 'nofollow'}"></pre>
 			<div ng-show="!prod.overview" class="text-muted text-center">No description...</div>
 		</div>
 		<div ng-show="tabinfo=='comments'">						
@@ -25,16 +31,56 @@
 		<h3 class="capitalize">{{prod.name}}</h3>
 		<button type="button" class="btn btn-default custom-button-gray button-fixed button-rating" ng-class="{'highlight': product.userrate}" uib-tooltip="Rate model" ng-click="rateProduct(prod.id, libType)"> &nbsp;&nbsp;</button>&nbsp;
 		<button type="button" class="btn btn-default custom-button-gray button-fixed button-heart" uib-tooltip="Add to favorite" ng-click="hideShowQuickFavortites(prod)"> &nbsp;&nbsp;</button>&nbsp;
-		<button type="button" class="btn btn-default custom-button-gray button-fixed button-download" uib-tooltip="Download model" ng-click="downloadUrl(prod.id, libType)" ng-show="auth.rights >= 0"> &nbsp;&nbsp;</button>&nbsp;
+		<button type="button" class="btn btn-default custom-button-gray button-fixed button-download" uib-tooltip="Download model" ng-click="downloadUrl(prod.id, libType)" ng-show="auth.rights >= 0 && product.candl"> &nbsp;&nbsp;</button>&nbsp;
 		<a ng-href="admin/#/models-edit/{{prod.id}}/1" class="btn btn-default custom-button-gray button-fixed button-edit" uib-tooltip="Edit" ng-show="auth.rights > 0"> &nbsp;&nbsp;</a>&nbsp;
 		<hr>
 		<ul class="nav nav-tabs nav-justified">
-			  <li ng-class="{'active': tabinfo2 =='info'}"><a href="" ng-click="changeTabInfo2('info')">Info</a></li>
-			  <li ng-class="{'active': tabinfo2 =='files'}"><a href="" ng-click="changeTabInfo2('files')">Files</a></li>
+			  <li ng-class="{'active': tabinfo2 =='info'}" ng-show="fileList.responce == 'OK'"><a href="" ng-click="changeTabInfo2('info')">Info</a></li>
+			  <li ng-class="{'active': tabinfo2 =='files'}" ng-show="fileList.responce == 'OK'"><a href="" ng-click="changeTabInfo2('files')">Files</a></li>
 		</ul>
 		<br>
 		<div ng-show="tabinfo2=='files'">
-			<div class="text-muted text-center">This section under construction...</div>
+			<div class="file-list">
+				<h4>Files</h4>
+					
+				<table class="table table-striped">
+					<tr>
+						<td>#</td>
+						<td>Name</td>
+					</tr>	
+					<tr ng-repeat="file in fileList.files.file">
+						<td>
+							<a href ng-click="downloadItem(prod.id, libType, file)" class="file-list-href" uib-tooltip="Download"><span class="glyphicon glyphicon-download-alt inline" aria-hidden="true"></span></a>
+						</td>
+						<td class="wrap">
+							{{file}}
+						</td>
+					</tr>
+				</table>
+						
+					
+				<div ng-show="fileList.files.img.length">
+					<h4>Images</h4>
+					<table class="table table-striped">
+						<tr>
+							<td>#</td>
+							<td>Preview</td>
+							<td>Name</td>
+						</tr>
+						<tr ng-repeat="img in fileList.files.img">
+							<td>
+								<a href ng-click="downloadItem(prod.id, libType, (img | rmdir))" class="file-list-href" uib-tooltip="Download"><span class="glyphicon glyphicon-download-alt inline" aria-hidden="true"></span></a>
+							</td>
+							<td>
+								<img ng-src="vault/r.php?p={{fileList.path + key + '\\' + img}}" uib-tooltip="{{imgSize($index)}}" title="{{img | rmdir}}"></span>
+							</td>
+							<td class="wrap">
+								{{img | rmdir}}
+							</td>
+						</tr>
+					</table>
+				</div>				
+			</div>
 		</div>
 		<div ng-show="tabinfo2=='info'" class="text-muted">
 			<div class="capitalize"><strong>Date:</strong> {{tm(prod.date)}}</div>
@@ -54,7 +100,7 @@
 			<hr>
 			<div><strong>Polys:</strong> {{prod.polys}}</div>
 			<div><strong>Renderer:</strong> {{prod.render}}</div>
-			<div><strong>Dimension: </strong>{{prod.dim}}</div>
+			<div><strong>Dimension: </strong>{{getDim(prod.dim, prod.units)}}</div>
 			<div><strong>Units:</strong> {{prod.units}}</div>
 			<div><strong>Format:</strong> {{prod.format}}</div>
 			<br>
@@ -65,10 +111,10 @@
 			<div class="capitalize"><strong>Game Engine Ready:</strong> {{yesNo(prod.gameengine)}}</div>
 			<div class="capitalize"><strong>Lods:</strong> {{yesNo(prod.lods)}}</div>
 			<br>
-			<div><strong>Tags:</strong> {{prod.tags}}</div>
+			<div><strong>Tags:</strong><br><span ng-repeat="tag in prod.tags" ng-include="'tags'">{{tag}}</span></div>
 		</div>
 		<hr>
-		<button type="button" ng-click="downloadUrl(prod.id, libType)" class="btn btn-block margin-0" ng-show="auth.browser!='MXS' && auth.rights >= 0" ng-class="{ 'btn-danger': prodError[prod.id], 'btn-primary': !prodError[prod.id]}">
+		<button type="button" ng-click="downloadUrl(prod.id, libType)" class="btn btn-block margin-0" ng-show="auth.browser!='MXS' && (auth.rights >= 0 && product.candl)" ng-class="{ 'btn-danger': prodError[prod.id], 'btn-primary': !prodError[prod.id]}">
 			<span ng-show="!prodError[prod.id]">Download</span>
 			<span ng-show="prodError[prod.id]==1">File Not Found!</span>
 			<span ng-show="prodError[prod.id]==2">No Access!</span>

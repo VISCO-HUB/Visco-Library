@@ -1766,6 +1766,10 @@ rollout _STEP3 "STEP 3: Model Review"
 	
 	on btnPrev pressed do 
 	(	
+		sOverview = edtOverview.text			
+		sCustom1 = edtCustom1.text			
+		sClient = edtClient.text	
+		
 		saveProp "edtOverview" sOverview
 		saveProp "edtCustom1" sCustom1
 		saveProp "edtClient" sClient
@@ -1937,7 +1941,7 @@ rollout _STEP4 "STEP 4: Preview"
 			lblDimensions.caption = ""
 			cbxMainPreview.checked = false
 			deleteItem sPreviewPath s
-			deleteItem bMainPreview s
+			try(deleteItem bMainPreview s)catch()
 			ddlPreview.items = for i in sPreviewPath collect filenameFromPath i
 			ddlPreview.selection = 1
 			if(sPreviewPath.count != 0) then showPreview sPreviewPath[1] else btmPreview.image = undefined			
@@ -2221,7 +2225,8 @@ rollout _STEP5 "STEP 5: Pack Model"
 				(																	
 					f = getFullPath (b.filename)
 				
-					n = filenameFromPath f
+					--n = filenameFromPath f
+					n = getFilenameFile f
 					p = getFilenamePath f
 					ext = getFilenameType f
 										

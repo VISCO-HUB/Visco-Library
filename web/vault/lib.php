@@ -13,6 +13,10 @@
 			RETURN $S;
 		}
 		
+		PUBLIC STATIC FUNCTION PARSE_VALUE($VALUE, $DELIM = ';') {
+			RETURN ARRAY_FILTER(EXPLODE($DELIM, STR_REPLACE(' ', '', $VALUE)));
+		}
+		
 		PUBLIC STATIC FUNCTION CONNECT() {					
 			RETURN NEW MYSQLI(MYSQL_SERVER, MYSQL_USER, MYSQL_PWD, MYSQL_DB);	
 		}
@@ -65,11 +69,20 @@
 			$ATTACHLIMIT = '';
 			IF($LIMIT) $ATTACHLIMIT = ' LIMIT ' . SELF::STRIP($LIMIT['start']) . ", " . SELF::STRIP($LIMIT['end']);
 			
-			$QUERY = "SELECT * FROM " . $TABLE . " " . $ATTACHWHERE . " " . $ATTACHSORT . " " . ($REVERSE ? 'DESC' : '') . " " . $ATTACHLIMIT . ";";			
+			$QUERY = "SELECT SQL_CALC_FOUND_ROWS * FROM " . $TABLE . " " . $ATTACHWHERE . " " . $ATTACHSORT . " " . ($REVERSE ? 'DESC' : '') . " " . $ATTACHLIMIT . ";";			
 		 
 			$RESULT = $MYSQLI->query($QUERY);
 		
 			RETURN $RESULT;
+		}
+		
+		PUBLIC STATIC FUNCTION LAST_CNT() {
+			$MYSQLI = $GLOBALS['MYSQLI'];
+			$QUERY = "SELECT FOUND_ROWS() AS cnt;";			
+			$RESULT = $MYSQLI->query($QUERY);
+			$ROW = $RESULT->fetch_object();
+		
+			RETURN $ROW->cnt;
 		}
 		
 		PUBLIC STATIC FUNCTION SELECTUNIQUE($COL, $TABLE) {
@@ -124,7 +137,7 @@
 			$ATTACHLIMIT = '';
 			IF($LIMIT) $ATTACHLIMIT = ' LIMIT ' . SELF::STRIP($LIMIT['start']) . ", " . SELF::STRIP($LIMIT['end']);
 			
-			$SEL = $CNT ? "SELECT COUNT(*) AS cnt " : "SELECT * ";			
+			$SEL = $CNT ? "SELECT COUNT(*) AS cnt " : "SELECT SQL_CALC_FOUND_ROWS * ";			
 			$QUERY = $SEL . " ," . IMPLODE(',', $MATCH) . " FROM `" . $TABLE . "` WHERE " . $ATTACH_FILTER_CAT . " MATCH (" . IMPLODE(',', $COL) . ") AGAINST ('" . $F . "' IN BOOLEAN MODE) ORDER BY (" . IMPLODE(' + ', $M) . ") DESC " . $ATTACHLIMIT . " ;";
 						
 			$RESULT = $MYSQLI->query($QUERY);
@@ -394,7 +407,9 @@
 							
 			IF($INFO['office']) $SET['office'] = $INFO['office'];
 			IF($INFO['name']) $SET['name'] = $INFO['name'];		
-			IF($INFO['grp']) $SET['grp'] = $INFO['grp'];
+			
+			// Now used group id and set groups manually
+			//IF($INFO['grp']) $SET['grp'] = $INFO['grp'];
 			
 			$RESULT = DB::SELECT('users', $WHERE);
 			$ROWS = DB::TOARRAY($RESULT);
@@ -408,11 +423,11 @@
 		}
 		
 		PUBLIC STATIC FUNCTION TRUSTUSER($USER) {			
-			$SUCCESS = 'TRUSTOK';
+			$SUCCESS = 'Loading...';
 			$ERROR =  '';
 			
 			IF(!ISSET($USER)) {
-				ECHO $ERROR;
+				//ECHO $ERROR;
 				RETURN FALSE;
 			}
 			
@@ -422,16 +437,17 @@
 			$ROWS = MYSQLI_NUM_ROWS($RESULT);
 
 			IF($ROWS != 1) {
-				ECHO $ERROR;
+				//ECHO $ERROR;
 				RETURN FALSE;
 			}
 			
 			$ROW = $RESULT->fetch_object();
 				
 			$_SESSION['browser'] = 'MXS';
+			$_SESSION['trustuser'] = $USER;
 			$_SESSION['token'] = $ROW->token;
 			
-			ECHO $SUCCESS;
+			//ECHO $SUCCESS;
 		}
 		
 		PUBLIC STATIC FUNCTION GETUSERPROFILE($DATA) {
@@ -451,6 +467,12 @@
 			UNSET($PROFILE->token);		
 			$PROFILE->avatar = SELF::GETAVATAR($AUTH);
 			$PROFILE->email = $PROFILE->user . MAILDOMAIN;
+			
+			$GROUPS = ACCESS::GET_GROUPS();
+			$G = ACCESS::PARSE_GROUPS($PROFILE->grp, $GROUPS);
+			
+			$PROFILE->grpname = ARRAY_VALUES($G['name']);
+			$PROFILE->grp = $G['id'];
 			
 			$OUT['profile'] = $PROFILE;
 			
@@ -476,6 +498,10 @@
 		
 		PUBLIC STATIC FUNCTION CHECK() {							
 			
+			IF($_SESSION['browser'] == 'MXS' AND ISSET($_SESSION['trustuser'])) {
+				SELF::TRUSTUSER($_SESSION['trustuser']);				
+			}
+			
 			$AUTH = [];
 			$AUTH['exist'] = FALSE;
 			
@@ -495,11 +521,18 @@
 			
 			RETURN $AUTH;
 		}
+			
 		
 		PUBLIC STATIC FUNCTION GETAUTH() {
 			$AUTH = SELF::CHECK();
 			UNSET($AUTH['user']->token);		
 			$AUTH['user']->avatar = SELF::GETAVATAR($AUTH);
+			
+			$GROUPS = ACCESS::GET_GROUPS();
+			$G = ACCESS::PARSE_GROUPS($AUTH['user']->grp, $GROUPS);
+			
+			$AUTH['user']->grpname = $G['name'];
+			$AUTH['user']->grp = $G['id'];
 			
 			RETURN JSON_ENCODE($AUTH['user']);
 		}
@@ -633,7 +666,7 @@
 					$I['desc'] = $CATEGORY->description;
 					$I['type'] = $CATEGORY->type;
 					$I['sort'] = $CATEGORY->sort;
-					$I['editors'] = IMPLODE(';', ARRAY_FILTER(EXPLODE(';', $CATEGORY->editors)));
+					$I['editors'] = IMPLODE(';', DB::PARSE_VALUE($CATEGORY->editors));
 					$I['access'] = $AUTH['user']->rights > 0;
 										
 					FOREACH($CATEGORIES AS $SUBCAT) {
@@ -758,11 +791,30 @@
 			
 			RETURN -1;
 		}
+		
+		PUBLIC STATIC FUNCTION CANDOWNLOAD($ID, $CATEGORIES = []) {
+			FOREACH($CATEGORIES AS $CATEGORY) {							
+				IF($CATEGORY->id == $ID) {													
+					IF($CATEGORY->parent == 0) {
+						RETURN $CATEGORY->candl ? TRUE : FALSE;
+					}
+					RETURN SELF::CANDOWNLOAD($CATEGORY->parent, $CATEGORIES);				
+				}								
+			}
+		}
 	}
 	
 	CLASS PREVIEW {		
 		PUBLIC STATIC FUNCTION GETPREVIEWPATH($NAME, $SIZE) {
 			RETURN 'images/' . $NAME . '_' . $SIZE . 'x' . $SIZE . '.jpg';
+		}
+		
+		PUBLIC STATIC FUNCTION IS_IMAGE($P) {
+			IF(@IS_ARRAY(GETIMAGESIZE($P))){
+				RETURN TRUE;
+			} 
+		
+			RETURN FALSE;
 		}
 	}
 	
@@ -818,7 +870,7 @@
 			IF(!$RESULT) RETURN $ERROR;
 			
 			$PROD = $RESULT->fetch_object();			
-			$RATING = ARRAY_FILTER(EXPLODE(';', $PROD->rating));
+			$RATING = DB::PARSE_VALUE($PROD->rating);
 			
 			IF(IN_ARRAY($AUTH->user, $RATING)) 
 			{	
@@ -856,6 +908,8 @@
 			$RESULT = DB::SELECT($TABLE, $WHERE);	
 			IF(!$RESULT) RETURN $ERROR;
 			$INFO = $RESULT->fetch_object();
+			
+			$CANDL = CAT::CANDOWNLOAD($INFO->catid, $CATEGORIES);
 				
 			// PATHWAY
 			$PATHWAY = CAT::GETPATHWAY($INFO->catid, $CATEGORIES);			
@@ -868,13 +922,17 @@
 
 			IF($CAT->parent != 0) RETURN $ERROR;	
 			IF($CAT->status == 0 AND $ISNOADMIN) RETURN $NOACCESS;
-			$GRP = ARRAY_FILTER(EXPLODE(';', $CAT->premissions));
-			IF(!IN_ARRAY($AUTH->grp, $GRP) AND COUNT($GRP) AND $AUTH->rights < 1) RETURN $NOACCESS;
+			$GRP1 = DB::PARSE_VALUE($CAT->premissions);
+			$GRP2 = DB::PARSE_VALUE($AUTH->grp);
+			IF(!COUNT(ARRAY_INTERSECT($GRP1, $GRP2)) AND COUNT($GRP1) AND $AUTH->rights < 1) RETURN $NOACCESS;
 			IF($INFO->status == 0 AND $ISNOADMIN) RETURN $STATUSOFF;
-				
+			
+			// TAGS
+			$TAGS = DB::PARSE_VALUE($INFO->tags, ',');
+			$INFO->tags = ARRAY_UNIQUE($TAGS);
 			
 			// RATING
-			$RATING = ARRAY_FILTER(EXPLODE(';', $INFO->rating));
+			$RATING = DB::PARSE_VALUE($INFO->rating);
 			$RATINGCNT = COUNT($RATING);
 			
 			$OUT['pathway'] = $PATHWAY;
@@ -883,6 +941,7 @@
 			$OUT['rating'] = $RATINGCNT ;
 			$OUT['userrate'] = IN_ARRAY($AUTH->user, $RATING);
 			$OUT['comments'] = SELF::GETCOMMENTS($DATA, TRUE);
+			$OUT['candl'] = $CANDL;
 			
 			RETURN JSON_ENCODE($OUT);
 		}
@@ -893,12 +952,13 @@
 			$NOACCESS = '{"responce": "COMMENTNOACCESS"}';
 			$NOTEXT = '{"responce": "COMMENTNOTEXT"}';
 			$AUTH = $GLOBALS['AUTH']['user'];
+			$EMAIL = '';
 			
 			IF(!ISSET($DATA->id) OR !IS_NUMERIC($DATA->id)) RETURN $ERROR;
 			IF(!ISSET($DATA->type) OR !IS_NUMERIC($DATA->type)) RETURN $ERROR;
 			IF(!ISSET($AUTH->user) OR $AUTH->rights < 0) RETURN $NOACCESS;
 			IF(!ISSET($DATA->txt) OR !COUNT($DATA->txt) OR EMPTY($DATA->txt)) RETURN $NOTEXT;
-			
+			IF(ISSET($DATA->email) AND COUNT($DATA->email->user)) $EMAIL = $DATA->email->user . MAILDOMAIN;			
 			$TABLE = SELF::TYPE($DATA->type);
 			
 			$TXT = STRIP_TAGS($DATA->txt);
@@ -916,8 +976,29 @@
 								
 			MSGSYSTEM::ADDEDCOMMENT($TXT, $DATA->id, $TABLE, $BUG);
 			
+			IF($BUG AND COUNT($EMAIL)) {
+				$SUBJECT = 'Bug Report';
+				$CONTENT = '<h1>Bug Report: ' . $DATA->email->name . '</h1>';
+				$CONTENT .= '<table width="100%">
+					<tr valign="top">
+						<td width="200"><a href="' . $DATA->email->link . '"><img src="' . HOSTNAME . $DATA->email->preview . '" style="vertical-align: top; padding: 0;">
+						</a></td>
+						<td>
+							User <a href="mailto:' . $AUTH->user . MAILDOMAIN . '?Subject=Regarding Bug Report">' .  $AUTH->user . '</a> has left a bug report for you!<br>
+							<pre class="bug">' .  $TXT . '</pre>
+							<a href="' . $DATA->email->link . '">View Item</a>
+						</td>
+					</tr>
+				</table>
+				';
+				
+				MSGSYSTEM::SENDEMAIL($SUBJECT, $CONTENT, [$EMAIL]);	
+			}
+	
+			
 			RETURN $SUCCESS;
 		}
+			
 		
 		PUBLIC STATIC FUNCTION GETCOMMENTS($DATA, $RAW = NULL) {
 			$ERROR = '{"responce": "COMMENTGETBAD"}';
@@ -984,7 +1065,7 @@
 			$CATEGORIES = DB::TOARRAY($RESULT);
 			
 			$SUBIDS = CAT::GETSUBIDS($DATA->id, $CATEGORIES) . $DATA->id;
-			$SUBIDS = ARRAY_FILTER(EXPLODE(';', $SUBIDS));
+			$SUBIDS = DB::PARSE_VALUE($SUBIDS);
 						
 			$PATHWAY = CAT::GETPATHWAY($DATA->id, $CATEGORIES);			
 			$PATHWAY = ARRAY_REVERSE($PATHWAY);
@@ -993,7 +1074,8 @@
 			$TABLE = SELF::TYPE($TYPE);
 			$PRODPAGE = PRODUCTS::TYPE($TYPE, PRODUCTPAGE);
 			
-			
+			$CANDL = CAT::CANDOWNLOAD($DATA->id, $CATEGORIES);
+						
 			IF(!$TYPE) RETURN '[]';
 			
 			$CURPAGE = 1;
@@ -1018,12 +1100,13 @@
 				$PRODUCTS[] = $V;				
 			}
 			
-			$ROWS = DB::CNT($TABLE, $WHEREOR, $WHEREAND);						
-			$NUMPAGES = $ROWS;
+			//$ROWS = DB::CNT($TABLE, $WHEREOR, $WHEREAND);						
+			$NUMPAGES = DB::LAST_CNT();
 			
 			$OUT['currpage'] = $CURPAGE;
 			$OUT['totalitems'] = $NUMPAGES;
 			$OUT['perpage'] = $DATA->perpage;
+			$OUT['candl'] = $CANDL;
 			
 			$OUT['products'] = $PRODUCTS;
 			$OUT['pathway'] = $PATHWAY;
@@ -1043,6 +1126,97 @@
 			RETURN $FILE;
 		}
 		
+		PUBLIC STATIC FUNCTION GETFILES($DIR, $IGNORE = []) {
+			
+			$OUT['file'] = [];
+			$OUT['img'] = [];
+			$OUT['imgsize'] = [];
+			
+			$OBJECTS = NEW RECURSIVEITERATORITERATOR(NEW RECURSIVEDIRECTORYITERATOR($DIR), RECURSIVEITERATORITERATOR::SELF_FIRST);
+			FOREACH($OBJECTS AS $NAME => $OBJECT){
+				$N = BASENAME($NAME);
+				$P = PATHINFO($NAME);
+				
+				IF(IS_FILE($NAME) AND !IN_ARRAY($N, $IGNORE) AND !IN_ARRAY(BASENAME($P['dirname']), $IGNORE) AND !IN_ARRAY($N, ['..', '.'])) {
+					$ROOT = ($P['dirname'] . '\\') == $DIR;
+
+					IF($ROOT AND STRPOS($NAME, '.zip') !== FALSE) CONTINUE;
+						
+					IF(PREVIEW::IS_IMAGE($NAME)) {												
+						$OUT['img'][] = LTRIM(BASENAME($P['dirname']), '\\') . '\\' . $N;
+						$OUT['imgsize'][] = GETIMAGESIZE($NAME);
+					} ELSE {
+						$OUT['file'][] = $N;
+					}
+				}			 
+			}
+			
+			RETURN $OUT;
+			
+			/*$FILES = GLOB($DIR . '/*');
+			FOREACH($FILES AS $FILE) {				
+				IF(IS_DIR($FILE) AND !IN_ARRAY($FILE, ['..', '.']) AND !IN_ARRAY(BASENAME($FILE), $IGNORE)) {					
+					$OUT = SELF::GETFILES($FILE, $IGNORE, $OUT, FALSE);
+				}
+				IF(IS_FILE($FILE) 
+					AND !IN_ARRAY(BASENAME($FILE), $IGNORE) 
+					AND !($ROOT AND STRPOS($FILE, '.zip') !== FALSE)
+				) {															
+					IF(PREVIEW::IS_IMAGE($FILE)) {
+						$OUT['img'][] = LTRIM(BASENAME($DIR), '\\') . '\\' . BASENAME($FILE);
+						$OUT['imgsize'][] = GETIMAGESIZE($FILE);
+					} ELSE {
+						$OUT['file'][] = BASENAME($FILE);
+					}
+				}
+			}
+			
+			RETURN $OUT;*/
+		}
+		
+		PUBLIC STATIC FUNCTION FINDFILE($DIR, $FIND, $IGNORE) {
+						
+			$OBJECTS = NEW RECURSIVEITERATORITERATOR(NEW RECURSIVEDIRECTORYITERATOR($DIR), RECURSIVEITERATORITERATOR::SELF_FIRST);
+			FOREACH($OBJECTS AS $NAME => $OBJECT){
+				$N = BASENAME($NAME);
+				IF(!IN_ARRAY($N, $IGNORE) AND !IN_ARRAY($N, ['..', '.']) AND $N == $FIND) RETURN $NAME;				 
+			}
+			
+			RETURN -1;		
+		}
+			
+	
+		PUBLIC STATIC FUNCTION FILESLIST($DATA) {
+			$ERROR = '{"responce": "FILELISTERROR"}';
+
+			IF(!ISSET($DATA->id) OR !IS_NUMERIC($DATA->id)) RETURN $ERROR;
+			IF(!ISSET($DATA->type) OR !IS_NUMERIC($DATA->type)) RETURN $ERROR;
+				
+			$TYPE = SELF::TYPE($DATA->type);
+			IF(!$TYPE) RETURN $ERROR;
+			
+			$WHERE['id'] = $DATA->id;
+			$RESULT = DB::SELECT($TYPE, $WHERE);
+			$PROD = $RESULT->fetch_object();
+			IF(!$PROD) RETURN $ERROR;
+			
+			$PATH = SELF::GETMODELPATH($PROD);
+			$DIR = DIRNAME($PATH) . '\\';
+			
+			$IGNORE[] = 'info.ini';
+			$IGNORE[] = 'main.jpg';
+			$IGNORE[] = 'preview';
+			
+			$FILES = SELF::GETFILES($DIR, $IGNORE);
+			
+						
+			$OUT['files'] = $FILES;
+			$OUT['responce'] = 'OK';
+			$OUT['path'] = $DIR;
+			
+			RETURN JSON_ENCODE($OUT);
+		}
+		
 		PUBLIC STATIC FUNCTION DOWNLOAD($FILE) {
 			IF(FILE_EXISTS($FILE)) {
 				HEADER('Content-Description: File Transfer');
@@ -1059,21 +1233,27 @@
 				EXIT;
 			}
 		}
-					
-		PUBLIC STATIC FUNCTION MODELDOWNLOAD($ID, $TYPE) {
 			
-			$ERROR = '{"responce": "MODELBAD"}';
-			$NOTEXIST = '{"responce": "MODELNOTEXIST"}';
+		PUBLIC STATIC FUNCTION ITEMDOWNLOAD($ID, $TYPE, $FILE) {
+			
+			$AUTH = $GLOBALS['AUTH']['user'];
+			$USER = $AUTH->user;
+			
+			$ERROR = '{"responce": "ITEMBAD"}';
+			$NOTEXIST = '{"responce": "ITEMNOTEXIST"}';
 			$NORIGHTS = '{"responce": "NORIGHTS"}';
 			
-			$TYPE = PRODUCTS::TYPE($TYPE);
-			IF(!$TYPE) {
+			$FILE = STR_REPLACE('%20', ' ', $FILE);
+			$FILE = STR_REPLACE('"', '', $FILE);
+						
+			$TABLE = PRODUCTS::TYPE($TYPE);
+			IF(!$TABLE) {
 				ECHO $ERROR;
 				RETURN FALSE;
 			}
 								
 			$WHERE['id'] = $ID;
-			$RESULT = DB::SELECT($TYPE, $WHERE);
+			$RESULT = DB::SELECT($TABLE, $WHERE);
 			
 			$ROWS = MYSQLI_NUM_ROWS($RESULT);
 			
@@ -1095,7 +1275,68 @@
 				ECHO $NORIGHTS;
 				RETURN FALSE;
 			}
-				
+													
+			$PATH = SELF::GETMODELPATH($PROD);
+			$DIR = DIRNAME($PATH) . '\\';
+			
+			IF($FILE == -1) {
+				ECHO $NOTEXIST;
+				RETURN FALSE;
+			}
+					
+			$IGNORE[] = 'preview';
+			$IGNORE[] = 'info.ini';
+			$IGNORE[] = 'main.jpg';
+			
+			$FILE = SELF::FINDFILE($DIR, $FILE, $IGNORE);
+					
+			IF($FILE == -1) {
+				ECHO $NOTEXIST;
+				RETURN FALSE;
+			}
+			
+			//STATISTIC::DOWNLOADMODEL($PROD, $USER);
+			
+			
+			SELF::DOWNLOAD($FILE);		
+		}
+			
+		PUBLIC STATIC FUNCTION MODELDOWNLOAD($ID, $TYPE) {
+			
+			$AUTH = $GLOBALS['AUTH']['user'];
+			$USER = $AUTH->user;
+			
+			$ERROR = '{"responce": "MODELBAD"}';
+			$NOTEXIST = '{"responce": "MODELNOTEXIST"}';
+			$NORIGHTS = '{"responce": "NORIGHTS"}';
+			
+			$TYPE = PRODUCTS::TYPE($TYPE);
+			IF(!$TYPE) {
+				ECHO $ERROR;
+				RETURN FALSE;
+			}
+								
+			$WHERE['id'] = $ID;
+			$RESULT = DB::SELECT($TYPE, $WHERE);
+			$PROD = $RESULT->fetch_object();
+			
+			$ROWS = MYSQLI_NUM_ROWS($RESULT);
+			
+			IF(!$PROD) {
+				ECHO $ERROR;
+				RETURN FALSE;
+			}
+						
+			$DIR = '';
+						
+	
+			$ACCESS = ACCESS::DOWNLOADACCESS($PROD);
+									
+			IF(!$ACCESS) {
+				ECHO $NORIGHTS;
+				RETURN FALSE;
+			}
+							
 			IF($TYPE == 'models') {
 										
 				$FILE = PRODUCTS::GETMODELPATH($PROD);
@@ -1114,7 +1355,7 @@
 				RETURN FALSE;
 			}
 			
-			STATISTIC::DOWNLOADMODEL($PROD);
+			STATISTIC::DOWNLOADMODEL($PROD, $USER);
 					
 			$FILE = $FILES[0];
 			SELF::DOWNLOAD($FILE);		
@@ -1126,9 +1367,10 @@
 	///////////////////////////////////////////////////////
 	
 	CLASS STATISTIC {				
-		PUBLIC STATIC FUNCTION DOWNLOADMODEL($MODEL) {
-			$AUTH = $GLOBALS['AUTH']['user'];
-			$USER = $AUTH->user;
+			
+		PUBLIC STATIC FUNCTION DOWNLOADMODEL($MODEL, $USER) {
+			
+			$USER = DB::STRIP($USER);
 			
 			// STATISTIC BY MODEL
 			$WHERE = [];
@@ -1152,7 +1394,7 @@
 			$SET = [];
 			
 			$SET['date'] = TIME();
-			$SET['user'] = $AUTH->user;
+			$SET['user'] = $USER;
 			$SET['type'] = 1;
 			$SET['prodid'] = $MODEL->id;
 			$SET['prodname'] = $MODEL->name;
@@ -1180,7 +1422,8 @@
 			$WHERE = [];
 			$SET = [];
 			
-			$WHERE['id'] = $R->id;
+			$WHERE['year'] = $Y;
+			$WHERE['month'] = $M;
 			
 			$SET['year'] = $Y;
 			$SET['month'] = $M;
@@ -1201,7 +1444,7 @@
 	///////////////////////////////////////////////////////
 	
 	CLASS MXS {
-		PUBLIC STATIC FUNCTION ADDMODEL($DATA) {
+		/*PUBLIC STATIC FUNCTION ADDMODEL($DATA) {
 			$ERROR = '{"responce": "MODELBAD"}';
 			$NOTEXIST = '{"responce": "MODELNOTEXIST"}';
 			
@@ -1226,6 +1469,42 @@
 						
 			$OUT['responce'] = "MODELOK";
 			$OUT['file'] = $FILE;
+			
+			RETURN JSON_ENCODE($OUT);					
+		}*/
+		// NEW FUNC!!!!!!!!!!!!!!!!!!!!!!!!!!
+		PUBLIC STATIC FUNCTION MODELADD($ID, $USER) {
+			$ERROR = 'MODELBAD';
+			$NOTEXIST = 'MODELNOTEXIST';
+			
+			IF(!ISSET($ID) OR !IS_NUMERIC($ID)) {
+				$OUT['responce'] = $ERROR;
+				RETURN JSON_ENCODE($OUT);
+			}
+			
+			$WHERE['id'] = $ID;
+			$RESULT = DB::SELECT('models', $WHERE);
+			
+			$ROWS = MYSQLI_NUM_ROWS($RESULT);
+			
+			IF($ROWS != 1) {
+				$OUT['responce'] = $ERROR;
+				RETURN JSON_ENCODE($OUT);
+			}
+						 
+			$MODEL = $RESULT->fetch_object();
+						
+			$FILE = PRODUCTS::GETMODELPATH($MODEL);
+			IF($FILE == -1) {
+				$OUT['responce'] = $NOTEXIST;
+				RETURN JSON_ENCODE($OUT);
+			}
+						
+			STATISTIC::DOWNLOADMODEL($MODEL, $USER);
+						
+			$OUT['responce'] = "MODELOK";
+			$OUT['file'] = $FILE;
+			$OUT['id'] = $ID;
 			
 			RETURN JSON_ENCODE($OUT);					
 		}
@@ -1261,13 +1540,39 @@
 	
 	CLASS ACCESS {
 		
+		PUBLIC STATIC FUNCTION PARSE_GROUPS($GRP, $GROUPS) {			
+					
+			$U = [];					
+			$U['id'] = DB::PARSE_VALUE($GRP);
+			
+			$GROUPS_NAMES = [];
+			FOREACH($U['id'] AS $ID) $GROUPS_NAMES[] = $GROUPS[$ID]->name;
+			$U['name'] = ARRAY_FILTER($GROUPS_NAMES);
+			
+			RETURN $U;
+		}
+		
+		PUBLIC STATIC FUNCTION GET_GROUPS() {	
+			$GROUPS = [];
+			
+			$RESULT = DB::SELECT('groups');
+			$TMP = DB::TOARRAY($RESULT);
+			FOREACH($TMP AS $G) {
+				$GROUPS[$G->id] = $G;
+			}
+			
+			RETURN $GROUPS;
+		}
+		
 		PUBLIC STATIC FUNCTION BYGROUP ($CATEGORY) {
 			
 			$AUTH = $GLOBALS['AUTH'];
 			$USER = $AUTH['user'];
 			
-			$PREM = ARRAY_FILTER(EXPLODE(';', $CATEGORY->premissions));					
-			IF(COUNT($PREM) AND !IN_ARRAY($USER->grp, $PREM) AND $USER->rights < 0) RETURN FALSE;
+			$GRP1 = DB::PARSE_VALUE($CATEGORY->premissions);
+			$GRP2 = DB::PARSE_VALUE($USER->grp);
+					
+			IF(COUNT($GRP1) AND !COUNT(ARRAY_INTERSECT($GRP1, $GRP2)) AND $USER->rights < 2) RETURN FALSE;
 			RETURN TRUE;
 		}
 		
@@ -1298,8 +1603,10 @@
 				
 			FOREACH($CATEGORIES AS $CAT) {			
 				IF($CAT->parent == 0) {
-					$GRP = ARRAY_FILTER(EXPLODE(';', $CAT->{$COL}));
-					IF(IN_ARRAY($RULE, $GRP) OR !COUNT($GRP)) {										
+					$GRP1 = DB::PARSE_VALUE($CAT->{$COL});
+					$GRP2 = DB::PARSE_VALUE($RULE);
+					
+					IF(COUNT(ARRAY_INTERSECT($GRP1, $GRP2)) OR !COUNT($GRP1)) {										
 						$I = SELF::GETSUBIDS($CATEGORIES, $CAT->id);
 						$IDS = ARRAY_MERGE($IDS, $I);
 					}
@@ -1481,6 +1788,7 @@
 			$FIND = ARRAY_FILTER(EXPLODE(' ', $DATA->query));
 			
 			$RESULT = DB::SEARCH($TYPE, $FIND, $COL, $FILTER, $LIMIT);
+			$NUMPAGES = DB::LAST_CNT();
 			
 			$PRODUCTS = [];
 			
@@ -1516,12 +1824,12 @@
 				}								
 			}
 			
-			$NUMPAGES = 0;
+			/*$NUMPAGES = 0;
 			
 			IF(!$FASTSEARCH) {
-				$ROWS = DB::SEARCH($TYPE, $FIND, $COL, $FILTER, NULL, TRUE);			
-				$NUMPAGES = $ROWS;
-			}
+				//$ROWS = DB::SEARCH($TYPE, $FIND, $COL, $FILTER, NULL, TRUE);			
+				$NUMPAGES = DB::LAST_CNT();
+			}*/
 						
 			$OUT['productpage'] = $PRODPAGE;
 			
@@ -1529,8 +1837,7 @@
 			$OUT['totalitems'] = $NUMPAGES;
 			$OUT['perpage'] = $DATA->perpage;
 			$OUT['filter']['cat'] = CAT::GETCATINFO($CATEGORIES, $FILTERCATID);
-			$OUT['filter']['global'] = $FILTERGLOBAL;
-			
+			$OUT['filter']['global'] = $FILTERGLOBAL;			
 						
 			RETURN JSON_ENCODE($OUT);
 		}
@@ -1686,6 +1993,141 @@
 	///////////////////////////////////////////////////////
 
 	CLASS MSGSYSTEM {
+		PUBLIC STATIC FUNCTION SENDEMAIL($SUBJECT, $CONTENT, $USERS) {
+			
+			$ERROR = '{"responce": "EMAILERROR"}';
+			$SUCCESS = '{"responce": "EMAILOK"}';
+							
+			$HEADERS = [];
+			$HEADERS[] = "MIME-Version: 1.0";
+			$HEADERS[] = "Content-type: text/html; charset=iso-8859-1";
+			$HEADERS[] = "From: visco-assets.noreply@visco.no";
+			$HEADERS[] = "Reply-To: " . IMPLODE(',', $USERS); 
+			$HEADERS[] = "Subject: " . $SUBJECT;
+			$HEADERS[] = "X-Mailer: PHP/" . PHPVERSION();
+						
+			
+			// REMOVE ALL IN BRACKETS
+			$CONTENT = PREG_REPLACE('/\[[a-z]*\:.*\]/miU', '', $CONTENT);
+			$CONTENT = TRIM($CONTENT);
+			// REPLACE BRAKE LINE TO BR
+			$CONTENT = PREG_REPLACE('/\\n/m', '<br />', $CONTENT);
+					
+			$BODY = '<!doctype html>
+				<html>
+				<head>
+				<meta charset="utf-8">
+				<title>Untitled Document</title>
+				<style>
+				body, html {
+					padding: 0;
+					margin: 0;
+					font-family: Segoe, "Segoe UI", "DejaVu Sans", "Trebuchet MS", Verdana, sans-serif;
+					color: #777;
+					background: #F5F5F5
+				}
+				td {
+					padding: 20px;
+					background-color: #FFF;
+				}
+				.title-head {
+					color: #888;
+					font-size: 24px;
+					margin: 20px;
+					vertical-align: middle;
+					font-weight: 100;
+					display: inline-block;
+				}
+				img {
+					vertical-align: middle;
+					margin: 10px;
+					outline: none;
+				}
+				.bug {
+					border: 1px solid #D1524C;
+					background-color: #FCF3F3
+				}
+				.footer {
+					background : #F5F5F5;
+					color: #888;
+					font-size: 11px;
+					font-family: Gotham, "Helvetica Neue", Helvetica, Arial, sans-serif;
+					line-height: 16px;
+				}
+				a, a:visited {
+					color: #8EC961;
+					text-decoration: underline;
+					outline: none;
+				}
+				a:hover {
+					color: #66A338;
+				}
+				h1 {
+					font-weight: 100;
+					font-size: 24px;
+				}
+				.text-center {
+					text-align: center;
+				}
+				.show-border {
+					border-top: 5px solid #888;	
+				}	
+				pre {
+					display: block;
+					padding: 9.5px;
+					margin: 0 0 10px;
+					font-size: 13px;
+					line-height: 1.42857143;
+					color: #333;
+					word-break: break-all;
+					word-wrap: break-word;
+					background-color: #f5f5f5;
+					border: 1px solid #ccc;
+				}				
+				</style>
+				</head>
+
+				<body>
+				<br>
+				<br>
+				<div style="display: none">Please do not reply to this message</div>
+				<table width="80%" border="0" cellspacing="0" cellpadding="0" align="center" class="show-border">
+					<tr valign="middle">
+						<td><table border="0" cellspacing="0" cellpadding="0">
+						<tr>
+							<td valign="middle" style="padding: 0"><img style="margin: 0" src="' . HOSTNAME . 'visco_logo.png" alt="logo" height="44px"></td>
+							<td valign="middle" style="padding: 0; padding-left: 20px;"><span class="title-head">Assets Library</span></td>
+						</tr>
+				</table>
+
+						</td>
+					</tr>
+					<tr>
+						<td>
+				' 
+				
+				. $CONTENT .  
+				
+				'</td>
+				</tr>
+				</table>
+				<br /><br /><table width="100%" border="0" cellspacing="0" cellpadding="0" class="footer" align="center" style="background: #F5F5F5; color: #888; font-size: 11px; font-family: Gotham, "Helvetica Neue", Helvetica, Arial, sans-serif; line-height: 16px;"><tbody><tr>
+				<td style="padding: 20px; background-color: #FFF;">&copy; ' . DATE('Y') . ' - VISCO. ALL RIGHTS RESERVED.</td>
+				   <td align="right" style="padding: 20px; background-color: #FFF;">
+				<a href="' . HOSTNAME . '/#/profile/profile" style="color: #8EC961; text-decoration: underline;">Unsubscribe</a> of this newsletter instantly.</td>
+				  </tr></tbody></table>
+
+				</td></tr></table>
+				</body>
+				</html>
+			';
+			
+			$MESSAGE = WORDWRAP($BODY, 70, "\r\n");
+			$SEND = MAIL(IMPLODE(',', $USERS), $SUBJECT , $MESSAGE, IMPLODE("\r\n", $HEADERS)); 
+			IF(!$SEND) RETURN $ERROR;
+			RETURN $SUCCESS;						
+		}
+		
 		PUBLIC STATIC FUNCTION ADD($SUBJECT, $MSG, $BUG = 0, $IMG = NULL) {
 			IF(EMPTY($MSG)) RETURN FALSE;
 			
@@ -1946,7 +2388,8 @@
 			$AUTH = $GLOBALS['AUTH']['user'];
 			
 			$WHERE['name'] = $DATA->name;
-			$RESULT = DB::SELECT('favorites', $WHERE);
+			$WHERE['user'] = $AUTH->user;
+			$RESULT = DB::SELECT('favorites', [], $WHERE);
 			
 			IF($RESULT->fetch_object()) RETURN $EXIST;
 			
@@ -1983,7 +2426,7 @@
 			$COLLECTOIN = $RESULT->fetch_object();
 			IF(!$COLLECTOIN) RETURN $ERROR;
 			
-			$ITEMS = ARRAY_FILTER(EXPLODE(';', $COLLECTOIN->products));			
+			$ITEMS = DB::PARSE_VALUE($COLLECTOIN->products);			
 			$ITEMS = ARRAY_DIFF($ITEMS, [$DATA->prodid]);			
 			$ITEMS[] = $DATA->prodid;
 			
@@ -2008,7 +2451,7 @@
 			$COLLECTOIN = $RESULT->fetch_object();
 			IF(!$COLLECTOIN) RETURN $ERROR;
 			
-			$ITEMS = ARRAY_FILTER(EXPLODE(';', $COLLECTOIN->products));									
+			$ITEMS = DB::PARSE_VALUE($COLLECTOIN->products);									
 			$ITEMS = ARRAY_DIFF($ITEMS, [$DATA->prodid]);			
 			$SET['products'] = IMPLODE(';', $ITEMS);
 			DB::UPDATE('favorites', $SET, $WHERE, TRUE);

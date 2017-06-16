@@ -6,7 +6,7 @@
 		<h3>{{quickFavID.name}}</h3>
 		<ul ng-show="favorites.length">
 			<li ng-repeat="f in favorites" class="quick-fav-item">
-				<label class="pointer"><input type="checkbox" ng-checked="f.products[quickFavID.id]" ng-model="status[f.id]" ng-click="favAddRemove(status[f.id], f.id, quickFavID.id, libType)"> {{f.name}}
+				<label class="pointer"><input type="checkbox" ng-checked="f.products[quickFavID.id]" ng-model="status[f.id]" ng-click="favAddRemove(status[f.id], f.id, quickFavID.id, libType, f.name)"> {{f.name}}
 				</label><a ng-href="#/favorite-collection/{{f.id}}" class="quick-fav-view"><span class="glyphicon glyphicon-eye-open" aria-hidden="true"></span> View</a>
 			</li>
 		</ul>

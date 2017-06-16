@@ -40,6 +40,11 @@ a:focus {
 	color: #777 !important;	
 }
 
+.href-clear, .href-clear:hover, .href-clear:focus {
+	text-decoration: none !important;
+	outline: none !important;
+}
+
 .capitalize {
 	text-transform: capitalize;
 }
@@ -393,6 +398,9 @@ label {
 	.col-xxs-offset-0 {
 		margin-left: 0%;
 	}
+	.col-xxs-offset-1 {
+		margin-left: 8.333333333%;
+	}
 	.col-xxs-offset-2 {
 		margin-left: 16.66666667%;
 	}
@@ -575,7 +583,7 @@ label {
 		width: 91.66666667%;
 	}
 	.col-xxlg-12 {
-		width: 100%;
+		width: 100%;	
 	}
 }
 
@@ -806,6 +814,10 @@ label {
 	margin: 10px 2px;	
 }
 
+.margin-2-2 {
+	margin: 2px 2px;	
+}
+
 .home-showcase ul {
 	margin: 0 !important;
 	padding: 0 !important;
@@ -950,7 +962,7 @@ label {
 }
 
 .card {      
-    min-width: 220px;
+	min-width: 220px;
 	width: 220px;
 	min-height: 345px;
     margin: 10px auto;
@@ -968,6 +980,8 @@ label {
 
 .card-title {
 	min-height: 40px;
+	max-height: 40px;
+	overflow-y: hidden;
 }
 
 .card-content:hover {
@@ -1055,7 +1069,7 @@ label {
 .button-heart, 
 .button-heart:active
 {
-    background-image: url(../img/heart.svg);
+    background-image: url(../img/heart.svg) !important;
     background-size: 60%;
 }
 
@@ -1575,3 +1589,44 @@ label {
 	background-color: #FFF !important;
 }
 
+.label-simple {
+	background-color: #FFF;
+	border: 1px solid #CCC !important;
+	color: #333 !important;
+	font-weight: normal;
+}
+.file-list {
+	color: #888;
+}
+
+.file-list td, .wrap {
+	word-wrap: break-word;
+	word-break: break-all;
+}
+
+.file-list img {
+	margin: 2px;
+	height: 100px;
+	width: 100px;
+	border: 1px solid #eeeeee;	
+	transition: 0.2s linear all;
+}
+
+.file-list img:hover {
+
+	border-color: #8ec961;	
+}
+
+.inline {
+	display: inline;
+}
+
+.file-list-href {
+	color: #888;
+	text-decoration: none !important;
+}
+
+.file-list-href:hover {
+	color: #8EC961;
+	text-decoration: none !important;
+}

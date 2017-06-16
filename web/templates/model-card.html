@@ -26,13 +26,22 @@
 							</ul>
 						</div>
 						
-						<a ng-href="#/{{prod.productpage}}/{{prod.id}}" class="btn-primary btn btn-block margin-0" ng-show="auth.browser!='MXS' && auth.rights < 0">View</a>
-						<button type="button" ng-click="downloadUrl(prod.id, libType)" class="btn btn-block margin-0" ng-show="auth.browser!='MXS' && auth.rights >= 0" ng-class="{'btn-danger': prodError[prod.id], 'btn-primary': !prodError[prod.id]}">
+						<a ng-href="#/{{prod.productpage}}/{{prod.id}}" class="btn-primary btn btn-block margin-0" ng-show="auth.browser!='MXS' && (auth.rights < 0 || !products.candl) && auth.rights != 2">View</a>
+						<button type="button" ng-click="downloadUrl(prod.id, libType)" class="btn btn-block margin-0" ng-show="auth.browser!='MXS' && ((auth.rights >= 0 && products.candl) || auth.rights == 2)" ng-class="{'btn-danger': prodError[prod.id], 'btn-primary': !prodError[prod.id]}">
 							<span ng-show="!prodError[prod.id]">Download</span>
 							<span ng-show="prodError[prod.id]==1">File Not Found!</span>
 							<span ng-show="prodError[prod.id]==2">No Access!</span>
 						</button></td>
-					<td width="34px"><button type="button" class="btn btn-default custom-button-gray btn-block button-fixed button-heart"  ng-click="hideShowQuickFavortites(prod)">&nbsp;</button></td>
+					<td width="34px">
+						<div class="btn-group dropup" uib-dropdown is-open="status.isopen">
+							<button type="button" class="btn btn-default custom-button-gray btn-block button-fixed button-heart" uib-dropdown-toggle  ng-click="">&nbsp;</button>
+						 <ul class="dropdown-menu dropdown-menu-right" uib-dropdown-menu role="menu" aria-labelledby="single-button">
+							<li role="menuitem"><a href ng-click="hideShowQuickFavortites(prod)">List of collections</a></li>
+							<li class="divider" ng-show="lastFav.id"></li>
+							<li role="menuitem" ng-show="lastFav.id"><a href ng-click="addLastFav(prod.id)">Add to {{lastFav.id ? '"' + lastFav.name + '"' : 'last'}}</a></li>
+						  </ul>
+						</div>	
+					</td>
 
 				</tr>
 			</table>

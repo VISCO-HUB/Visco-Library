@@ -80,6 +80,7 @@
 		
 		$RESULT = DB::SELECT('models', $WHERE, NULL, TRUE);
 		$EXIST = DB::TOARRAY($RESULT);
+				
 		
 		$SET['name'] = $NAME ;
 		$SET['catid'] = $INFO['CATID'];
@@ -98,7 +99,7 @@
 		$SET['project'] = $INFO['PROJECT'];
 		$SET['modeller'] = $INFO['MODELLER'];		
 		$SET['manufacturer'] = $INFO['MANUFACTURER'];
-		$SET['overview'] = $INFO['OVERVIEW'];
+		$SET['overview'] = STR_REPLACE('|', '\n', $INFO['OVERVIEW']);
 		$SET['custom1'] = $INFO['CUSTOM1'];
 		$SET['client'] = $INFO['CLIENT'];
 		$SET['token'] = $INFO['TOKEN'];

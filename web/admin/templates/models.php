@@ -2,15 +2,16 @@
 <hr>
 <div class="dropdown clr">
 	<div class="btn-group">
-		<button type="button" class="btn btn-default">{{products.filter.cat.name}}</button>
+		<button type="button" class="btn btn-default" data-toggle="dropdown">{{products.filter.cat.name}}</button>
 		<button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span class="caret"></span><span class="sr-only">Toggle Dropdown</span></button>
 		<ul class="dropdown-menu" role="menu" aria-labelledby="dropdownMenu">
 			<li><a href="" ng-click="changeFilter({'catid': null, 'pending': null})">All</a></li>
 			<li><a href="" ng-click="changeFilter({'catid': null, 'pending': 1})">Pending</a></li>
 			<li class="divider"></li>
-			<li class="dropdown-submenu" ng-repeat="cat in categories" ng-if="cat.type == 1 && (auth.rights==2 || cat.editors.split(';').indexOf(auth.user))!=-1"> <a tabindex="-1" data-toggle="dropdown" href="" no-click>{{cat.name}}</a>			
+			<li class="dropdown-submenu" ng-repeat="cat in categories" ng-if="cat.type == 1 && (auth.rights==2 || cat.editors.split(';').indexOf(auth.user))!=-1"> 
+				<a tabindex="-1" data-toggle="dropdown" href="" ng-click="changeFilter({'catid': cat.id, 'pending': null})">{{cat.name}}</a>			
 				<ul class="dropdown-menu">
-					<li class="dropdown-submenu" ng-repeat="sub1 in cat.child"> <a href="" no-click>{{sub1.name}}</a>
+					<li class="dropdown-submenu" ng-repeat="sub1 in cat.child"> <a href="" ng-click="changeFilter({'catid': sub1.id, 'pending': null})">{{sub1.name}}</a>
 						<ul class="dropdown-menu">
 							<li ng-repeat="sub2 in sub1.child"><a href="" ng-click="changeFilter({'catid': sub2.id, 'pending': null})">{{sub2.name}}</a></li>
 						</ul>
@@ -31,7 +32,7 @@
 			<th>Name</th>
 			<th>Status</th>
 			<th>Date</th>
-			<th width="150px">Actions</th>
+			<th width="220px">Actions</th>
 		</tr>
 		<tr ng-repeat="prod in products.products" >
 			<td>{{$index + 1}}.</td>
@@ -46,7 +47,9 @@
 				|
 				<span ng-show="auth.rights >= 1"><a href="" ng-click="prodDelete(prod.id, prod.name)" >Delete</a>
 				|</span>
-				<a href="/#/model/{{prod.id}}">View</a></td>
+				<a href="/#/model/{{prod.id}}">View</a>
+				<span ng-show="auth.browser=='MXS'">| <a href="" ng-click="openModel(prod.id)">Open</a></span>
+			</td>
 			</td>
 		</tr>
 	</table>

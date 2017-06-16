@@ -2496,6 +2496,8 @@ rollout _rStep3  "Render / Post Process" category:4
 		setupImageButton btnOpenEditor "Edit Render" "filter-02"
 		
 		setPosStep3()
+		
+		setRenderQuality()
 	)
 	
 	on cbxDR changed v do

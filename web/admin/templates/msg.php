@@ -1,6 +1,6 @@
 <h1>Messages</h1>
 <hr>
-<div class="message">
+<div class="message" id="message">
 	<div class="text-center" ng-show="!currentMessage.length">Select message from list to view content.</div>
 	<img ng-src="{{currentImg}}" ng-show="currentImg" class="pull-left">
 	<h3 ng-show="currentSubject.length">{{currentSubject}}</h3>
@@ -28,10 +28,11 @@
 				<span ng-show="msg.viewed==1" class="label label-default">Read</span> 			
 			</td>
 			<td>
-				<div ng-show="msg.bug==1">
-					<span ng-show="msg.fixedbug==1" class="label label-success pointer"  ng-click="msgSetParam('fixedbug', 0, msg.id)">Fixed</span> 
-					<span ng-show="msg.fixedbug!=1" class="label label-danger pointer text-blink" ng-click="msgSetParam('fixedbug', 1, msg.id)">Not Fixed</span> 
+				<div >
+					<span ng-show="msg.fixedbug==1" class="label label-success pointer"  ng-click="msgSetParam('fixedbug', 0, msg.id)">{{msg.bug==1 ? 'Fixed' : 'Done'}}</span> 
+					<span ng-show="msg.fixedbug!=1" class="label label-danger pointer text-blink" ng-click="msgSetParam('fixedbug', 1, msg.id)">{{msg.bug==1 ? 'Not Fixed' : 'Queue'}}</span> 
 				</div>
+		
 			</td>
 			<td>{{tm(msg.date)}} </td>
 			<td>{{msg.user}}</td>

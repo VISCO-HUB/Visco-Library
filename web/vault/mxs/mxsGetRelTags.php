@@ -11,12 +11,17 @@
 	$RESULT = DB::SELECT('models', $WHERE);
 	$MODELS = DB::TOARRAY($RESULT);
 		
-	$TAGS = [];
+	$TMP = [];
 	FOREACH($MODELS AS $MDL) {		
 		$T = ARRAY_FILTER(EXPLODE(',' , $MDL->tags));		
-		$TAGS = ARRAY_MERGE($TAGS, $T);
+		$TMP = ARRAY_MERGE($TMP, $T);
 	}
+	
+	$TAGS = [];
 
+	FOREACH($TMP AS $T) $TAGS[] = TRIM($T);
+	SORT($TAGS);
+	
 	$TAGS = ARRAY_FILTER(ARRAY_UNIQUE($TAGS));
 	
 	ECHO IMPLODE(';', $TAGS);

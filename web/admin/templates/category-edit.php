@@ -19,9 +19,9 @@
 </script>
 
 <script type="text/ng-template" id="permissions">
-	<div class="btn-group margin-10-2" ng-if="permission.length > 1">
-		<button type="button" class="btn btn-default btn-xs" disabled>{{permission}}</button>
-		<button type="button" class="btn btn-default btn-xs" ng-click="removePermission(catId, permission)" aria-haspopup="true" aria-expanded="false"><span class="glyphicon glyphicon-remove" aria-hidden="true"></span></button>	
+	<div class="btn-group margin-10-2" ng-if="permission">
+		<button type="button" class="btn btn-default btn-xs" disabled>{{permission.name ? permission.name : 'All'}}</button>
+		<button type="button" class="btn btn-default btn-xs" ng-click="togglePermission(catId, permission.id)" aria-haspopup="true" aria-expanded="false"><span class="glyphicon glyphicon-remove" aria-hidden="true"></span></button>	
 	</div>
 </script>
 
@@ -45,19 +45,6 @@
 	<textarea class="form-control" cols="20" rows="2" disabled>{{categories[catId].desc}}</textarea><br>
 	<button type="submit" class="btn btn-primary" ng-click="catChangeDesc(catId)">Change</button>
 </div>
-<hr>
-<h2><small>Categories:</small></h2>			
-<div class="col-sm-12 col-md-12col-lg-12">		
-	<div class="admin-cat-hierarchy col-sm-6 col-md-6 col-lg-6">
-		<a href="" ng-click="subCatEdit(catId)" ng-class="{active: isSubCatActive(categories[catId].id)}">{{categories[catId].name}} <i>({{count(categories[catId].child)}})</i></a>
-		<ul>
-			<li ng-repeat="subcat in categories[catId].child" ng-include="'treeList'" class="no" ng-init="level[subcat.id]=1;"> </li>
-		</ul>  				
-	</div>
-</div>
-<button class="btn btn-primary" ng-click="addCat(subCatEditID, categories[catId].type)" ng-class="{disabled: level[subCatEditID] > 1}">Add</button> 
-<button class="btn btn-danger" ng-class="{disabled: subCatEditID == catId}" ng-click="subCatDel(subCatEditID)">Delete</button>
-<button class="btn btn-warning" ng-class="{disabled: subCatEditID == catId}" ng-click="subCatRename(subCatEditID)">Rename</button>
 <div ng-show="auth.rights==2">
 	<hr>
 	<h2><small>Moderators:</small></h2>	
@@ -72,7 +59,12 @@
 		<span class="sr-only">Toggle Dropdown</span>
 	  </button>
 		<ul class="dropdown-menu" aria-labelledby="dropdownMenu1">
-			<li ng-repeat="user in userFilterList.moderators" ><a href="" ng-click="addEditor(catId, user.user)" >{{user.user}}</a></li>        					
+			<li ng-repeat="user in userFilterList.moderators" ng-init="c = categories[catId].editors.split(';').indexOf(user.user) != -1">
+				<a href="" ng-click="toggleEditor(catId, user.user)" >
+					<span class="glyphicon" ng-class="{'glyphicon glyphicon-check': c, 'glyphicon-unchecked': !c}" aria-hidden="true"></span>&nbsp;&nbsp;
+					{{user.user}}
+				</a>
+			</li>        					
 		</ul>
 	</div>
 </div>
@@ -80,8 +72,8 @@
 	<hr>
 	<h2><small>Permissions:</small></h2>	
 	<mark class="text-muted">Note: If not specified any group, access to the category will have all users!</mark><br><br>
-	<span ng-init="permission='All'" ng-include="'permissions'" ng-show="categories[catId].premissions.length < 2">All</span> 
-	<span ng-repeat="permission in categories[catId].premissions.split(';') track by $index" ng-include="'permissions'">{{permission}}</span> 
+	<span ng-init="permission='-1'" ng-include="'permissions'" ng-show="!categories[catId].groups.length">All</span> 
+	<span ng-repeat="permission in categories[catId].groups" ng-include="'permissions'"></span> 
 	<br>
 	<br>
 	
@@ -92,7 +84,12 @@
 		<span class="sr-only">Toggle Dropdown</span>
 	  </button>
 		<ul class="dropdown-menu" aria-labelledby="dropdownMenu1">
-			<li ng-repeat="grp in userFilterList.grp" ><a href="" ng-click="addPermission(catId, grp.grp)" >{{grp.grp}}</a></li>        					
+			<li ng-repeat="grp in userFilterList.grp">			
+				<a href="" ng-click="togglePermission(catId, grp.id)" ng-init="c = checkGroup(grp.id, categories[catId].groups)">
+					<span class="glyphicon" ng-class="{'glyphicon glyphicon-check': c, 'glyphicon-unchecked': !c}" aria-hidden="true"></span>&nbsp;&nbsp;
+					{{grp.name}}
+				</a>
+			</li>        					
 		</ul>
 	</div>
 <h2><small>Allow Download:</small></h2>
@@ -102,3 +99,16 @@
 	<button type="button" class="btn" ng-class="categories[catId].candl!=1 ? 'btn-danger' : 'btn-default'" ng-click="catSetParam('candl', '0', catId)">&nbsp;&nbsp;NO&nbsp;&nbsp;</button>
 </div>	
 </div>
+<hr>
+<h2><small>Categories:</small></h2>			
+<div class="col-sm-12 col-md-12col-lg-12">		
+	<div class="admin-cat-hierarchy col-sm-6 col-md-6 col-lg-6">
+		<a href="" ng-click="subCatEdit(catId)" ng-class="{active: isSubCatActive(categories[catId].id)}">{{categories[catId].name}} <i>({{count(categories[catId].child)}})</i></a>
+		<ul>
+			<li ng-repeat="subcat in categories[catId].child" ng-include="'treeList'" class="no" ng-init="level[subcat.id]=1;"> </li>
+		</ul>  				
+	</div>
+</div>
+<button class="btn btn-primary" ng-click="addCat(subCatEditID, categories[catId].type)" ng-class="{disabled: level[subCatEditID] > 1}">Add</button> 
+<button class="btn btn-danger" ng-class="{disabled: subCatEditID == catId}" ng-click="subCatDel(subCatEditID)">Delete</button>
+<button class="btn btn-warning" ng-class="{disabled: subCatEditID == catId}" ng-click="subCatRename(subCatEditID)">Rename</button>

@@ -20,8 +20,8 @@ Array.prototype.makeUnique = function(){
 }
 
 document.addEventListener("contextmenu", function(e){
-   if(!$(e.target).is('input')) {
-	e.preventDefault();
+   if(!$(e.target).is('input') && !$(e.target).is('img')) {
+		e.preventDefault();
    }
 }, false);
 
@@ -206,6 +206,20 @@ app.filter('decode', function() {
 	}
 });
 
+app.filter('br', function() {
+	return function(s) {
+		if(!s) {return '';}
+		return s.split('|').join('\n').split('\\n').join('\n');
+	}
+});
+
+app.filter('rmdir', function() {
+	return function(s) {
+		if(!s) {return '';}
+		return s.split('\\').pop();
+	}
+});
+
 // CONTROLLERS
 	// ABOUT
 app.controller("aboutCtrl", function($scope){
@@ -324,13 +338,7 @@ app.controller("quickFavCtrl", function ($scope, $rootScope, $location, $timeout
 
 	$scope.status = {};
 	
-	$scope.favAddRemove = function(status, id, prodid, type){
-		if(status) {
-			vault.favAddItem(id, prodid, type);
-		} else {
-			vault.favDelItem(id, prodid, type);
-		}
-	}		
+		
 });
 
 app.controller("favoriteCollectionCtrl", function ($scope, $rootScope, $location, $timeout, $routeParams, vault) {
@@ -523,12 +531,53 @@ app.controller("modelCtrl", function ($scope, vault, $rootScope, $location, $rou
 	$rootScope.isHome = false;
 	$scope.id = $routeParams.id;
 	$rootScope.libType = 1;
+	$rootScope.fileList = {};
 	
 	$scope.getProduct = function(id, type){				
 		vault.getProduct(id, type);
 	};
+	
+	$scope.getFileList = function(id, type){
+		vault.getFileList(id, type);
+	}
+	
+	$scope.downloadItem = function(id, type, file) {
+		if(!confirm('Do you really want download?')){
+			return false;
+		}
+	
+		$rootScope.download = hostname + 'vault/download.item.php?id=' + id +'&type=' + type + '&file="' + file + '"&time=' + new Date().getTime();
+		console.log($rootScope.download)
+		$timeout(function() {			
+			$rootScope.$apply(function(){$rootScope.download = ''});
+			
+		}, 1000);
+	}
+	
+	$scope.imgSize = function(index) {
+		s = $rootScope.fileList.files.imgsize[index];
+		return s[0] + 'x' + s[1] + ' px';
+	}
+		
+	$scope.getDim = function(dim, units) {
+		if(!dim || !units) {return '';}
+		var p = '';
+		switch(units) {
+			case 'Meters': p = 'm';
+			break;
+			case 'Millimeters': p = 'mm';
+			break;
+			case 'Kilometers': p = 'km';
+			break;
+			case 'Centimeters': p = 'cm';
+			break;
+		}
+		
+		return dim.split(' x ').join(p + ' x ') + p;				
+	}	
 		
 	$scope.getProduct($scope.id, 1);
+	$scope.getFileList($scope.id, 1);
 	
 	$scope.tabinfo = 'desc';
 	$scope.changeTabInfo = function(s) {
@@ -562,8 +611,7 @@ app.controller("modelsCtrl", function ($scope, vault, $rootScope, $location, $ro
 	$scope.getProducts = function(page, perpage, id, filter){				
 		vault.getProducts(page, perpage, id, filter);
 	};
-	
-	
+		
 	$timeout(function(){
 		$scope.currentPage = $scope.page;
 	}, 50);
@@ -736,7 +784,11 @@ app.run(function($rootScope, $location, $routeParams, $timeout, $cookieStore, va
 	
 	$rootScope.download = '';	
 	
-	$rootScope.downloadUrl = function(id, type) {		
+	$rootScope.downloadUrl = function(id, type) {
+		if(!confirm('Do you really want download?')){
+			return false;
+		}
+	
 		$rootScope.download = hostname + 'vault/download.php?id=' + id +'&type=' + type;
 		
 		$timeout(function() {			
@@ -750,7 +802,7 @@ app.run(function($rootScope, $location, $routeParams, $timeout, $cookieStore, va
 	$rootScope.downloadMsg = function() {
 		var t = $("#download").contents().find("body").html();		
 		if(!t || !t.length) {return false;}
-		
+		console.log(t);
 		var j = JSON.parse(t);	
 		var v = getUrlVars($rootScope.download);
 		var id = v['id'];
@@ -763,7 +815,10 @@ app.run(function($rootScope, $location, $routeParams, $timeout, $cookieStore, va
 			break;
 			case 'NORIGHTS': err = 2;
 			break;
-
+			case 'ITEMLBAD': alert('You have no access!');
+			break;
+			case 'ITEMNOTEXIST': alert('Sorry, this item not exist!\nContact with Administrator!');
+			break;
 		}
 		$rootScope.$apply(function(){$rootScope.prodError[id] = err});
 		
@@ -941,8 +996,16 @@ app.run(function($rootScope, $location, $routeParams, $timeout, $cookieStore, va
 	
 	// COMMENTS
 	
-	$rootScope.sendComment = function(id, txt, bug) {
-		vault.sendComment(id, txt, bug, $rootScope.libType);
+	$rootScope.sendComment = function(id, txt, bug, item) {
+		
+		email = {
+			'user': item.uploadedby,
+			'preview': $rootScope.productGalleryMedium[0],
+			'link': window.location.href,
+			'name': item.name
+		};
+		
+		vault.sendComment(id, txt, bug, $rootScope.libType, email);
 	}
 	
 	$rootScope.delComment = function(id, prodid) {
@@ -1040,7 +1103,7 @@ app.run(function($rootScope, $location, $routeParams, $timeout, $cookieStore, va
 			
 			return false;
 		}
-		
+				
 		vault.favNewCollection(name, type, prodid);
 	}
 
@@ -1048,7 +1111,7 @@ app.run(function($rootScope, $location, $routeParams, $timeout, $cookieStore, va
 		if(!confirm('Do you really want to delete collection \"' + name + '\"?')){
 			return false;
 		}
-		
+		$rootScope.lastFav = {};
 		vault.favDeleteCollection(id, type, getforid);
 	}
 	
@@ -1073,6 +1136,27 @@ app.run(function($rootScope, $location, $routeParams, $timeout, $cookieStore, va
 		
 		vault.favRenameCollection(id, name, type, getforid);
 	}	
+		
+	$rootScope.lastFav = {}	;
+		
+	// Quick Fav	
+	$rootScope.favAddRemove = function(status, id, prodid, type, name){				
+		$rootScope.lastFav.id = id;
+		$rootScope.lastFav.name = name;
+		
+		if(status) {
+			vault.favAddItem(id, prodid, type);
+		} else {
+			vault.favDelItem(id, prodid, type);
+		}
+	}		
+	
+	$rootScope.addLastFav = function(prodid) {
+		
+		if(!$rootScope.lastFav.id) {return false;}
+		
+		vault.favAddItem($rootScope.lastFav.id, prodid, $rootScope.libType);
+	}
 		
     $rootScope.$watch(function() { 
         return $location.path(); 
@@ -1101,6 +1185,7 @@ app.run(function($rootScope, $location, $routeParams, $timeout, $cookieStore, va
 		$rootScope.showLightBox = false;
 		$rootScope.showFeedBack = false;
 		$rootScope.productGalleryPreviews = [];
+		$rootScope.productGalleryMedium = [];
 		$rootScope.productGallery = [];
 		$rootScope.prod = {};
 		$rootScope.comments = [];
@@ -1358,39 +1443,18 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 	var placeModel = function(id, mode) {
 		var json = {'id': id};
 		
-		HttpPost('ADDMODEL', json).then(function(r){						
+		var cmd = '';
 				
-			if(r.data.file) {						
-				var cmd = '';
-				
-				switch(mode) {
-					case 1: cmd = 'XREF_MODEL';
-					break;
-					case 2: cmd = 'OPEN_MODEL';
-					break;
-					default: cmd = 'MERGE_MODEL';
-					break;
-				}
-				
-				sendCommandMXS(cmd, r.data.file + '=' + id)
-			}
-				
-			if(r.data.responce == 'MODELNOTEXIST') {
-				cmd = r.data.responce;
-				sendCommandMXS(cmd)
-			}
-			
-			if(r.data.responce == 'MODELBAD') {
-				cmd = r.data.responce;
-				sendCommandMXS(cmd)
-			}
-			
-				
-			responceMessage(r.data);
-		},
-		function(r){
-			responceMessage(r);
-		});
+		switch(mode) {
+			case 1: cmd = 'XREF_MODEL';
+			break;
+			case 2: cmd = 'OPEN_MODEL';
+			break;
+			default: cmd = 'MERGE_MODEL';
+			break;
+		}
+		
+		sendCommandMXS(cmd, id)			
 	}
 		
 	var fastSearch = function(query, type, filter)
@@ -1423,10 +1487,24 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 			}
 			if(r.data.product) {
 				$rootScope.productGallery = $rootScope.getProdImages(r.data.product.previews, 2);
+				$rootScope.productGalleryMedium = $rootScope.getProdImages(r.data.product.previews, 1);
 				$rootScope.productGalleryPreviews = $rootScope.getProdImages(r.data.product.previews, 0);				
 			}
 			
 			responceMessage(r.data);
+		},
+		function(r){
+			responceMessage(r);
+		});
+	};
+	
+	var getFileList = function(id, type)
+	{		
+		var json = {'id': id, 'type': type};
+			
+		HttpPost('FILESLIST', json).then(function(r){						
+			$rootScope.fileList = r.data;	
+			console.log(r.data);
 		},
 		function(r){
 			responceMessage(r);
@@ -1510,13 +1588,13 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		});
 	};
 	
-	var sendComment = function(id, txt, bug, type)
+	var sendComment = function(id, txt, bug, type, email)
 	{		
-		var json = {'id': id, 'txt': txt, 'type': type, 'bug': bug};
+		var json = {'id': id, 'txt': txt, 'type': type, 'bug': bug, 'email': email};
 		deleteMessage();
 				
 		HttpPost('SENDCOMMENT', json).then(function(r){						
-						
+				console.log(r.data)		
 			getComments(id, type);
 			responceMessage(r.data);
 		},
@@ -1781,7 +1859,8 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		favShareCollection: favShareCollection,
 		favGetShared: favGetShared,
 		favDelCollectionItem: favDelCollectionItem,
-		profileChangeParam: profileChangeParam
+		profileChangeParam: profileChangeParam,
+		getFileList: getFileList
 	};
 });
 
