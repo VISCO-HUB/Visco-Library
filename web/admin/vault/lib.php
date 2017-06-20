@@ -644,7 +644,7 @@
 			
 			RETURN $IDS;
 		}
-		
+			
 		PUBLIC STATIC FUNCTION GETACCESSID($RULE, $COL) {												
 			$RESULT = DB::SELECT('category', [], 'sort');
 			$CATEGORIES = DB::TOARRAY($RESULT);
@@ -1312,7 +1312,7 @@
 			IF(ISSET($DATA->filter->pending)) {				
 				$WHERE['pending'] = $DATA->filter->pending;
 			}
-						
+			
 			IF(ISSET($DATA->filter->id)) {				
 				$WHERE['id'] = $DATA->filter->id;
 			}
@@ -1358,6 +1358,27 @@
 			RETURN JSON_ENCODE($OUT);
 		}
 		
+		PUBLIC STATIC FUNCTION GET_PREV_NEXT_PROD($CATIDS, $ID, $TYPE, $P = '<', $RIGHTS, $PENDING) {
+			
+			$W = DB::GETWHERE(['catid' => $CATIDS]);
+			$ATTACH_CATIDS = "(" . IMPLODE(' OR ', $W) . ") AND";
+			$ATTACH_PENDING = $PENDING ? ' AND pending=1' : '';
+			
+			IF($RIGHTS < 2 AND !COUNT($CATIDS)) RETURN NULL;			
+			IF($RIGHTS == 2 AND (!COUNT($CATIDS) OR $CATIDS[0] ==-1)) $ATTACH_CATIDS = '';
+			
+			$ORDER = $P == '<' ? 'DESC' : 'ASC';
+			
+			$MYSQLI = $GLOBALS['MYSQLI'];
+			$QUERY = "SELECT * FROM " . $TYPE . " WHERE " . $ATTACH_CATIDS . " id" . $P . $ID . $ATTACH_PENDING . " ORDER BY ID " . $ORDER . " LIMIT 1;";					
+			$RESULT = $MYSQLI->query($QUERY);
+			
+			$PROD = $RESULT->fetch_object();
+					
+			IF(!$PROD) RETURN NULL;
+			RETURN $PROD->id;
+		}
+		
 		PUBLIC STATIC FUNCTION PRODUCTINFO($DATA) {			
 			$ERROR = '{"responce": "PRODBAD"}';
 			$NOACCESS = '{"responce": "PRODNOACCESS"}';
@@ -1372,24 +1393,39 @@
 								
 			IF(!$TYPE) RETURN $ERROR;
 						
-			
 			$ACCESS_IDS = ACCESS::GETACCESSID($AUTH->user, 'editors');								
-					
+								
 			$RESULT = DB::SELECT($TYPE, $WHERE);
 			$PRODUCT = DB::TOARRAY($RESULT);
 						
 			$GLOBS = GLOBS::PARSE();
 			
 			$OUT['info'] = $PRODUCT[0];
-				
+			
 			IF($AUTH->rights < 2 AND !IN_ARRAY($OUT['info']->catid, $ACCESS_IDS)) RETURN $NOACCESS;
-
+			
+			$RESULT = DB::SELECT('category');
+			$CATEGORIES = DB::TOARRAY($RESULT);
+			
+			$CATIDS = [];
+			IF(ISSET($DATA->filter->catid))
+			{				
+				$CATIDS = CAT::GETSUBIDS($DATA->filter->catid, $CATEGORIES);
+				IF(COUNT($ACCESS_IDS)) $CATIDS = ARRAY_INTERSECT($ACCESS_IDS, $CATIDS);
 				
-			IF($OUT['info']->catid) {
-				$WHERE2['id'] = $OUT['info']->catid;				
-				$RESULT2 = DB::SELECT('category', $WHERE2);
-				$C = DB::TOARRAY($RESULT2);
-				$OUT['cat'] = $C[0];
+				IF(!COUNT($CATIDS)) $CATIDS = [$DATA->filter->catid];
+			} ELSE
+			{
+				$CATIDS = $ACCESS_IDS;
+			}
+														
+			$OUT['list']['prev'] = SELF::GET_PREV_NEXT_PROD($CATIDS, $OUT['info']->id, $TYPE, '<', $AUTH->rights, $DATA->filter->pending);
+			$OUT['list']['next'] = SELF::GET_PREV_NEXT_PROD($CATIDS, $OUT['info']->id, $TYPE, '>', $AUTH->rights, $DATA->filter->pending);
+			$OUT['list']['curr'] = $OUT['info']->id;				
+			
+			
+			IF($OUT['info']->catid) {		
+				$OUT['cat'] = CAT::GETCATINFO($CATEGORIES, $OUT['info']->catid);
 				
 				$PATH = CAT::BUILDPATH($OUT['info']->catid);
 				

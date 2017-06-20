@@ -577,11 +577,10 @@ app.controller("modelCtrl", function ($scope, vault, $rootScope, $location, $rou
 	}	
 		
 	$scope.getProduct($scope.id, 1);
-	$scope.getFileList($scope.id, 1);
-	
+		
 	$scope.tabinfo = 'desc';
 	$scope.changeTabInfo = function(s) {
-		$scope.tabinfo = s;
+		$scope.tabinfo = s;		
 	}
 	
 	$scope.rateProduct = function(id, type) {
@@ -595,6 +594,11 @@ app.controller("modelCtrl", function ($scope, vault, $rootScope, $location, $rou
 	$scope.tabinfo2 = 'info';
 	$scope.changeTabInfo2 = function(s) {
 		$scope.tabinfo2 = s;
+				
+		switch(s) {
+			case 'files': $scope.getFileList($scope.id, 1);
+			break;
+		}
 	}
 	
 	$rootScope.favGet($rootScope.libType);

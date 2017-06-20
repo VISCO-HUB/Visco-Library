@@ -1559,9 +1559,9 @@ rollout _STEP2 "STEP 2: Model Info"
 		
 		for i in selection do 
 		(		
-			if(numKeys i.pos.controller > 0) do a = true
-			if(numKeys i.rotation.controller > 0) do a = true
-			if(numKeys i.scale.controller > 0) do a = true
+			try(if(numKeys i.pos.controller > 0) do a = true)catch()
+			try(if(numKeys i.rotation.controller > 0) do a = true)catch()
+			try(if(numKeys i.scale.controller > 0) do a = true)catch()
 		)
 		
 		cbxAnimated.checked = a
@@ -1737,6 +1737,12 @@ rollout _STEP3 "STEP 3: Model Review"
 	)
 	timer tmr1 "Tmr1" active: false interval: 300
 	
+	fn fixLine s = 
+	(
+		s = substituteString s "\\n" "\r\n"
+		return s
+	)
+	
 	on _STEP3 open do
 	(
 		edtOverview.MultiLine = true
@@ -1745,7 +1751,7 @@ rollout _STEP3 "STEP 3: Model Review"
 		edtOverview.acceptsTab = true
 		edtOverview.wordWrap = true
 		
-		edtOverview.text = getProp "edtOverview"
+		edtOverview.text = fixLine (getProp "edtOverview")
 		edtCustom1.text = getProp "edtCustom1"
 		edtClient.text = getProp "edtClient"
 	)
@@ -2354,9 +2360,9 @@ rollout _STEP5 "STEP 5: Pack Model"
 				
 		for l in _selection where superClassOf l == light do
 		(
-			if(isProperty l #ies_file) do l.ies_file = copyIes (l.ies_file) szAssets szName
-			if(isProperty l #webFile) do l.webFile = copyIes (l.webFile) szAssets szName
-			if(isProperty l #iesFile) do l.iesFile = copyIes (l.iesFile) szAssets szName
+			if(isProperty l #ies_file and l.ies_file != undefined) do l.ies_file = copyIes (l.ies_file) szAssets szName
+			if(isProperty l #webFile and l.webFile != undefined) do l.webFile = copyIes (l.webFile) szAssets szName
+			if(isProperty l #iesFile and l.iesFile != undefined) do l.iesFile = copyIes (l.iesFile) szAssets szName
 		)		
 	)
 	

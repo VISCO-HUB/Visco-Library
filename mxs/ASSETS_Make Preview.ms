@@ -2,7 +2,7 @@
 [INFO] 
 
 NAME = Make Preview
-VERSION = 1.0.6
+VERSION = 1.0.7
 AUTHOR = Vasily Lukyanenko
 DEV = VISCO
 HELP = 
@@ -43,6 +43,12 @@ ICON=#("PhysX_Main", 3)
 
 + Added: HDRI Library=
 * Changed: Render / Post process now floating
+
+[1.0.7]
+
++ Added: Create Camera From View button=
++ Added: Ability to lock camera=
+* Changed: If render only from camera if found in scene=
 
 [ABOUT]
 
@@ -852,9 +858,19 @@ fn rebuildScript =
 	try(fileIn (getThisScriptFileName()))catch()
 )
 
+fn getCameraViewportID = 
+(
+	for i in 1 to viewport.numViews where viewport.getCamera index: i != undefined do return i
+	return undefined
+)
+	
+
 fn onStartRender =
 (
 	setRenderQuality()	
+	
+	i = getCameraViewportID()
+	if(i != undefined) do viewport.activeViewportID = i	
 )
 
 fn onSelectionChanged =
@@ -882,7 +898,7 @@ fn rolloutToggle t =
 	addRollout _rStep2 fFastRender rolledUp:false
 	--addRollout _rStep3 fFastRender
 	addRollout _rPreset fFastRender rolledUp:true
-	createDialog _rStep3 200 300 style: #(#style_titlebar, #style_border) parent: _rStep0.hwnd
+	createDialog _rStep3 200 360 style: #(#style_titlebar, #style_border) parent: _rStep0.hwnd
 	
 	r = getRender()
 	
@@ -2210,6 +2226,11 @@ rollout _rStep3  "Render / Post Process" category:4
 		
 		checkbox cbxDR "Distributed rendering"
 	)
+	group "Camera"
+	(
+		button btnCreateCamera "Create Camera From View"
+		checkbox cbxLockCamera "Lock Camera" checked: true
+	)	
 	group "Post Process"
 	(
 		--button btnOpenEditor "Open Editor" height: 30 width: 215
@@ -2217,6 +2238,35 @@ rollout _rStep3  "Render / Post Process" category:4
 		dotnetcontrol btnOpenEditor "System.Windows.Forms.Button" height: 40 width: 175
 	)
 	timer tmrSetPos "" active: false interval: 300
+	
+	fn createCameraFromView =
+	(
+		n = "MakePreview_FreeCamera"
+		c = getnodeByName n
+		if(c != undefined) do delete c
+		c = freeCamera transform:(inverse(viewport.getTM())) fov: 55 name: n
+		viewport.setCamera c	
+			
+		if(cbxLockCamera.checked) do setTransformLockFlags c #all
+	)
+	
+	fn lockCamera lock =
+	(
+		n = "MakePreview_FreeCamera"
+		c = getnodeByName n
+		type = if(lock) then #all else #none
+		if(c != undefined) do setTransformLockFlags c type
+	)
+	
+	fn isLockCamera =
+	(
+		n = "MakePreview_FreeCamera"
+		c = getnodeByName n
+		if(c == undefined) do return undefined
+		l = getTransformLockFlags c
+		if(l as string == #{1..9} as string) do return true				
+		return false
+	)
 	
 	on _rStep3 moved p do
 	(
@@ -2472,7 +2522,7 @@ rollout _rStep3  "Render / Post Process" category:4
 	(	
 		r = getRender()
 		
-		setRenderQuality()
+		onStartRender()
 				
 		if(_rStep3.sldQuality.value == 0 and r == #Corona) do
 		(
@@ -2487,7 +2537,7 @@ rollout _rStep3  "Render / Post Process" category:4
 	(			
 		try(setupPostProcess()) catch()		
 		--try(postProcess()) catch(messageBox "Please press \"Setup Scene\" for add default render elements!" title: "Warning!")
-		postProcess()
+		postProcess()		
 	)
 	
 	on _rStep3 open do		
@@ -2498,12 +2548,23 @@ rollout _rStep3  "Render / Post Process" category:4
 		setPosStep3()
 		
 		setRenderQuality()
+		
+		l = isLockCamera()	
+		
+		if(l != undefined) do cbxLockCamera.checked = l
 	)
 	
 	on cbxDR changed v do
 	(
 		checkDR type: #set
 	)
+	
+	on btnCreateCamera pressed do
+	(
+		createCameraFromView()
+	)
+	
+	on cbxLockCamera changed v do lockCamera v
 )
 
 rollout _rPreset  "Save / Load Preset" category:5

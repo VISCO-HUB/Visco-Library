@@ -371,9 +371,9 @@ fn setIesPath path: "" geom: selection type: light =
 (
 	for l in geom where superClassOf l == type do 
 	(
-		if(isProperty l #ies_file and not doesFileExist l.ies_file) do l.ies_file = path + l.ies_file
-		if(isProperty l #webFile and not doesFileExist l.webFile) do l.webFile = path + l.webFile
-		if(isProperty l #iesFile and not doesFileExist l.iesFile) do l.iesFile = path + l.iesFile	
+		if(isProperty l #ies_file and  l.ies_file != undefined and not doesFileExist l.ies_file) do l.ies_file = path + l.ies_file
+		if(isProperty l #webFile and l.webFile != undefined and not doesFileExist l.webFile) do l.webFile = path + l.webFile
+		if(isProperty l #iesFile and l.iesFile != undefined  and not doesFileExist l.iesFile) do l.iesFile = path + l.iesFile	
 	)
 )
 

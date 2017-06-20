@@ -1391,7 +1391,7 @@ app.run(function($rootScope, $location, $routeParams, vault) {
 
 // SERVICES
 
-app.service('vault', function($http, $rootScope, $timeout, $interval, $templateCache) {
+app.service('vault', function($http, $rootScope, $timeout, $interval, $templateCache, $cookieStore) {
 	
 	var showMessage = function(m, t) {
 		$rootScope.msg = {};
@@ -1804,7 +1804,8 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 	
 	var productInfo = function(type, id) {
 			
-		var json = {'type': type, 'id': id};
+		var filter = $cookieStore.get('modelFilter');	
+		var json = {'type': type, 'id': id, 'filter': filter};
 		
 		HttpPost('PRODINFO', json).then(function(r){						
 			

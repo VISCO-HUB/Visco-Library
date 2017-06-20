@@ -10,6 +10,9 @@
 <div ng-show="product.info">
 
 <div class="row">
+	<a class="btn btn-default" ng-show="product.list.prev" href="#/models-edit/{{product.list.prev}}/1"><span class="glyphicon glyphicon-step-backward" aria-hidden="true"></span> Prev Model</a>
+	<a class="btn btn-default" ng-show="product.list.next" href="#/models-edit/{{product.list.next}}/1">Next Model <span class="glyphicon glyphicon glyphicon-step-forward" aria-hidden="true"></span></a>
+
 	<a class="btn btn-default pull-right" href="/#/model/{{product.info.id}}">View</a>
 	<a class="btn btn-default pull-right" href="" ng-show="auth.browser=='MXS'" ng-click="openModel(product.info.id)">Open</a>
 </div>
@@ -21,6 +24,11 @@
 <div class="btn-group" data-toggle="buttons">
 	<button type="button" class="btn" ng-class="product.info.status == 1 ? 'btn-success' : 'btn-default'" ng-click="prodSetParam('status', '1')">&nbsp;ON&nbsp;</button>
 	<button type="button" class="btn" ng-class="product.info.status == 0 ? 'btn-danger' : 'btn-default'" ng-click="prodSetParam('status', '0')">OFF</button>
+</div>
+<h2><small>Pending:</small></h2>
+<div class="btn-group" data-toggle="buttons">	
+	<button type="button" class="btn" ng-class="product.info.pending == 0 ? 'btn-success' : 'btn-default'" ng-click="prodSetParam('pending', '0')">&nbsp;NO&nbsp;</button>
+	<button type="button" class="btn" ng-class="product.info.pending == 1 ? 'btn-warning' : 'btn-default'" ng-click="prodSetParam('pending', '1')">YES</button>
 </div>
 <hr>
 <h2><small>Name:</small></h2>

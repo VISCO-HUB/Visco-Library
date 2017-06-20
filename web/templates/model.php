@@ -35,12 +35,13 @@
 		<a ng-href="admin/#/models-edit/{{prod.id}}/1" class="btn btn-default custom-button-gray button-fixed button-edit" uib-tooltip="Edit" ng-show="auth.rights > 0"> &nbsp;&nbsp;</a>&nbsp;
 		<hr>
 		<ul class="nav nav-tabs nav-justified">
-			  <li ng-class="{'active': tabinfo2 =='info'}" ng-show="fileList.responce == 'OK'"><a href="" ng-click="changeTabInfo2('info')">Info</a></li>
-			  <li ng-class="{'active': tabinfo2 =='files'}" ng-show="fileList.responce == 'OK'"><a href="" ng-click="changeTabInfo2('files')">Files</a></li>
+			  <li ng-class="{'active': tabinfo2 =='info'}"><a href="" ng-click="changeTabInfo2('info')">Info</a></li>
+			  <li ng-class="{'active': tabinfo2 =='files'}"><a href="" ng-click="changeTabInfo2('files')">Files</a></li>
 		</ul>
 		<br>
 		<div ng-show="tabinfo2=='files'">
-			<div class="file-list">
+			<div ng-show="!fileList.responce" class="text-center text-muted"><br>Loading...</div>
+			<div class="file-list" ng-show="fileList.responce == 'OK'">
 				<h4>Files</h4>
 					
 				<table class="table table-striped">
