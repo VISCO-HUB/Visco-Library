@@ -2,7 +2,7 @@
 [INFO] 
 
 NAME = Pack Model
-VERSION = 1.0.7
+VERSION = 1.0.8
 AUTHOR = Vasily Lukyanenko
 DEV = VISCO
 HELP = 
@@ -57,6 +57,10 @@ ICON=#("PhysX_Main", 30)
 [1.0.7]
 
 - BugFix: Not save Custom 1 option=
+
+[1.0.8]
+
+- BugFix: Incorrect IES paths=
 
 [ABOUT]
 
@@ -2355,7 +2359,7 @@ rollout _STEP5 "STEP 5: Pack Model"
 			
 			iIesCnt += 1
 			
-			return f
+			return @"assets\" + filenameFromPath f
 		)
 				
 		for l in _selection where superClassOf l == light do

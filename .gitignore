@@ -3,3 +3,5 @@ mxs/ini/v.lukyanenko_ASSETS_Library.ms.ini
 mxs/ini/v.lukyanenko_ASSETS_Library.ms.ini
 *.ini
 web/vault/config.php
+web/js/__angular-file-upload.min.js
+*.ini

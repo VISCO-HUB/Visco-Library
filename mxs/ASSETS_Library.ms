@@ -56,6 +56,7 @@ global iconFile = @"\\visco.local\data\Instal_Sync\scripts\scripts\img\assets_fa
 global trustUrl = siteUrl + @"vault/mxs/mxsTrustUser.php?user=" + sysInfo.username
 global forceRefresh
 global clearIEChache
+global __AUTO_PLACE_MODE = false
 
 struct XML
 (
@@ -369,11 +370,12 @@ fn setTexturesPath path: "" geom: selection type: BitmapTex =
 
 fn setIesPath path: "" geom: selection type: light =
 (
+	a = @"assets\"
 	for l in geom where superClassOf l == type do 
 	(
-		if(isProperty l #ies_file and  l.ies_file != undefined and not doesFileExist l.ies_file) do l.ies_file = path + l.ies_file
-		if(isProperty l #webFile and l.webFile != undefined and not doesFileExist l.webFile) do l.webFile = path + l.webFile
-		if(isProperty l #iesFile and l.iesFile != undefined  and not doesFileExist l.iesFile) do l.iesFile = path + l.iesFile	
+		if(isProperty l #ies_file and  l.ies_file != undefined and not doesFileExist l.ies_file) do l.ies_file = path + a + filenameFromPath l.ies_file
+		if(isProperty l #webFile and l.webFile != undefined and not doesFileExist l.webFile) do l.webFile = path + a + filenameFromPath  l.webFile
+		if(isProperty l #iesFile and l.iesFile != undefined  and not doesFileExist l.iesFile) do l.iesFile = path + a + filenameFromPath  l.iesFile	
 	)
 )
 
@@ -521,11 +523,23 @@ fn onExecuteCommand s e =
 	
 	t = filterString execCommand.text "="
 	p = removeHash t[2] 
-		
+	__AUTO_PLACE_MODE = false	
+	scriptPlacer = getFilenamePath (getThisScriptFileName()) + "ASSETS_Object Placer.ms"
+	
 	case t[1] of
 	(
-		"MERGE_MODEL": addFile p mode: #merge
-		"XREF_MODEL": addFile p mode: #xref
+		"MERGE_MODEL": 
+		(
+			__AUTO_PLACE_MODE = true
+			addFile p mode: #merge
+			try(fileIn scriptPlacer)catch()
+		)
+		"XREF_MODEL": 
+		(
+			__AUTO_PLACE_MODE = true
+			addFile p mode: #xref			
+			try(fileIn scriptPlacer)catch()
+		)
 		"OPEN_MODEL": 
 		(			
 			addFile p mode: #open
