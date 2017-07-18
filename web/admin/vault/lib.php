@@ -1143,6 +1143,10 @@
 		}
 		
 		FUNCTION CROP($CROPX, $CROPY, $WIDTH, $HEIGHT) {
+			// FIX CUT 1 PIXEL 
+			$CROPY = $CROPY + 1;
+			$HEIGHT = $HEIGHT + 1;
+			
 			RETURN IMAGECROP($this->IMG, ['x' => $CROPX, 'y' => $CROPY, 'width' => $WIDTH, 'height' => $HEIGHT]);
 		}
 		
@@ -1435,6 +1439,7 @@
 						
 			RETURN JSON_ENCODE($OUT);
 		}
+			
 		
 		PUBLIC STATIC FUNCTION PRODSETPARAM($DATA) {			
 			$ERROR = '{"responce": "SETTINGBAD"}';
@@ -1472,6 +1477,40 @@
 			
 			IF($RESULT > 0) RETURN $SUCCESS;
 			RETURN $ERROR ;
+		}
+		
+		PUBLIC STATIC FUNCTION PRODREMOVEWEBGL($DATA) {
+			$ERROR = '{"responce": "REMOVEWEBGLBAD"}';
+			$SUCCESS = '{"responce": "REMOVEWEBGLOK"}';
+			$NOTEXIST = '{"responce": "NOTEXISTWEBGL"}';
+			$CANTDEL = '{"responce": "CANTDELWEBGL"}';
+			
+			IF(!ISSET($DATA->type) OR !ISSET($DATA->id)) RETURN $ERROR;
+			
+			$TYPE = SELF::TYPE($DATA->type);
+			IF(!$TYPE) RETURN $ERROR;
+			
+			$WHERE['id'] = $DATA->id;
+			$RESULT = DB::SELECT($TYPE, $WHERE);
+			IF(!$RESULT) RETURN $ERROR;
+			
+			$PROD = $RESULT->fetch_object();
+			IF(!$PROD) RETURN $ERROR;
+			
+			IF(!$PROD->webgl) RETURN $NOTEXIST;
+			
+			$SET['webgl'] = NULL;
+			DB::UPDATE($TYPE, $SET, $WHERE);
+			
+			$DIR = WEBGL_PATH . $PROD->webgl . '\\';
+			IF(!IS_DIR($DIR)) RETURN $ERROR;
+			
+			FS::CLEAR($DIR);
+			FS::DELDIR($DIR);
+			
+			IF(IS_DIR($DIR)) RETURN $CANTDEL;
+
+			RETURN $SUCCESS;
 		}
 		
 		PUBLIC STATIC FUNCTION PRODREMOVETAG($DATA) {			
@@ -1728,7 +1767,9 @@
 
 			IF(!$TYPE) RETURN $ERROR;			
 			
-			$SET['name'] = $DATA->name;
+			$NAME = TRIM($DATA->name);
+			
+			$SET['name'] = $NAME;
 			$WHERE['catid'] = $DATA->id;
 			$WHERE['name'] = $DATA->oldname;
 			$PATH = CAT::BUILDPATH($DATA->catid);
@@ -1745,7 +1786,7 @@
 			IF(!$P[0]) RETURN $ERROR;
 						
 			$DIR1 = $PATH . CAT::CLEAR($P[0]->name) . '\\';
-			$DIR2 = $PATH . CAT::CLEAR($DATA->name) . '\\';
+			$DIR2 = $PATH . CAT::CLEAR($NAME) . '\\';
 			
 			IF(!IS_DIR($DIR1)) RETURN $PRODNOTFOUND;		
 			IF(!@RENAME($DIR1, $DIR2)) RETURN $ERROR;

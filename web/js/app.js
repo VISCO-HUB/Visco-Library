@@ -131,6 +131,12 @@ app.directive("lightbox", function ($rootScope) {
     };
 });
 
+app.directive("webglplayer", function ($rootScope) {
+	return {
+		templateUrl : hostname + 'templates/webgl-player.html'		
+    };
+});
+
 app.directive("feedback", function ($rootScope) {
 	return {
 		templateUrl : hostname + 'templates/feedback.html'		
@@ -803,6 +809,28 @@ app.run(function($rootScope, $location, $routeParams, $timeout, $cookieStore, va
 	
 	$rootScope.prodError = {};
 	
+	$rootScope.webgl = '';
+	$rootScope.webglMsg = function() {
+		
+	}
+	
+	$rootScope.webglUrl = function(item, title) {
+	
+		if(!item) {
+			$rootScope.webgl = '';
+			$rootScope.webglTitle = '';
+			v = document.getElementById('webgl');
+			if(v) {v.contentWindow.document.body.innerHTML='';}
+			return false;
+		}
+		
+		/*if(!confirm('Do you really want open 3D mode?')){
+			return false;
+		}*/
+		$rootScope.webglTitle = title;
+		$rootScope.webgl = hostname + 'webgl/?item=' + item;				
+	}
+	
 	$rootScope.downloadMsg = function() {
 		var t = $("#download").contents().find("body").html();		
 		if(!t || !t.length) {return false;}
@@ -985,6 +1013,7 @@ app.run(function($rootScope, $location, $routeParams, $timeout, $cookieStore, va
 			$rootScope.showLightBox = false;
 			$rootScope.showFeedBack = false;
 			$rootScope.showQuickFavorites = false;
+			$rootScope.webglUrl(null);
 		}	
 
 		$rootScope.$apply();		
@@ -1196,6 +1225,8 @@ app.run(function($rootScope, $location, $routeParams, $timeout, $cookieStore, va
 		$rootScope.showQuickFavorites = false;	
 				
 		$rootScope.bindSearchEvent();
+		
+		$rootScope.webglUrl(null);
     });
 });
 

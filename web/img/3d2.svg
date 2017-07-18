@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" preserveAspectRatio="xMidYMid" width="130" height="130" viewBox="0 0 130 130">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: #8ec961;
+        filter: url(#color-overlay-1);
+      }
+
+      .cls-2 {
+        fill: #fff;
+        fill-rule: evenodd;
+      }
+    </style>
+
+    <filter id="color-overlay-1" filterUnits="userSpaceOnUse">
+      <feFlood flood-color="#d9534f"/>
+      <feComposite operator="in" in2="SourceGraphic"/>
+      <feBlend in2="SourceGraphic" result="solidFill"/>
+    </filter>
+  </defs>
+  <rect width="130" height="130" class="cls-1"/>
+  <path d="M92.000,95.000 L91.000,95.000 L79.000,95.000 L67.000,95.000 L67.000,35.000 L79.000,35.000 L91.000,35.000 L92.000,35.000 C98.075,35.000 103.000,39.925 103.000,46.000 L103.000,47.000 L103.000,83.000 L103.000,84.000 C103.000,90.075 98.075,95.000 92.000,95.000 ZM91.000,47.000 L79.000,47.000 L79.000,83.000 L91.000,83.000 L91.000,47.000 ZM48.000,95.000 L47.000,95.000 L27.000,95.000 L27.000,83.000 L47.000,83.000 L47.000,71.000 L35.000,71.000 L35.000,59.000 L47.000,59.000 L47.000,47.000 L27.000,47.000 L27.000,35.000 L47.000,35.000 L48.000,35.000 C54.075,35.000 59.000,39.925 59.000,46.000 L59.000,47.000 L59.000,59.000 L59.000,71.000 L59.000,83.000 L59.000,84.000 C59.000,90.075 54.075,95.000 48.000,95.000 Z" class="cls-2"/>
+</svg>

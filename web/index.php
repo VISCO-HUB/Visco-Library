@@ -40,7 +40,7 @@
 	<![endif]-->
 </head>
 
-<body ng-style="{'overflow': showLightBox ? 'hidden' : 'auto'}">
+<body ng-style="{'overflow': showLightBox || webgl.length ? 'hidden' : 'auto'}">
 <div preview></div>
 <div class="header">
 	<div class="container">
@@ -109,9 +109,11 @@
 	<?php ECHO $USER; ?>
 </div>
 <iframe id="download" ng-src="{{download}}" iframe-onload="downloadMsg()" class="hidden"></iframe>
+
 <div lightbox></div>
 <div feedback></div>
 <div quickfavorites></div>
+<div webglplayer></div>
 </body>
 </html>
 

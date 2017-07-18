@@ -15,6 +15,7 @@
 
 	<a class="btn btn-default pull-right" href="/#/model/{{product.info.id}}">View</a>
 	<a class="btn btn-default pull-right" href="" ng-show="auth.browser=='MXS'" ng-click="openModel(product.info.id)">Open</a>
+	<a class="btn btn-default pull-right" href="" ng-show="auth.browser=='MXS'" ng-click="mergeModel(product.info.id)">Merge</a>
 </div>
 
 <h1>Edit: {{product.info.name}}</h1>
@@ -70,20 +71,22 @@
 <br><br>
 
 <hr>
-<h2><small>Upload New Preview:</small></h2>
+<div class="well well-lg">
+<h2 style="margin: 0"><small>Upload New Preview:</small></h2>
 
 <div ng-show="uploaderImg.queue[0].progress">
 Upload progress:
 <div class="progress" style="margin-bottom: 0;">
 	<div class="progress-bar" role="progressbar" ng-style="{ 'width': uploaderImg.queue[0].progress  + '%' }"></div>
 </div>
+
 </div>
 <br>
 <label>
 <span type="button" class="btn btn-success"><span class="glyphicon glyphicon-plus" aria-hidden="true"></span> Upload New Preview</span>
 <input type="file" nv-file-select="" uploader="uploaderImg" class="hidden">
 </label>
-
+</div>
 <hr>
 <h2><small>Description:</small></h2>
 <div class="form-group">
@@ -173,4 +176,33 @@ Upload progress:
 		<td>{{product.info.uploadedby}}</td>
 	</tr>
 </table>
+<br>
+<div class="well well-lg">
+	<h2 style="margin: 0" ng-click="isCollapsed = !isCollapsed"><small>Upload Interactive 3D Model (WebGL):</small></h2>
+		<br>
+		<iframe id="webgl" ng-src="{{webgl}}" ng-show="webgl.length" iframe-onload="webglMsg()" style="width: 100%" ng-style="webglStyle"></iframe>	
+			
+		<div ng-show="product.info.webgl">			
+			Interactive Model ID: {{product.info.webgl}} <br><br>
+			<button ng-show="!webgl.length && auth.browser!='MXS'" class="btn btn-primary" ng-click="webglUrl(product.info.webgl)">View Interactive Model</button>
+			<button ng-show="webgl.length && auth.browser!='MXS'" class="btn btn-primary" ng-click="webglUrl(null)">Hide Interactive Model</button>
+			<button class="btn btn-danger" ng-click="removeWebGLModel(product.info.webgl)">Delete Interactive Model</button>
+		</div>
+		<div ng-show="!product.info.webgl">
+			<div ng-show="uploaderWebGl.queue[0].progress">
+			Upload progress:
+			<div class="progress" style="margin-bottom: 0;">
+				<div class="progress-bar" role="progressbar" ng-style="{ 'width': uploaderWebGl.queue[0].progress  + '%' }"></div>
+			</div>
+			</div>
+			<br>
+			<label>
+			<span type="button" class="btn btn-success"><span class="glyphicon glyphicon-plus" aria-hidden="true"></span> Upload *.zip</span>
+			<input type="file" nv-file-select="" uploader="uploaderWebGl" class="hidden">
+			</label>
+		</div>
+</div>
+
+
+
 </div>

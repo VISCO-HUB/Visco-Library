@@ -762,6 +762,11 @@ app.controller("modelsEditCtrl", function ($scope, $rootScope, $routeParams, vau
 		vault.sendCommandMXS('OPEN_MODEL', id);
 	}
 	
+	
+	$scope.mergeModel = function(id) {
+		vault.sendCommandMXS('MERGE_MODEL', id);
+	}
+	
 	$scope.productGet = function(){			
 		vault.productInfo($scope.type, id);		
 	};
@@ -839,6 +844,8 @@ app.controller("modelsEditCtrl", function ($scope, $rootScope, $routeParams, vau
 		$scope.pid = 0;
 	}
 	
+	
+	
 	// UPLOAD
 	var uploaderImg = $scope.uploaderImg = new FileUploader({
 		url: hostname + 'admin/vault/upload.preview.php?id=' + id + '&type=' + $scope.type
@@ -888,7 +895,90 @@ app.controller("modelsEditCtrl", function ($scope, $rootScope, $routeParams, vau
 			return z;
 		}
 	});
-	//
+	
+	// WEBGL
+	
+	$rootScope.webgl = '';
+	
+	$rootScope.webglUrl = function(item) {
+	
+		if(!item) {
+			$rootScope.webgl = '';			
+			v = document.getElementById('webgl');
+			if(v) {v.contentWindow.document.body.innerHTML='';}
+			return false;
+		}
+		
+		/*if(!confirm('Do you really want open 3D mode?')){
+			return false;
+		}*/
+		$rootScope.webgl = hostname + 'webgl/?item=' + item;				
+	}
+	
+	$scope.webglStyle = {height: ($('#webgl').width()) + 'px'}
+		
+	
+	$scope.removeWebGLModel = function(item) {
+		if(!confirm('Do you really want to delete Interactive Model?')){
+			return false;
+		}
+		$rootScope.webglUrl(null);
+		vault.removeWebGLModel(id, $scope.type);
+	}
+	
+	// UPLOAD WEBGL
+	var uploaderWebGl = $scope.uploaderWebGl = new FileUploader({
+		url: hostname + 'admin/vault/upload.webgl.php?id=' + id + '&type=' + $scope.type
+	});
+	
+	uploaderWebGl.onAfterAddingFile = function(fileItem) {
+        uploaderWebGl.uploadAll();
+		//console.info('onAfterAddingFile', fileItem);
+    };
+	
+	uploaderWebGl.onWhenAddingFileFailed = function(item /*{File|FileLikeObject}*/, filter, options) {
+        //console.info('onWhenAddingFileFailed', item, filter, options);
+		vault.showMessage('Allowed only *.zip files!', 'error');
+	};
+	
+	uploaderWebGl.onCompleteItem = function(fileItem, response, status, headers) {
+		//console.info('onCompleteItem', fileItem, response, status, headers);
+			console.log(response.response);
+		if(response.response == 'DONE')	{
+			vault.showMessage('Model uploaded!', 'success');
+		}
+		
+		if(response.response == 'FAILED')	{
+			vault.showMessage('Error while uploading Model!', 'error');
+		}
+		
+		if(response.response == 'BADZIP')	{
+			vault.showMessage('Error model has wrong format!', 'error');
+		}
+		
+		if(response.response == 'MOVEERROR')	{
+			vault.showMessage('Model uploaded but not moved to Model folder!', 'error');
+		}
+		
+		uploaderWebGl.clearQueue();
+		console.log(response)	
+			
+		$scope.productGet();	
+		
+	};
+	
+	uploaderWebGl.onErrorItem = function(fileItem, response, status, headers) {
+        //console.info('onErrorItem', fileItem, response, status, headers);
+	};
+			
+	uploaderWebGl.filters.push({
+		name: 'webglFilter',
+		fn: function(item /*{File|FileLikeObject}*/, options) {
+			var type = '|' + item.type.slice(item.type.lastIndexOf('/') + 1) + '|';
+			z = '|x-zip-compressed|'.indexOf(type) !== -1;
+			return z;
+		}
+	});
 	
 	
 	$scope.pid = 0;
@@ -908,6 +998,10 @@ app.controller("modelsEditCtrl", function ($scope, $rootScope, $routeParams, vau
 	
 	$scope.openModel = function(id) {
 		vault.sendCommandMXS('OPEN_MODEL', id);
+	}
+	
+	$scope.mergeModel = function(id) {
+		vault.sendCommandMXS('MERGE_MODEL', id);
 	}
 	
 	if(!$cookieStore.get('perpage')) {		
@@ -1884,6 +1978,20 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		});
 	}
 	
+	
+	var removeWebGLModel = function(id, type) {
+		var json = {'id': id, 'type': type};
+		
+		HttpPost('PRODREMOVEWEBGL', json).then(function(r){												
+			
+			responceMessage(r.data);
+			productInfo(type, id);		
+		},
+		function(r){
+			responceMessage(r);
+		});
+	}
+	
 	var addTag = function(id, tags, type) {
 		var json = {'id': id, 'tags': tags, 'type': type};
 		
@@ -2261,6 +2369,7 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		usersDelGroup: usersDelGroup,
 		usersRenameGroup: usersRenameGroup,
 		usersToggleGroup: usersToggleGroup,
+		removeWebGLModel: removeWebGLModel,
 		tm: tm
 	};
 });

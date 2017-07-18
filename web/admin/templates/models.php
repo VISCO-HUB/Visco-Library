@@ -36,7 +36,10 @@
 		</tr>
 		<tr ng-repeat="prod in products.products" >
 			<td>{{$index + 1}}.</td>
-			<td><img ng-src="{{getMainPreview(prod.previews, 'small')}}"></td>
+			<td>
+				<div class="is3d-small" ng-show="prod.webgl"></div>
+				<a href="#/models-edit/{{prod.id}}/{{currentPage}}"><img ng-src="{{getMainPreview(prod.previews, 'small')}}"></a>
+			</td>
 			<td><a href="#/models-edit/{{prod.id}}/{{currentPage}}">{{prod.name}}</a></td>
 			<td>
 			<span ng-show="prod.status==0 && prod.pending!=1" class="label label-default pointer" ng-click="prodSetParam('status', '1', prod.id)">Disabled</span> 
@@ -49,6 +52,7 @@
 				|</span>
 				<a href="/#/model/{{prod.id}}">View</a>
 				<span ng-show="auth.browser=='MXS'">| <a href="" ng-click="openModel(prod.id)">Open</a></span>
+				<span ng-show="auth.browser=='MXS'">| <a href="" ng-click="mergeModel(prod.id)">Merge</a></span>
 			</td>
 			</td>
 		</tr>

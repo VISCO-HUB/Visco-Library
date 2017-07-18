@@ -23,6 +23,7 @@ input, textarea {
 
 .table > tbody > tr > td {
 	vertical-align: middle;
+	position: relative;
 }
 h1, h2, h3, h4 {
 	color: #888888;
@@ -582,4 +583,15 @@ ul.legend {
 .href-clear, .href-clear:hover, .href-clear:focus {
 	text-decoration: none !important;
 	outline: none !important;
+}
+
+.is3d-small {
+	content: '';
+	width: 15px;
+	height: 15px;
+	position: absolute;
+	left: 10px;
+	top: 10px;
+	background: url('/img/3d2.svg') 50% 50% no-repeat;
+	background-size: contain;
 }

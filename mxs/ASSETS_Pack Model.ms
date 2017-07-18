@@ -78,6 +78,9 @@ for Assets Library=
 global _URL = "http://svg-web-003/"
 global _SAVEPATH = @"C:\temp\Assets Library\"
 
+try(closeRolloutFloater fFastRender) catch()
+try(destroyDialog rPostProcess) catch()
+
 try(closeRolloutFloater rAssetsLibraryModelPack)catch()
 global rAssetsLibraryModelPack = newRolloutFloater "Pack Model" 280 773
 
@@ -515,6 +518,13 @@ fn getProp p type: #text =
 	)
 )
 
+fn loadModelInfo id =
+(
+	saveProp "externalModelID" (id as string)
+	print ("Load info for: " + id as string)
+	try(fileIn (getThisScriptFileName()))catch()
+)
+
 fn isSelected =
 (
 	if(selection.count < 1) do 
@@ -878,7 +888,7 @@ rollout _STEP1 "STEP 1: Model Transform"
 		-- Get Model Data from DB
 		externalModelID = getProp "externalModelID"
 		if(externalModelID != "" and externalModelID.count > 0) do 
-		(
+		(			
 			getModelById externalModelID			
 		)
 	)

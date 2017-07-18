@@ -7,11 +7,14 @@
 <div ng-show="product.product.name.length">
 	<div class="col-md-12 col-lg-8 col-sm-12 col-xs-12">
 	<div class="prod-gallery-frame">
-		<img src="img/loading.gif" ng-src="{{productGallery[currItem]}}" ng-class="{'show': !showLightBox}" class="img-responsive margin-auto pointer" ng-click="hideShowLightBox(true, prod.previews)" fade-in>
+		<img src="img/loading.gif" ng-src="{{productGallery[currItem]}}" ng-class="{'show': !showLightBox}" class="img-responsive margin-auto pointer" ng-click="hideShowLightBox(true, prod.previews)" fade-in>		
 	</div>
 	<br>
 		<ul class="prod-gallery" ng-show="productGalleryPreviews.length > 1 && !showLightBox">
 			<li ng-repeat="item in productGalleryPreviews" ng-style="{'background-image': 'url(' + item + ')'}" ng-click="showItem($index)" ng-class="{'active': $index == currItem}"></li>
+			<li ng-style="{'background-image': 'url(' + productGalleryPreviews[0] + ')'}" ng-show="prod.webgl && auth.browser!='MXS'" ng-click="webglUrl(prod.webgl, prod.name)">
+				<div style="background-image:url('/img/3d2.svg'); background-size: contain; height: 20px; width: 20px; bottom: 0" ></div>
+			</li>
 		</ul>
 		<br>
 		<ul class="nav nav-tabs">

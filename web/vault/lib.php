@@ -647,7 +647,14 @@
 			
 			RETURN JSON_ENCODE($RESULT);
 		}
-				
+			
+		PUBLIC STATIC FUNCTION GET_TOTAL_PRODUCTS($CAT) {
+			$TABLE = PRODUCTS::TYPE($CAT->type);
+			$WHERE['catid'] = $CAT->id;
+			$WHERE['pending'] = 0;
+			RETURN DB::CNT($TABLE, [], $WHERE);
+		}
+			
 		PUBLIC STATIC FUNCTION BUILDTREE($CATEGORIES, $PARENT = 0) {
 			$TREE = [];
 			$AUTH = $GLOBALS['AUTH'];	
@@ -668,6 +675,7 @@
 					$I['sort'] = $CATEGORY->sort;
 					$I['editors'] = IMPLODE(';', DB::PARSE_VALUE($CATEGORY->editors));
 					$I['access'] = $AUTH['user']->rights > 0;
+					
 										
 					FOREACH($CATEGORIES AS $SUBCAT) {
 						IF($SUBCAT->parent == $CATEGORY->id)
@@ -677,7 +685,13 @@
 						}
 					}
 					
-					IF($FLAG) $I['child'] = SELF::BUILDTREE($CATEGORIES, $I['id']);
+					IF(!$FLAG) $I['prodcnt'] = SELF::GET_TOTAL_PRODUCTS($CATEGORY);
+					IF($FLAG) 
+					{
+						$I['child'] = SELF::BUILDTREE($CATEGORIES, $I['id']);
+						$I['prodcnt'] = 0;
+						FOREACH($I['child'] AS $TMP) $I['prodcnt'] += $TMP['prodcnt'];
+					}
 					
 					$TREE[$CATEGORY->id] = $I;
 				}

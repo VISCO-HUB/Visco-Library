@@ -1,3 +1,42 @@
+/*  
+[INFO] 
+
+NAME = Assets Object Placer
+VERSION = 1.0.1
+AUTHOR = Vasily Lukyanenko
+DEV = VISCO
+HELP = 
+
+[INSTALL]
+
+MACRO=AssetsObjectPlacer
+CAT=VISCO
+TEXT=Assets Object Placer
+ICON=#("AssetsLibrary", 1)
+
+[ICONS]
+
+[1.0.0]
+
+* First release =
+
+[1.0.1]
+
+-BugFix: Not stop placing on open new model=
+
+[ABOUT]
+
+Simplse script for place objects in scene.=
+@=
+Hold SHIFT+CTRL and move mouse for free rotation.=
+ALT+CLICK for rotate by 90deg the clock-wise.=
+
+
+[TEST]
+
+[SCRIPT]
+*/
+
 struct _placer
 (
 	trackCallback = #continue,
@@ -37,6 +76,8 @@ struct _placer
 	
 	fn track ir =
 	(
+		if(placeObj == undefined) do return #exit
+		
 		if(ir != undefined) then
 		(											
 			placeObj.pos = ir.pos 
@@ -61,6 +102,11 @@ struct _placer
 	),
 	fn mouseTrackCallback msg ir obj faceNum shift ctrl alt =
 	(
+		if(placeObj == undefined) do 
+		(
+			trackCallback = #exit
+			return #exit
+		)
 		case msg of
 		(
 			#freeMove:
@@ -80,7 +126,10 @@ struct _placer
 					getOldPos = false
 					dnMousePos = dnCursor.Position
 					mousePos = mouse.pos.x
-					track ir	
+					try(track ir)catch(
+						trackCallback = #exit
+						return #exit
+					)
 				)
 						
 				return #continue
@@ -94,18 +143,28 @@ struct _placer
 				(					
 					placeObj.rotation = placeObjRot
 					placeObj.pos = placeObjPos
+					
+					--toolMode.selectioncenter() 
+					--enableSceneRedraw()	
+					--max tool zoomextents all
 				)
 				return #exit
 				return #end
 			)
 			#mousePoint:
 			(
-				if(not alt and not ctrl and not shift) do
+				if(not alt and not ctrl) do
 				(					
 					maxops.cloneNodes placeObj clonetype:#instance actualNodelist:placeObj newnodes:&n					
 					selectMore n
 					
 					join placeOn n
+					
+					if(shift) do
+					(
+						in coordsys local rotate placeObj (angleaxis (random 0 360) [0,0,1])	
+						currentRotation = placeObj.rotation as eulerAngles
+					)	
 										
 					mousePoint = true										
 					if(placeOnPlaced) then return #end
@@ -117,7 +176,7 @@ struct _placer
 					in coordsys local rotate placeObj (angleaxis 90 [0,0,1])	
 					currentRotation = placeObj.rotation as eulerAngles
 				)
-						
+								
 				
 				return #continue
 			)
@@ -141,12 +200,12 @@ struct _placer
 		
 		currentRotation = placeObj.rotation as eulerAngles
 					
-		s = selection as array		
+		s = for i in selection where isValidNode i and not isDeleted i collect i
 		placeOn = for i in geometry where i.isHidden == false and findItem s i == 0 collect i
 	
 		placeObjPos = placeObj.pos
 		placeObjRot = placeObj.rotation
-		while (trackCallback != #exit) do (trackCallback = mouseTrack on: placeOn trackCallBack: mouseTrackCallback)
+		try(while (trackCallback != #exit) do (trackCallback = mouseTrack on: placeOn trackCallBack: mouseTrackCallback))catch()
 		return #ok
 	)	
 )
@@ -165,7 +224,7 @@ rollout _rObjectPlacer "Object Placer"
 	checkbox cbxPlaceOnPlaced "Place On Placed" pos: [135, 18]
 	
 	dotNetControl edtMiniManual "System.Windows.Forms.TextBox" width: 288  height: 62 pos: [0, 37]
-	local initText = "Hold SHIFT+CTRL and move mouse for free rotation.\r\n\r\nALT+CLICK for rotate by 90deg the clock-wise.\r\n"
+	local initText = "Hold SHIFT+CTRL and move mouse for free rotation.\r\nHold SHIFT, mouse move and CLICK for random rotation.\r\nALT+CLICK for rotate by 90deg the clock-wise.\r\n"
 	local _PLACING = false
 	local globalPlacer = undefined
 	
@@ -223,7 +282,8 @@ rollout _rObjectPlacer "Object Placer"
 			globalPlacer = _placer()
 			globalPlacer.ignoreNormal = i
 			globalPlacer.placeOnPlaced = pp
-			r = globalPlacer.place()
+			r = undefined
+			try(r = globalPlacer.place())catch()
 		 
 		 
 			_PLACING = false
@@ -264,7 +324,8 @@ rollout _rObjectPlacer "Object Placer"
 	
 	fn rotateObject mode: #cw=
 	(		
-		r = globalPlacer.rot mode: mode
+		r = undefined
+		try(r = globalPlacer.rot mode: mode)catch()
 		
 		if(r == #objectnone) do 
 		(

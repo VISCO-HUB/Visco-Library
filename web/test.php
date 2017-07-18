@@ -2,19 +2,15 @@
 
 
 
-$ARR = array('11111', '22222', '33333');
+$a['img'][] = 'aaa';
+$a['img'][] = 'bbb';
+$a['img'][] = 'ccc';
+$a['img'][] = 'dddd';
+
+$b['img'][] = 'ffff';
 
 
-FUNCTION CHANGESORT($A, $POS, $SHIFT) {
-	$I = $A[$POS];
-	UNSET($A[$POS]);
-	ARRAY_SPLICE($A, $POS + $SHIFT , 0, $I);
 
-	RETURN $A;
-}
-
-$A = CHANGESORT($ARR, 1, -1);
-
-print_r($A);
+print_r(array_merge_recursive($a, $b));
 ?>
 

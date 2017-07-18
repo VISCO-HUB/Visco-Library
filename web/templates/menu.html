@@ -1,7 +1,7 @@
 
 <script type="text/ng-template" id="treeList">
 	<a href="" ng-class="menuItemShow[subcat.id]  ? 'no' : 'yes'" ng-click="showHideMenu(subcat.id, false)" ng-show="!hideSub">&nbsp;</a>
-	<a href="#/models/{{subcat.id}}/1" ng-class="{active: menuItemActive[subcat.id] || subcat.id == catid}">{{subcat.name}}</a> 
+	<a href="#/models/{{subcat.id}}/1" ng-class="{active: menuItemActive[subcat.id] || subcat.id == catid}">{{subcat.name}}</a>&nbsp;<mark>({{subcat.prodcnt}})</mark>
 		
     <ul ng-if="subcat.child" ng-show="menuItemShow[subcat.id] || menuItemActive[subcat.id]">
         <li ng-repeat="subcat in subcat.child" ng-include="'treeList'" ng-if="subcat.status==1" ng-init="hideSub=true">           

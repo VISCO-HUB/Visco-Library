@@ -3,7 +3,7 @@
 </div>
 <br>
 <div class="row">
-	<div ng-repeat="prod in products.result" class="col-xxlg-2 col-xlg-3 col-lg-4 col-md-6 col-sm-6 col-xs-6 col-xxs-12 text-center flex">
+	<div ng-repeat="prod in products.result" class="col-xxlg-2 col-xlg-3 col-lg-4 col-md-6 col-sm-6 col-xs-6 col-xxs-4  text-center flex">
 		<div modelcard></div>
 	</div>
 </div>

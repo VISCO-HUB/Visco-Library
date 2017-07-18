@@ -2,7 +2,7 @@
 [INFO] 
 
 NAME = Make Preview
-VERSION = 1.0.7
+VERSION = 1.0.8
 AUTHOR = Vasily Lukyanenko
 DEV = VISCO
 HELP = 
@@ -50,6 +50,9 @@ ICON=#("PhysX_Main", 3)
 + Added: Ability to lock camera=
 * Changed: If render only from camera if found in scene=
 
+[1.0.8]
+* Changed: Save both images render and wire instantly=
+
 [ABOUT]
 
 This script helps to quickly make previews=
@@ -61,6 +64,7 @@ for Assets Library=
 */	
 
 
+try(closeRolloutFloater rAssetsLibraryModelPack)catch()
 try(closeRolloutFloater fFastRender) catch()
 global fFastRender = newRolloutFloater "Make Preview" 250 800
 
@@ -158,6 +162,16 @@ fn setupImageButton btn txt png =
 	btn.ImageAlign = a.MiddleLeft
 	btn.ImageIndex = 0
 	btn.ImageList = lst
+)
+
+fn setGamma =
+(
+	IDisplayGamma.colorCorrectionMode = #gamma 
+	IDisplayGamma.gamma = 2.2 
+	IDisplayGamma.affectColorPickers = true
+	IDisplayGamma.affectMEdit = true
+	fileInGamma = 2.2 
+	fileOutGamma = 2.2	
 )
 
  fn useSettings k p w =
@@ -259,6 +273,8 @@ fn setupRenderEngine =
 			renderers.current = execute(renderEngine[i] as string + "()")
 			renderSystem = renderers.current 
 			renderEngineSelect = #selected
+			
+			setGamma()
 			
 			try(destroyDialog  _rChooserRenderEngine) catch()
 		)
@@ -870,7 +886,7 @@ fn onStartRender =
 	setRenderQuality()	
 	
 	i = getCameraViewportID()
-	if(i != undefined) do viewport.activeViewportID = i	
+	if(i != undefined) do try(viewport.activeViewportID = i)catch()
 )
 
 fn onSelectionChanged =
@@ -2059,16 +2075,38 @@ fn postProcess =
 			tmrShowRender.active = true
 		)
 				
-		fn saveImage =
+		fn saveDialog =
 		(
-			f = getSaveFileName types: "JPG|*.jpg|PNG|*.png"
-			if(f == undefined) do return false
+			return getSaveFileName types: "JPG|*.jpg|PNG|*.png"									
+		)
+		
+		fn saveImages r1 r2 f =
+		(
+			p =getFilenamePath f
+			n = getFilenameFile  f
+			ext = getFilenameType  f
+				
+			progressStart "Save Images"
+				
+			progressUpdate 0
+			r1.filename = f
+			save r1 gamma: 2.2
+			close r1
 			
-			r = preRenderImageFromMap()
+			progressUpdate 50			
+			r2.filename = p + n + "_wire" + ext
+			save r2 gamma: 2.2
+			close r2
+			progressUpdate 99
 			
-			r.filename = f
-			save r gamma: 2.2
-			close r
+			progressEnd()
+						
+			try(destroyDialog rPostProcess) catch()
+			
+			q = queryBox "Render and Wire are saved!\nDo you want to open destination folder?" title: "Success!"
+			if(not q) do return false
+			
+			shelllaunch p ""
 		)
 		
 		fn showWire show: undefined inv: undefined op: undefined blnd: undefined =
@@ -2108,7 +2146,7 @@ fn postProcess =
 		)
 	)
 	
-	createDialog rPostProcess (800 + 250) 800
+	createDialog rPostProcess (800 + 250) 800 parent: _rStep0.hwnd
 
 	
 	ex = "rollout rPostSettings \"Settings\"\n "
@@ -2192,8 +2230,16 @@ fn postProcess =
 	ex += " on spnOpacityWire changed z do rPostProcess.showWire show: (rdoWire.state) inv: (cbxInvertWire.checked) op: (spnOpacityWire.value) blnd: (cbxBlendWire.checked)\n"
 	ex += " on rdoWire changed z do rPostProcess.showWire show: (rdoWire.state) inv: (cbxInvertWire.checked) op: (spnOpacityWire.value) blnd: (cbxBlendWire.checked)\n"
 	ex += " on cbxBlendWire changed z do rPostProcess.showWire show: (rdoWire.state) inv: (cbxInvertWire.checked) op: (spnOpacityWire.value) blnd: (cbxBlendWire.checked)\n"
-	ex += "button btnSave \"Save Image\" offset: [0, 15]\n"
-	ex += " on btnSave pressed do rPostProcess.saveImage()"
+	ex += "button btnSave \"Save Images\" offset: [0, 15]\n"
+	ex += " on btnSave pressed do (\n"		
+	ex += "f = rPostProcess.saveDialog()\n"
+	ex += "if(f == undefined) do return false\n"
+	ex += "rPostProcess.showWire show: 1 inv: (cbxInvertWire.checked) op: (spnOpacityWire.value) blnd: (cbxBlendWire.checked)\n"
+	ex += "r1 = rPostProcess.preRenderImageFromMap()\n"
+	ex += "rPostProcess.showWire show: 2 inv: (cbxInvertWire.checked) op: (spnOpacityWire.value) blnd: (cbxBlendWire.checked)\n"
+	ex += "r2 = rPostProcess.preRenderImageFromMap()\n"		
+	ex += "rPostProcess.saveImages r1 r2 f\n"	
+	ex += "\n)\n"
 	ex += ")\n"
 	
 	execute(ex)
