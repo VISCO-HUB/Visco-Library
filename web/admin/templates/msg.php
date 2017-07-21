@@ -1,10 +1,10 @@
-<h1>Messages</h1>
+	<h1>Messages</h1>
 <hr>
 <div class="message" id="message">
-	<div class="text-center" ng-show="!currentMessage.length">Select message from list to view content.</div>
-	<img ng-src="{{currentImg}}" ng-show="currentImg" class="pull-left">
-	<h3 ng-show="currentSubject.length">{{currentSubject}}</h3>
-	<div ng-bind-html="currentMessage"></div>	
+	<div class="text-center" ng-show="!currentMessage.msg.length">Select message from list to view content.</div>
+	<img ng-src="{{currentMessage.img}}" ng-show="currentMessage.img" class="pull-left">
+	<h3 ng-show="currentMessage.subject.length">{{currentMessage.subject}}</h3>
+	<div ng-bind-html="currentMessage.msg"></div>	
 </div>
 
 <div class="table-responsive" style="clear: both">
@@ -18,7 +18,7 @@
 			<th>By User</th>
 			<th>Actions</th>
 		</tr>
-		<tr ng-repeat="msg in messages.messages" >
+		<tr ng-repeat="msg in messages.messages" ng-class="{'warning': msg.id==currentMessage.id}">
 			<td>{{$index + 1}}.</td>
 			<td>
 				<img src="img/bug.svg" class="icon-bug" ng-show="msg.bug==1"> <a href="" ng-click="setCurrentMessage(msg)" ng-class="{'text-bug': msg.bug==1}"><span ng-style="{'color':  msg.fixedbug==1 ? '#34ca34' : ''}">{{msg.subject}}</span></a>								

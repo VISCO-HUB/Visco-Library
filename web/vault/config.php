@@ -11,6 +11,8 @@
 	DEFINE('MYSQL_USER', 'assets_library');
 	DEFINE('MYSQL_PWD', '******');
 	
+	DEFINE('MYSQL_DUMP', 'C:\\Program Files\\MySQL\\MySQL Server 5.7\\bin\\mysqldump.exe');
+	
 	//E-MAIL
 	DEFINE('MAILDOMAIN', '@visco.no');
 	
@@ -38,5 +40,14 @@
 	DEFINE('AVATAR_SIZE', 100);
 	DEFINE('AVATAR_ABSPATH', 'avatars\\');
 	DEFINE('AVATAR_PATH', ROOT . AVATAR_ABSPATH);
+	
+	// WEBGL
+	DEFINE('WEBGL_ABSPATH', 'interactive\\');
+	DEFINE('WEBGL_PATH', ROOT . WEBGL_ABSPATH);
+	
+	// BACKUP
+	DEFINE('BACKUP_ABSPATH', 'backup\\');
+	DEFINE('BACKUP_PATH', ROOT . BACKUP_ABSPATH);
+	
 		
 ?>

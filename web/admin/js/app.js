@@ -100,6 +100,27 @@ app.directive("menu", function($rootScope) {
     };
 });
 
+app.directive("btnEdit", function($rootScope) {
+    return {
+        template: '<button class="btn btn-primary btn-xs margin-left-15"><span class="glyphicon glyphicon-pencil" aria-hidden="true"></span></button>'
+    };
+});
+
+app.directive("btnTrigger", function($rootScope) {
+    return {
+		restrict: 'E',
+		scope: {
+			cls: '=',
+			active: '=',
+			toggle: '&'
+		},
+		controller: function($scope) {
+			
+		},
+        templateUrl : hostname + '/admin/templates/btn-trigger.html'
+    };
+});
+
 app.directive('noClick', function() {
     return {
         restrict: 'A',
@@ -781,6 +802,17 @@ app.controller("modelsEditCtrl", function ($scope, $rootScope, $routeParams, vau
 		vault.prodSetParam(param, value, id, $scope.type);
 	}
 	
+	$scope.prodToggleParam = function(param) {
+		vault.prodToggleParam(param, id, $scope.type);
+	}
+	
+	$scope.prodSetTextParam = function(param, oldval) {
+		var n = prompt('Please enter new value!', oldval);			
+				
+		vault.prodSetTextParam(param, n, id, $scope.type);
+	}
+	
+	
 	$scope.getPreviews = function(p) {			
 		$scope.previews = vault.getPreviews(p, 'huge'); ;
 	}
@@ -1119,9 +1151,13 @@ app.controller('adminMsgCtrl', function($scope, vault, $rootScope, $location, $r
 			return false;
 		}
 	
-		$scope.currentSubject = '';
-		$scope.currentImg = null;
-		$scope.currentMessage = 'Message "' + name + '" deleted!';
+		$scope.currentMessage = {
+			'msg': 'Message "' + name + '" deleted!',
+			'subject': '',
+			'img': null,
+			'id': -1
+		};
+	
 		vault.msgDelete(id, $scope.page, $rootScope.perpage, $rootScope.msgFilter);
 	}
 	
@@ -1130,10 +1166,13 @@ app.controller('adminMsgCtrl', function($scope, vault, $rootScope, $location, $r
 		return $sce.trustAsHtml(html);
 	};
 	
-	$scope.currentMessage = '';
-	$scope.currentSubject = '';
-	$scope.currentImg = null;
-	
+	$scope.currentMessage = {
+		'msg': '',
+		'subject': '',
+		'img': null,
+		'id': -1
+	};
+		
 	$scope.setCurrentMessage = function(msg) {		
 		
 		vault.msgSetParam('viewed', '1', msg.id, $scope.page, $rootScope.perpage, $rootScope.msgFilter);
@@ -1141,11 +1180,16 @@ app.controller('adminMsgCtrl', function($scope, vault, $rootScope, $location, $r
 		$('html, body').animate({
 			scrollTop: ($('#message').offset().top)
 		}, 50);
+			
 		
-		$scope.currentMessage = $scope.renderHtml(msg.msg);
-		$scope.currentSubject = msg.subject;
 		var p = msg.img ? vault.getPreviews(msg.img, 'medium')[0] : null;
-		$scope.currentImg = p;				
+		
+		$scope.currentMessage = {
+			'msg': $scope.renderHtml(msg.msg),
+			'subject': msg.subject,
+			'img': p,
+			'id': msg.id
+		};		
 	}
  });
 	
@@ -1336,8 +1380,7 @@ app.controller("categoryCtrl", function ($scope, $rootScope, vault) {
 
 	// SETTINGS
 app.controller("settingsCtrl", function ($scope, $rootScope, vault) {
-	vault.getGlobal();
-	
+		
 	$scope.show = 'tabGlobal';
 	
 	$rootScope.addCrumb('Settings', '');
@@ -1365,6 +1408,25 @@ app.controller("settingsCtrl", function ($scope, $rootScope, vault) {
 	
 		vault.tagsRefresh(t);		
 	}
+	
+	$scope.backupDatabase = function() {
+		if(!confirm('Do you really want to create backup?')){
+			return false;
+		}		
+			
+		vault.backupDatabase();		
+	}
+	
+	$scope.delBackup = function(file) {
+		if(!confirm('Do you really want to delete backup "' + file + '"?')){
+			return false;
+		}		
+			
+		vault.delBackup(file);		
+	}
+	
+	vault.getBackupList();
+	vault.getGlobal();
 });
 
 // AUTO RUN
@@ -1570,6 +1632,16 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 			case 'GROUPRENOK': s.success = 'Group renamed success!';
 			break;
 			case 'GROUPRENBAD': s.error = 'Error while renaming group!';
+			break;
+			case 'BACKUPERROR': s.error = 'Error while creating backup!';
+			break;
+			case 'BACKUPEXIST': s.warning = 'Backup already exist!';
+			break;
+			case 'BACKUPOK': s.success = 'Success! Backup created!';
+			break;
+			case 'BACKUPDELBAD': s.error = 'Error while deleting backup!';
+			break;
+			case 'BACKUPDELOK': s.success = 'Success! Backup deleted!';
 			break;
 		}
 		
@@ -1937,6 +2009,30 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 			responceMessage(r);
 		});
 	}
+	
+	var prodToggleParam = function(param, id, type) {
+		var json = {'param': param, 'id': id, 'type': type};
+		
+		HttpPost('PRODTOGGLEPARAM', json).then(function(r){												
+			
+			productInfo(type, id);		
+		},
+		function(r){
+			responceMessage(r);
+		});
+	}
+	
+	var prodSetTextParam = function(param, value, id, type) {
+		var json = {'param': param, 'value': value, 'id': id, 'type': type};
+		
+		HttpPost('PRODSETTEXTPARAM', json).then(function(r){												
+			
+			productInfo(type, id);		
+		},
+		function(r){
+			responceMessage(r);
+		});
+	}
 		
 	
 	var productChangeName = function(name, oldname, id, catid, type) {
@@ -2059,7 +2155,8 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 			responceMessage(r);
 		});
 	}
-		
+	
+			
 	var catAdd = function(name, parentid, type) {
 		if(parentid == null) parentid = '0';
 		
@@ -2161,6 +2258,45 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		HttpPost('TAGSREFRESH', json).then(function(r){									
 			getGlobal();
 			
+				
+			responceMessage(r.data);			
+		},
+		function(r){
+			responceMessage(r);
+		});
+	}
+	
+	var getBackupList = function() {
+		httpGet('GETBACKUPLIST').then(function(r){									
+			$rootScope.backupList = r.data;
+		},
+		function(r){
+			responceMessage(r);
+		});
+	}
+	
+	var delBackup = function(file) {
+		
+		var json = {'file': file};
+		
+		HttpPost('DELETEBACKUP', json).then(function(r){									
+			getGlobal();
+			getBackupList();
+				
+			responceMessage(r.data);			
+		},
+		function(r){
+			responceMessage(r);
+		});
+	}
+	
+	var backupDatabase = function() {
+		
+		var json = {'backup': 'yes'};
+		
+		HttpPost('ADMINBACKUPDB', json).then(function(r){									
+			getGlobal();
+			getBackupList();
 				
 			responceMessage(r.data);			
 		},
@@ -2342,6 +2478,8 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		productsGet: productsGet,
 		productInfo: productInfo,
 		prodSetParam: prodSetParam, 
+		prodToggleParam: prodToggleParam,
+		prodSetTextParam: prodSetTextParam,
 		setMainPreview: setMainPreview,
 		removePreview: removePreview,
 		removeTag: removeTag,
@@ -2370,6 +2508,9 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		usersRenameGroup: usersRenameGroup,
 		usersToggleGroup: usersToggleGroup,
 		removeWebGLModel: removeWebGLModel,
+		getBackupList: getBackupList,
+		backupDatabase: backupDatabase,
+		delBackup: delBackup,
 		tm: tm
 	};
 });

@@ -50,42 +50,42 @@
 	<span class="label label-success" ng-show="product.exist">Directory Exist</span> <span class="label label-danger" ng-show="!product.exist">Directory Not Exist!</span> </div>
 <hr>
 <h2><small>Preview:</small></h2>
-<img ng-src="{{product.previews[pid]}}" class="img-responsive admin-preview"> <br>
-
-<br><br>
-<div class="dropdown clr">
-	<button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">{{product.previewNames[pid]}} <span class="caret"></span></button> 
-	<ul class="dropdown-menu" role="menu" aria-labelledby="dropdownMenu">
-		<li ng-repeat="name in product.previewNames"><a href="" ng-click="choosePreview($index)">{{name}}</a></li>
-	</ul>
-</div>
-
-<div class="btn-group">
-	<button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Actions <span class="caret"></span></button>
-	<ul class="dropdown-menu">
-		<li role="presentation"><a href="" ng-click="setMainPreview(product.previewNames[pid])"><span class="glyphicon glyphicon-picture"></span> Set As Main</a></li>
-		<li role="presentation" class="divider"></li>
-		<li role="presentation"><a href="" ng-click="removePreview(product.previewNames[pid])"><span class="glyphicon glyphicon-remove-circle text-danger"></span> Delete Preview</a></li>
-	</ul>
-</div>
-<br><br>
-
-<hr>
 <div class="well well-lg">
-<h2 style="margin: 0"><small>Upload New Preview:</small></h2>
+	<div class="admin-preview" ng-style="{'background-image': 'url(' + product.previews[pid] + ')'}" >
+		<div class="btn-group dropup" style="position: absolute; bottom: 0; left: 0;">
+			<button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Actions <span class="caret"></span></button>
+			<ul class="dropdown-menu">
+				<li role="presentation"><a href="" ng-click="setMainPreview(product.previewNames[pid])"><span class="glyphicon glyphicon-picture"></span> Set As Main</a></li>
+				<li role="presentation" class="divider"></li>
+				<li role="presentation"><a href="" ng-click="removePreview(product.previewNames[pid])"><span class="glyphicon glyphicon-remove-circle text-danger"></span> Delete Preview</a></li>
+			</ul>
+		</div>	
+	</div>
+	<br>
+	<ul class="prod-gallery">
+		<li ng-repeat="item in product.previews" ng-click="choosePreview($index)" 
+			ng-style="{'background-image': 'url(' + item + ')'}" 
+			ng-class="{'active': $index == pid}"
+		></li>
+	</ul>
+	
+	<hr>
+	<div class="well well-lg" style="background-color: white;">
+	<h2 style="margin: 0"><small>Upload New Preview:</small></h2>
 
-<div ng-show="uploaderImg.queue[0].progress">
-Upload progress:
-<div class="progress" style="margin-bottom: 0;">
-	<div class="progress-bar" role="progressbar" ng-style="{ 'width': uploaderImg.queue[0].progress  + '%' }"></div>
-</div>
+	<div ng-show="uploaderImg.queue[0].progress">
+	Upload progress:
+	<div class="progress" style="margin-bottom: 0;">
+		<div class="progress-bar" role="progressbar" ng-style="{ 'width': uploaderImg.queue[0].progress  + '%' }"></div>
+	</div>
 
-</div>
-<br>
-<label>
-<span type="button" class="btn btn-success"><span class="glyphicon glyphicon-plus" aria-hidden="true"></span> Upload New Preview</span>
-<input type="file" nv-file-select="" uploader="uploaderImg" class="hidden">
-</label>
+	</div>
+	<br>
+	<label>
+	<span type="button" class="btn btn-success"><span class="glyphicon glyphicon-plus" aria-hidden="true"></span> Upload New Preview</span>
+	<input type="file" nv-file-select="" uploader="uploaderImg" class="hidden">
+	</label>
+	</div>
 </div>
 <hr>
 <h2><small>Description:</small></h2>
@@ -104,77 +104,123 @@ Upload progress:
 <h2><small>Info:</small></h2>
 <table class="model-info" width="100%">
 	<tr>
+		<td>Uploaded By: </td>
+		<td>{{product.info.uploadedby}}</td>
+		<td></td>
+	</tr>
+	<tr>
 		<td width="30%">Format: </td>
-		<td>{{product.info.format}}</td>
+		<td width="30%">{{product.info.format}}</td>
+		<td></td>
 	</tr>
 	<tr>
 		<td>Date: </td>
 		<td>{{tm(product.info.date)}}</td>
+		<td></td>
 	</tr>
 	<tr>
 		<td>Units: </td>
 		<td>{{product.info.units}}</td>
+		<td></td>
 	</tr>
 	<tr>
 		<td>Dimension: </td>
 		<td>{{product.info.dim}}</td>
+		<td></td>
 	</tr>
 	<tr>
 		<td>Polys: </td>
 		<td>{{product.info.polys}}</td>
-	</tr>
-	<tr>
-		<td>Modeller: </td>
-		<td>{{product.info.modeller}}</td>
-	</tr>
-	<tr>
-		<td>Manufacturer:</td>
-		<td>{{product.info.manufacturer}}</td>
-	</tr>
-	<tr>
-		<td>Client:</td>
-		<td>{{product.info.client}}</td>
-	</tr>
-	<tr>
-		<td>Project: </td>
-		<td>{{product.info.project}}</td>
+		<td></td>
 	</tr>
 	<tr>
 		<td>Render: </td>
 		<td>{{product.info.render}}</td>
+		<td></td>
+	</tr>
+	<tr>
+		<td>Modeller: </td>
+		<td>{{product.info.modeller}}			
+			<btn-edit ng-click="prodSetTextParam('modeller', product.info.modeller)"></btn-edit>
+		</td>
+		<td>
+			
+		</td>
+	</tr>
+	<tr>
+		<td>Manufacturer:</td>
+		<td>{{product.info.manufacturer}}
+			<btn-edit ng-click="prodSetTextParam('manufacturer', product.info.manufacturer)"></btn-edit>
+		</td>			
+		<td>			
+		</td>
+	</tr>
+	<tr>
+		<td>Client:</td>
+		<td>{{product.info.client}}
+			<btn-edit ng-click="prodSetTextParam('client', product.info.client)"></btn-edit>
+		</td>
+		<td>			
+		</td>
+	</tr>
+	<tr>
+		<td>Project: </td>
+		<td>{{product.info.project}}
+			<btn-edit ng-click="prodSetTextParam('project', product.info.project)"></btn-edit>
+		</td>
+		<td>			
+		</td>
+	</tr>	
+	<tr>
+		<td>Custom1: </td>
+		<td>{{product.info.custom1}}
+			<btn-edit ng-click="prodSetTextParam('custom1', product.info.custom1)"></btn-edit>
+		</td>
+		<td>			
+		</td>
 	</tr>
 	<tr>
 		<td>Unwrap: </td>
-		<td>{{yesno(product.info.unwrap)}}</td>
+		<td>
+			<btn-trigger cls="'btn-xs'" active="product.info.unwrap" toggle="prodToggleParam('unwrap')"></btn-trigger>
+		</td>
+		<td></td>
 	</tr>
 	<tr>
 		<td>Game Engine Ready: </td>
-		<td>{{yesno(product.info.gameengine)}}</td>
-	</tr>
-	<tr>
-		<td>Custom1: </td>
-		<td>{{product.info.custom1}}</td>
-	</tr>
+		<td>
+			<btn-trigger cls="'btn-xs'" active="product.info.gameengine" toggle="prodToggleParam('gameengine')"></btn-trigger>
+		</td>
+		<td></td>
+	</tr>	
 	<tr>
 		<td>Lights: </td>
-		<td>{{yesno(product.info.lights)}}</td>
+		<td>
+			<btn-trigger cls="'btn-xs'" active="product.info.lights" toggle="prodToggleParam('lights')"></btn-trigger>
+		</td>
+		<td></td>
 	</tr>
 	<tr>
 		<td>Lods: </td>
-		<td>{{yesno(product.info.lods)}}</td>
+		<td>
+			<btn-trigger cls="'btn-xs'" active="product.info.lods" toggle="prodToggleParam('lods')"></btn-trigger>
+		</td>
+		<td></td>
 	</tr>
 	<tr>
 		<td>Baked: </td>
-		<td>{{yesno(product.info.baked)}}</td>
+		<td>
+			<btn-trigger cls="'btn-xs'" active="product.info.baked" toggle="prodToggleParam('baked')"></btn-trigger>
+		</td>
+		<td></td>
 	</tr>
 	<tr>
 		<td>Rigged: </td>
-		<td>{{yesno(product.info.rigged)}}</td>
-	</tr>
-	<tr>
-		<td>Uploaded By: </td>
-		<td>{{product.info.uploadedby}}</td>
-	</tr>
+		<td>
+			<btn-trigger cls="'btn-xs'" active="product.info.rigged" toggle="prodToggleParam('rigged')"></btn-trigger>
+		</td>
+		<td></td>
+	</tr>	
 </table>
 <br>
 <div class="well well-lg">

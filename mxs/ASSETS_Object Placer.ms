@@ -53,13 +53,30 @@ struct _placer
 	placeOnPlaced = false,
 	placeObjPos = undefined,
 	placeObjRot = undefined,
+	groupName = "AssetsLibrary_ModelPack",
 	
-	fn handler s =
+	/*fn handler s =
 	(
 		g = for i in s where i.parent == undefined collect i
 		if(g[1] != undefined) do return g[1]
 		if(superClassOf s[1] != GeometryClass) do return undefined
 		return s[1]
+	),*/
+	
+	fn handler s =
+	(
+		g = for i in s where i.parent == undefined collect i
+		case of
+		(
+			(g.count == 1): return g[1]
+			(g.count > 1): return group g name: groupName
+		)
+		return undefined
+	),
+	
+	fn findIn s p = 
+	(	
+		return for i in s where matchPattern i.name pattern: (p + "*") collect i
 	),
 	
 	fn rot mode: #cw =
@@ -135,15 +152,15 @@ struct _placer
 				return #continue
 			)
 			#mouseAbort:
-			(																									
+			(									
 				if(mousePoint == true) then
-				(	
+				(						
 					try(delete placeObj)catch()
 				) else
 				(					
 					placeObj.rotation = placeObjRot
 					placeObj.pos = placeObjPos
-					
+															
 					--toolMode.selectioncenter() 
 					--enableSceneRedraw()	
 					--max tool zoomextents all
@@ -159,7 +176,7 @@ struct _placer
 					selectMore n
 					
 					join placeOn n
-					
+										
 					if(shift) do
 					(
 						in coordsys local rotate placeObj (angleaxis (random 0 360) [0,0,1])	
@@ -206,6 +223,9 @@ struct _placer
 		placeObjPos = placeObj.pos
 		placeObjRot = placeObj.rotation
 		try(while (trackCallback != #exit) do (trackCallback = mouseTrack on: placeOn trackCallBack: mouseTrackCallback))catch()
+			
+		grps = findIn selection groupName		
+		if(grps.count != 0) do for i in grps do ungroup i	
 		return #ok
 	)	
 )

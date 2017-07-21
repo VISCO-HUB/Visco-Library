@@ -12,7 +12,7 @@
 			$S = $MYSQLI->real_escape_string($S);			
 			RETURN $S;
 		}
-		
+						
 		PUBLIC STATIC FUNCTION PARSE_VALUE($VALUE, $DELIM = ';') {
 			RETURN ARRAY_FILTER(EXPLODE($DELIM, STR_REPLACE(' ', '', $VALUE)));
 		}
@@ -331,6 +331,82 @@
 	}
 	
 	///////////////////////////////////////////////////////
+	// BACKUP
+	///////////////////////////////////////////////////////
+	
+	CLASS BACKUP {
+		PUBLIC STATIC FUNCTION DB() {
+			$USER = $GLOBALS['AUTH']['user']->user;
+			$FILE = 'sql@' . $USER . '@' . DATE('Y-m-d h.i.s');
+			RETURN SELF::BACKUPDB($FILE);
+		}
+		
+		PUBLIC STATIC FUNCTION BACKUPDB($FILE = NULL) {
+			$ERROR = '{"responce": "BACKUPERROR"}';
+			$SUCCESS = '{"responce": "BACKUPOK"}';
+			$EXIST = '{"responce": "BACKUPEXIST"}';
+			
+			$BACKUPFILE = BACKUP_PATH . DATE('Y-m-d') . '.sql';
+			IF($FILE) $BACKUPFILE = BACKUP_PATH . $FILE . '.sql';
+			
+			IF(FILE_EXISTS($BACKUPFILE)) RETURN $EXIST;
+			
+			$QUERY = '"' . MYSQL_DUMP . '" --host=' . MYSQL_SERVER . ' ' . MYSQL_DB . ' --user=' . MYSQL_USER . ' --password=' . MYSQL_PWD . ' > "' . $BACKUPFILE . '"';
+			EXEC($QUERY);
+			
+			IF(FS::SIZE($BACKUPFILE) == 0) RETURN $ERROR;				
+			
+			$ZIP = NEW ZipArchive;			
+			$ZIPNAME = $BACKUPFILE. '.zip';
+				
+			IF($ZIP->open($ZIPNAME, ZipArchive::CREATE | ZipArchive::OVERWRITE) === TRUE) {
+				$ZIP->addFile($BACKUPFILE, BASENAME($BACKUPFILE));
+				$ZIP->close();				
+			} ELSE {
+				RETURN $ERROR;
+			}
+			
+			FS::DEL($BACKUPFILE);
+			
+			RETURN $SUCCESS;
+		}
+		
+		PUBLIC STATIC FUNCTION DELDB($DATA) {
+			$ERROR = '{"responce": "BACKUPDELBAD"}';
+			$SUCCESS = '{"responce": "BACKUPDELOK"}';
+		
+			IF(!ISSET($DATA->file)) RETURN $ERROR;
+			
+			$BACKUPFILE = BACKUP_PATH . $DATA->file;								
+			IF(!FILE_EXISTS($BACKUPFILE)) RETURN $ERROR;
+			
+			FS::DEL($BACKUPFILE);
+			IF(FILE_EXISTS($BACKUPFILE)) RETURN $ERROR;
+			
+			RETURN $SUCCESS;
+		}
+		
+		PUBLIC STATIC FUNCTION GETLISTDB() {
+			
+			$FILES = GLOB(BACKUP_PATH . '*.zip');
+			$FILES = ARRAY_REVERSE($FILES);
+						
+			$OUT = [];
+			
+			FOREACH($FILES AS $FILE) {
+				$INFO['name'] = BASENAME($FILE);
+				$INFO['date'] = DATE ("Y d F / H:i:s", FILEMTIME($FILE));
+				$INFO['size'] = NUMBER_FORMAT(FS::SIZE($FILE) / 1048576, 2) . ' Mb';
+				$INFO['path'] = HOSTNAME . BACKUP_ABSPATH . BASENAME($FILE);
+								
+				$OUT[] = $INFO;
+			}
+		
+			RETURN JSON_ENCODE($OUT);
+		}
+	}
+	
+	///////////////////////////////////////////////////////
 	// AUTH CLASS
 	///////////////////////////////////////////////////////
 	
@@ -613,6 +689,10 @@
 					RMDIR($FILE);
 				} 
 			}		
+		}
+		
+		PUBLIC STATIC FUNCTION SIZE($FILE) {	
+			RETURN @FILESIZE($FILE);
 		}
 	}
 	
@@ -1460,6 +1540,55 @@
 			RETURN $ERROR ;
 		}
 		
+		PUBLIC STATIC FUNCTION PRODTOGGLEPARAM($DATA) {			
+			$ERROR = '{"responce": "SETTINGBAD"}';
+			$SUCCESS = '{"responce": "SETTINGOK"}';
+			
+			IF(!ISSET($DATA->param) OR !ISSET($DATA->type) OR !ISSET($DATA->id)) RETURN $ERROR;
+			
+			$TYPE = SELF::TYPE($DATA->type);
+
+			IF(!$TYPE) RETURN $ERROR;			
+						
+			$WHERE['id'] = $DATA->id;
+			
+			$RESULT = DB::SELECT($TYPE, $WHERE);
+			$PROD = $RESULT->fetch_object();
+					
+			IF(!$PROD) RETURN $ERROR;
+			
+			$VAL = $PROD->{$DATA->param};					
+			$VAL = ($VAL == '1' OR $VAL == 'Yes') ? 'No' : 'Yes';
+			
+			$SET[$DATA->param] = $VAL;
+			$RESULT = DB::UPDATE($TYPE, $SET, $WHERE);
+			
+			IF($RESULT > 0) RETURN $SUCCESS;
+			RETURN $ERROR ;
+		}
+		
+		PUBLIC STATIC FUNCTION PRODSETTEXTPARAM($DATA) {			
+			$ERROR = '{"responce": "SETTINGBAD"}';
+			$SUCCESS = '{"responce": "SETTINGOK"}';
+						
+			IF(!ISSET($DATA->param) OR !ISSET($DATA->type) OR !ISSET($DATA->value) OR !ISSET($DATA->id)) RETURN $ERROR;
+			
+			$VAL = PREG_REPLACE("/[^A-Za-z0-9\.\&\$\%\#\(\)\!\_\-\+\s\/]/", '', $DATA->value);			
+			IF(!STRLEN($VAL)) $VAL = 'N/A';
+			
+			$TYPE = SELF::TYPE($DATA->type);
+
+			IF(!$TYPE) RETURN $ERROR;			
+			
+			$SET[$DATA->param] = $VAL;
+			$WHERE['id'] = $DATA->id;
+			
+			$RESULT = DB::UPDATE($TYPE, $SET, $WHERE);
+			
+			IF($RESULT > 0) RETURN $SUCCESS;
+			RETURN $ERROR ;
+		}
+		
 		PUBLIC STATIC FUNCTION PRODSETOVERVIEW($DATA) {			
 			$ERROR = '{"responce": "SETTINGBAD"}';
 			$SUCCESS = '{"responce": "SETTINGOK"}';
@@ -1746,6 +1875,8 @@
 				FS::DEL(SELF::GETPREVIEWPATH($P, IMG_THUMB));
 				FS::DEL(SELF::GETPREVIEWPATH($P, IMG_SMALL));
 			}
+			
+			SELF::PRODREMOVEWEBGL($DATA);
 			
 			$RESULT = DB::DEL($TYPE, $DEL, 'id');
 			
@@ -2497,7 +2628,7 @@
 			$TIME = TIME() - $DAYS * 86400;
 			
 			$MYSQLI = $GLOBALS['MYSQLI'];			
-			$QUERY = "SELECT * FROM `" . LIBTYPES[$ID] . "` WHERE `date` > " . $TIME . " ORDER BY `date` DESC;";					
+			$QUERY = "SELECT * FROM `" . LIBTYPES[$ID] . "` WHERE `date` > " . $TIME . " AND `pending`=0 ORDER BY `date` DESC;";					
 			$RESULT = $MYSQLI->query($QUERY);			
 			
 			IF(!$RESULT) RETURN '';

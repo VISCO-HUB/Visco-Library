@@ -425,6 +425,17 @@ h1, h2, h3, h4 {
 .admin-preview {
 	margin: 0 auto;
 	border: 1px solid #EEEEEE;	
+	max-width: 600px;
+	background-size: cover;
+	position: relative;
+	width: 100%;
+}
+
+
+.admin-preview:after {
+	content: '';
+	display: block;
+	padding-bottom: 100%;
 }
 
 .alert-msg {
@@ -594,4 +605,64 @@ ul.legend {
 	top: 10px;
 	background: url('/img/3d2.svg') 50% 50% no-repeat;
 	background-size: contain;
+}
+
+/* PROD GALLERY */
+
+.margin-auto {
+	margin: auto;
+}
+
+.prod-gallery {
+	margin: 0;
+	padding: 0;
+	text-align: center;	
+}
+
+.prod-gallery li {
+	display: inline-block;
+	padding: 0;
+	width: 60px;
+	height: 60px;
+	background-repeat: no-repeat;
+	background-position: center;
+	border: 1px solid #EEE;
+	opacity: 0.5;
+	cursor: pointer;
+	margin-right: 5px;
+	transition: all 0.3s linear;
+	background-size: cover;
+}
+
+.prod-gallery-frame {
+	border: 1px solid #EEE;
+	transition: all 0.3s linear;
+	position: relative;
+}
+
+.prod-gallery-frame img {
+	opacity: 0.0;
+}
+
+.prod-gallery-frame img.show {
+	opacity: 1.0;
+}
+
+.prod-gallery-frame:hover {
+	border: 1px solid #888;
+}
+
+.prod-gallery li.active,
+.prod-gallery li:hover
+{
+	opacity: 1.0;
+	border: 1px solid #888;	
+}
+
+.btn-toggle .btn-xs {
+	min-width: 40px;
+}
+
+.margin-left-15 {
+	margin-left: 15px;
 }

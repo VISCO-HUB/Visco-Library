@@ -2069,9 +2069,11 @@ rollout _STEP5 "STEP 5: Pack Model"
 	)
 	group "Settings" 
 	(
-		checkbox cbxRenameTextures "Rename Textures" checked: true
-		checkbox cbxRenameMaterials "Rename Materials" checked: true
-		checkbox cbxRenameObjects "Rename Objects" checked: true
+		label lblMaxVer "3Ds Max Version: " across: 2 align: #left 
+		dropdownlist ddlMaxVer "" width: 50 offset: [-30, -3]
+		checkbox cbxRenameTextures "Rename Textures" checked: true across: 2		
+		checkbox cbxRenameObjects "Rename Objects" checked: true 
+		checkbox cbxRenameMaterials "Rename Materials" checked: true across: 2
 		checkbox cbxRenameGroups "Rename Groups" checked: true
 	)
 	
@@ -2140,8 +2142,7 @@ rollout _STEP5 "STEP 5: Pack Model"
 		_lblGameEngineReady.text = getYesNo bGameEngineReady
 		_lblUnwrap.text = getYesNo bUnwrap
 		_lblLights.text = getYesNo bLights
-		_lblLods.text = getYesNo bLods
-		_lblFormat.text = (getActuatlMaxVersion())[1]
+		_lblLods.text = getYesNo bLods		
 		_lblCustom1.text = getNA sCustom1
 		_lblClient.text = getNA sClient
 			
@@ -2157,6 +2158,11 @@ rollout _STEP5 "STEP 5: Pack Model"
 			
 		v = useSettings "RENGRP" "bool" "r"	
 		cbxRenameGroups.checked = if(v == false) then false else true
+			
+		v = getActuatlMaxVersion()
+		ddlMaxVer.items = v
+		
+		_lblFormat.text = ddlMaxVer.selected
 	)
 		
 	fn checkTexturesError =
@@ -2387,11 +2393,10 @@ rollout _STEP5 "STEP 5: Pack Model"
 		setIniSetting f s k ("\"" + v + "\"") 
 	)
 	
-	fn createInfo szDir previewList =
+	fn createInfo szDir previewList ver =
 	(
 		f = szDir + "info.tmp"
-		n = szDir + "info.ini"
-		v = getActuatlMaxVersion()
+		n = szDir + "info.ini"		
 		r = getCurrRender()
 		p = polyCount geometry
 		d = getDim geometry
@@ -2403,7 +2408,7 @@ rollout _STEP5 "STEP 5: Pack Model"
 		setIniInfo f "INFO" "CATID" (catID as string) 
 		setIniInfo f "INFO" "NAME" sModelName 
 		setIniInfo f "INFO" "TOKEN" sToken 
-		setIniInfo f "INFO" "FORMAT" v[1] 
+		setIniInfo f "INFO" "FORMAT" ver 
 		setIniInfo f "INFO" "RENDER" r[2] 
 		setIniInfo f "INFO" "POLYS" p 
 		setIniInfo f "INFO" "UNITS" u 
@@ -2438,7 +2443,8 @@ rollout _STEP5 "STEP 5: Pack Model"
 	on cbxRenameTextures changed v do useSettings "RENTEX"	v "w"	
 	on cbxRenameObjects changed v do useSettings "RENOBJ"	v "w"	
 	on cbxRenameMaterials changed v do useSettings "RENMAT"	v "w"	
-	on cbxRenameGroups changed v do useSettings "RENGRP"	v "w"	
+	on cbxRenameGroups changed v do useSettings "RENGRP"	v "w"
+	on ddlMaxVer selected v do _lblFormat.text = ddlMaxVer.selected
 
 	
 	on btnPackModel pressed do
@@ -2453,7 +2459,7 @@ rollout _STEP5 "STEP 5: Pack Model"
 		
 		_selection = selection as array 	
 			
-		v = getActuatlMaxVersion()
+		v = ddlMaxVer.selected 
 		r = getCurrRender()	
 			
 		-- Set paths
@@ -2533,7 +2539,7 @@ rollout _STEP5 "STEP 5: Pack Model"
 		saveAllProp()
 		
 		f = szDir + szName + r[1] + ".max"
-		saveMaxFile f saveAsVersion:(v[1] as integer) quiet:true
+		saveMaxFile f saveAsVersion:(v as integer) quiet:true
 		
 		-- Save material library
 		saveMtlLib szMatLib	
@@ -2549,7 +2555,7 @@ rollout _STEP5 "STEP 5: Pack Model"
 		zipper = zip()
 		zipper.packFile source: f target: szExport name: (szOutName + ".fbx") del: true
 		
-		createInfo szDir previewList
+		createInfo szDir previewList v
 				
 		zipper = zip()
 		zipper.packFiles source: szDir target: _SAVEPATH name: szOutName del: true
