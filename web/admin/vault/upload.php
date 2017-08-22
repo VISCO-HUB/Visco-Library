@@ -16,11 +16,6 @@
 	$FTMP = $_FILES['file']['tmp_name'];
 	$ONAME = $_FILES['file']['name'];
 	
-	$ERROR = '{"response": "FAILED", "name": "' . $ONAME . '"}';
-	$SUCCESS = '{"response": "DONE", "name": "' . $ONAME . '"}';
-	$REPLASE = '{"response": "REPLACEFILE", "name": "' . $ONAME . '"}';
-	$BADZIP = '{"response": "BADZIP", "name": "' . $ONAME . '"}';
-	$BADUSER = '{"response": "BADUSER", "name": "' . $ONAME . '"}';
 	
 	$TMP = '\\tmp\\' . $DATE . '\\';
 	FS::CREATEDIR($TMP);
@@ -29,17 +24,33 @@
 	$FNAME = $TMP . $ONAME;		
 	$EXTRACTTO = $TMP . TIME();
 	
+	
+	$ERROR = '{"response": "FAILED", "name": "' . $ONAME . '"}';
+	$SUCCESS = '{"response": "DONE", "name": "' . $ONAME . '"}';	
+	$BADZIP = '{"response": "BADZIP", "name": "' . $ONAME . '"}';
+	$BADUSER = '{"response": "BADUSER", "name": "' . $ONAME . '"}';
+	
 	IF(!$AUTH['exist'] OR $AUTH['user']->rights < 1) DIE($BADUSER);
 	
 	//!!!!!!!!!! CREATE BUTTON CLEAR CACHE!
-	
-	IF(!MOVE_UPLOADED_FILE($FTMP, $FNAME)) DIE($ERROR);
-	
-	$ZIP = NEW ZipArchive;
-	IF($ZIP->open($FNAME) !== TRUE) DIE($ERROR);	
-	$ZIP->extractTo($EXTRACTTO);
-	$ZIP->close();
-	
+	IF(!$ISREPLACE) {
+		
+		
+		IF(!MOVE_UPLOADED_FILE($FTMP, $FNAME)) DIE($ERROR);
+		
+		$ZIP = NEW ZipArchive;
+		IF($ZIP->open($FNAME) !== TRUE) DIE($ERROR);	
+		$ZIP->extractTo($EXTRACTTO);
+		$ZIP->close();
+	} ELSE 
+	{
+		IF(!ISSET($_GET['name']) OR !ISSET($_GET['dist'])) DIE($ERROR);
+		
+		$ONAME = $_GET['name'];
+		$FNAME = $TMP . $ONAME;
+		$EXTRACTTO = $_GET['dist'];
+	}
+			
 	$INI = $EXTRACTTO . '\\info.ini';
 	
 	IF(!IS_FILE($INI)) DIE($BADZIP);
@@ -54,10 +65,9 @@
 	// GET CATEGORIES
 	/*$RESULT = DB::SELECT('category');
 	$CATEGORIES = DB::TOARRAY($RESULT);*/
-	
-	// !!!! MUST ADD CHEK FOR ALL FILES!
+		
 	$ID = $INFO['CATID'];
-	$NAME = $INFO['NAME'];
+	$NAME = DB::CLEAR_NAME($INFO['NAME']);
 	$DEST = CAT::BUILDPATH($ID);
 	$MOVETO = $DEST . CAT::CLEAR($NAME) . '\\' ;			
 	FS::CREATEDIR($MOVETO);
@@ -69,8 +79,13 @@
 	$CATNAMES = CAT::GETPRODCAT($CATEGORIES, $ID);
 	*/
 		
-	IF(!FS::ISDIREMPTY($MOVETO) AND !$ISREPLACE) DIE($REPLASE);
+		
+	$REPLASE['response'] = 'REPLACEFILE';
+	$REPLASE['name'] = $ONAME;
+	$REPLASE['dist'] = $EXTRACTTO;	
+	IF(!FS::ISDIREMPTY($MOVETO) AND !$ISREPLACE) DIE(JSON_ENCODE($REPLASE));
 	
+	STATISTIC::SET_LIBSIZE($ID);
 		
 	IF($INFO['TYPE'] == 'model') {
 		
@@ -145,6 +160,7 @@
 		
 		// Move arhive with product
 		$BACKUP_FILE_PATH = $MOVETO . $ONAME;		
+		
 		RENAME($FNAME,  $BACKUP_FILE_PATH);
 	}
 		

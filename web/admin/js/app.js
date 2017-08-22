@@ -18,8 +18,10 @@ Array.prototype.makeUnique = function(){
 }
 
 document.addEventListener("contextmenu", function(e){
-   e.preventDefault();
-}, false);
+   if(!$(e.target).is('input') && !$(e.target).is('img')) {
+		e.preventDefault();
+   }
+}, false)
 
 /* APP */
 
@@ -67,6 +69,10 @@ app.config(function($routeProvider, $sceProvider) {
 	.when('/emailing', {
         templateUrl : "templates/emailing.php",
 		controller: 'emailingCtrl',
+    })
+	.when('/tools', {
+        templateUrl : "templates/tools.php",
+		controller: 'toolsCtrl',
     })
 	.when('/tags/:page', {
         templateUrl : "templates/tags.php",
@@ -152,7 +158,7 @@ app.filter('orderObjectBy', function() {
 // CONTROLLERS
 
 	// UPLOAD
-app.controller('uploadCtrl', function($scope, FileUploader, vault, $rootScope) {
+app.controller('uploadCtrl', function($scope, FileUploader, vault, $rootScope, $http) {
 	
 	$rootScope.addCrumb('Upload', '#/upload');
 		
@@ -195,14 +201,14 @@ app.controller('uploadCtrl', function($scope, FileUploader, vault, $rootScope) {
 				
 		if(response.response == 'REPLACEFILE') {
 			vault.showMessage('Some files already exist. Click "Replace" button if you want to keep the new files or \"Clear\" button to delete from list.', 'warning');
-				
+			console.log(response);
 			angular.forEach(uploader.queue, function(item, key) {
 				  if(fileItem.file.name == item.file.name) {					
 					uploader.queue[key].isReplace = true;
 					uploader.queue[key].isSuccess = false;
 					uploader.queue[key].isUploaded = false;
 					uploader.queue[key].progress = 0;
-					uploader.queue[key].url = hostname + 'admin/vault/upload.php?replace=true';
+					uploader.queue[key].url = hostname + 'admin/vault/upload.php?replace=true&dist=' + response.dist + '&name=' + response.name;
 				}
 			});										
 		}
@@ -214,7 +220,28 @@ app.controller('uploadCtrl', function($scope, FileUploader, vault, $rootScope) {
 			return false;
 		}
 		
-		item.upload();
+		item.isUploading = true;
+		item.isCancel = false;
+		
+		console.log(item);
+		
+		
+		$http({method: 'GET', url: item.url}).
+            then(function success(response) {
+                if(response.data.response == 'DONE') {
+					item.isSuccess = true;
+					item.isUploaded = true;
+					item.isUploading = false;
+					item.isReplace = false;
+					
+					vault.showMessage('Success file "' + item.file.name + '" replaced success!', 'success');
+				} else {
+					item.isError = true;
+				}				
+		});
+			
+		
+		//item.upload();
 	}
 	
 	uploader.onErrorItem = function(fileItem, response, status, headers) {
@@ -261,6 +288,12 @@ app.controller('uploadCtrl', function($scope, FileUploader, vault, $rootScope) {
 	$rootScope.labelsUserColors = ['#35A9E1', '#FF5555', '#FABB3C', '#4BACC6', '#F79646', '#2C4D75', '#C0504D', '#FABB3C', '#8064A2', '#4BACC6', '#F79646', '#2C4D75', '#C0504D'];
 	$rootScope.dataUserDownload = [];
 	$rootScope.labelsUserDownload = [];
+	
+	
+	$rootScope.labelsSizeColors = ['#4BA871', '#9ED41C', '#35A9E1', '#F79646', '#FABB3C', '#C0504D',  '#3D2D48'];
+	$rootScope.dataSize = [];
+	$rootScope.labelsSize = [];
+	$rootScope.labelsSizeDisc = [];
 	
 	if(!$rootScope.tabRow1) {
 		$rootScope.tabRow1 = 1;
@@ -321,6 +354,14 @@ app.controller('uploadCtrl', function($scope, FileUploader, vault, $rootScope) {
 			position: 'bottom',
 			fullWidth: false
 		}
+	};
+	
+	$scope.options4 = {
+		responsive: true,
+		maintainAspectRatio: true,
+		animateRotate: true,
+		animateScale: false,
+		percentageInnerCutout: 100
 	};
 	
 	$scope.options = {
@@ -743,6 +784,7 @@ app.controller('emailingCtrl', function($scope, vault, $rootScope, $location, $r
 	vault.usersGetFilter();
 });
 
+
 	//TEXTURES
 app.controller('texturesCtrl', function($scope, vault, $rootScope, $location, $routeParams, $timeout, $cookieStore) {
 	$rootScope.addCrumb('Textures', '#/textures');
@@ -764,7 +806,7 @@ app.controller('texturesCtrl', function($scope, vault, $rootScope, $location, $r
 });
  
   	// MODELS
-app.controller("modelsEditCtrl", function ($scope, $rootScope, $routeParams, vault, FileUploader) {
+app.controller("modelsEditCtrl", function ($scope, $rootScope, $routeParams, vault, FileUploader, $window) {
 	vault.getGlobal();
 	vault.catGet();
 			
@@ -773,6 +815,25 @@ app.controller("modelsEditCtrl", function ($scope, $rootScope, $routeParams, vau
 		
 	var id = $routeParams.id;
 	var page = $routeParams.page;
+	
+	$scope.moveToCat = [];
+	$scope.moveToCatName = [];
+	
+	$scope.selectMoveToCat = function(id, name, lvl) {
+		
+		$scope.moveToCat.length = lvl + 1;
+		$scope.moveToCatName.length = lvl + 1;
+		$scope.moveToCat[lvl] = id;
+		$scope.moveToCatName[lvl] = name;
+	}
+		
+	$scope.moveProduct = function(cid) {
+		if(!confirm('Do you really want to move model?')){
+			return false;
+		}
+		
+		vault.moveProduct(id, cid, $scope.type);
+	}
 		
 	$rootScope.addCrumb('Models', '#/models/' + page);
 	$rootScope.addCrumb('Edit Model', '');
@@ -812,6 +873,13 @@ app.controller("modelsEditCtrl", function ($scope, $rootScope, $routeParams, vau
 		vault.prodSetTextParam(param, n, id, $scope.type);
 	}
 	
+	$scope.prodDeleteFromEdit = function(id, name) {
+		if(!confirm('Do you really want to delete "' + name + '"?')){
+			return false;
+		}
+	
+		vault.prodDeleteFromEdit(id, $scope.type);				
+	}
 	
 	$scope.getPreviews = function(p) {			
 		$scope.previews = vault.getPreviews(p, 'huge'); ;
@@ -1397,6 +1465,20 @@ app.controller("settingsCtrl", function ($scope, $rootScope, vault) {
 		vault.globalsChange(n);		
 	}
 	
+	vault.getGlobal();
+});
+
+
+	// TOOLS
+app.controller("toolsCtrl", function ($scope, $rootScope, vault) {
+		
+	vault.catGet();	
+		
+	$scope.show = 'tabBackups';
+	
+	$rootScope.addCrumb('Tools', '');
+		
+	
 	$scope.tagsRefresh = function(t) {
 		if(!confirm('Do you really want to refresh tags?\n\nWARNING!\nThis action will recalculate all tags for all models and textures!\nThis operation can be carried out within 20 minutes!')){
 			return false;
@@ -1425,13 +1507,89 @@ app.controller("settingsCtrl", function ($scope, $rootScope, vault) {
 		vault.delBackup(file);		
 	}
 	
+	$scope.findIn = {}
+	
+	$scope.findMissingModels = function() {
+		if(!$scope.findIn.id) {
+			vault.showMessage('Please select library!', 'warning');
+			return false;
+		}
+		
+		vault.deleteMessage();
+		
+		$rootScope.loadingData = true;
+		vault.findMissingModels($scope.findIn.id);
+	}
+		
+	
+	$scope.delMissingModel = function(path) {
+		if(!confirm('Do you really want to delete this folder?')){
+			return false;
+		}
+		
+		if(!confirm('WARNING!\nThis action will delete this folder permanently!\Did you make a copy of the files?')){
+			return false;
+		}
+		
+		vault.delMissingModel(path);
+	}
+		
+	$scope.selectFindLib = function(id, name) {
+		$scope.findIn.id = id;
+		$scope.findIn.name = name;
+	}
+	
+	$rootScope.loadingData = false;
+	
+	
 	vault.getBackupList();
 	vault.getGlobal();
 });
 
+
 // AUTO RUN
-app.run(function($rootScope, $location, $routeParams, vault) {
+app.run(function($rootScope, $location, $routeParams, vault, $timeout) {
+	
+	$rootScope.download = '';
+	$rootScope.downloadUrl = function(id, type) {
+		if(!confirm('Do you really want download?')){
+			return false;
+		}
+	
+		$rootScope.download = hostname + 'vault/download.php?id=' + id +'&type=' + type;
+		console.log($rootScope.download);
 		
+		$timeout(function() {			
+			$rootScope.$apply(function(){$rootScope.download = ''});
+			
+		}, 1000);
+	}
+	
+	$rootScope.downloadMsg = function() {
+		var t = $("#download").contents().find("body").html();		
+		if(!t || !t.length) {return false;}
+		console.log(t);
+		var j = JSON.parse(t);	
+		var v = getUrlVars($rootScope.download);
+		var id = v['id'];
+		var err = 0;
+		switch(j.responce)
+		{			
+			case 'MODELBAD': alert('Wrong item!');
+			break;
+			case 'MODELNOTEXIST': alert('Item not exist!');
+			break;
+			case 'NORIGHTS': alert('You have no access!');
+			break;
+			case 'ITEMLBAD': alert('You have no access!');
+			break;
+			case 'ITEMNOTEXIST': alert('Sorry, this item not exist!');
+			break;
+		}
+				
+		$rootScope.download = '';		
+	}
+	
     $rootScope.$watch(function() { 
         return $location.path(); 
     },
@@ -1440,6 +1598,7 @@ app.run(function($rootScope, $location, $routeParams, vault) {
 		$rootScope.section = a;
 			
 		// INIT
+				
 		
 		$rootScope.showOverlayMenu = false;
 		$rootScope.toggleOverlayMenu = function(){
@@ -1547,7 +1706,7 @@ app.run(function($rootScope, $location, $routeParams, vault) {
 
 // SERVICES
 
-app.service('vault', function($http, $rootScope, $timeout, $interval, $templateCache, $cookieStore) {
+app.service('vault', function($http, $rootScope, $timeout, $interval, $templateCache, $cookieStore, $window, $sce) {
 	
 	var showMessage = function(m, t) {
 		$rootScope.msg = {};
@@ -1643,6 +1802,14 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 			break;
 			case 'BACKUPDELOK': s.success = 'Success! Backup deleted!';
 			break;
+			case 'MOVEBAD': s.error = 'Error! While moving the item!';
+			break;
+			case 'MOVEOK': s.success = 'Success! Item moved!';
+			break;	
+			case 'MISSINGDELBAD': s.error = 'Error while deleting folder!';
+			break;
+			case 'MISSINGDELOK': s.success = 'Success! Folder removed!';
+			break;			
 		}
 		
 		$rootScope.msg = s;
@@ -2048,6 +2215,29 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		});
 	}
 		
+	var moveProduct = function(id, cid, type)	 {
+		var json = {'id': id, 'cid': cid, 'type': type};
+		
+		HttpPost('PRODMOVE', json).then(function(r){												
+
+			console.log(r.data);
+			responceMessage(r.data);
+			
+			if(r.data.responce == 'MOVEEXIST') {
+				
+				m = 'Item already exist in destination category! Please rename this item! ';
+				m += r.data.url;
+				showMessage(m, 'warning');
+			}
+		
+			
+			productInfo(type, id);		
+		},
+		function(r){
+			responceMessage(r);
+		});
+	}
+		
 	var productChangeOverview = function(id, overview, type) {		
 		var json = {'id': id, 'type': type, 'overview': overview};
 		
@@ -2108,6 +2298,22 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 			
 			responceMessage(r.data);
 			productsGet(page, perpage, type, filter)		
+		},
+		function(r){
+			responceMessage(r);
+		});
+	}
+	
+	var prodDeleteFromEdit = function(id, type) {
+		var json = {'id': id, 'type': type};
+		
+		HttpPost('PRODDELETE', json).then(function(r){												
+			
+			responceMessage(r.data);
+			
+			setTimeout(function() {
+				$window.history.back();
+			},100);
 		},
 		function(r){
 			responceMessage(r);
@@ -2305,6 +2511,38 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		});
 	}	
 	
+	var delMissingModel = function(path) {
+		var json = {'path': path};
+		
+		$rootScope.loadingDataDel = true;
+		
+		HttpPost('ADMINDELETEMISSING', json).then(function(r){									
+						
+			$rootScope.loadingDataDel = false;
+							
+			responceMessage(r.data);			
+		},
+		function(r){
+			responceMessage(r);
+		});
+	}
+	
+	var findMissingModels = function(id) {
+		var json = {'id': id};
+		
+		HttpPost('ADMINBFINDMISSING', json).then(function(r){									
+			
+			
+			$rootScope.loadingData = false;
+			$rootScope.missingModels = r.data;
+					
+			responceMessage(r.data);			
+		},
+		function(r){
+			responceMessage(r);
+		});
+	}
+	
 	var catChangeName = function(name, id) {
 		if(name == null) name = '';
 			
@@ -2447,7 +2685,27 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 			$rootScope.dataUserDownload = d3;
 			$rootScope.labelsUserDownload = l3;
 			//$rootScope.labelsUserColors = c3;
-									
+			
+			
+			var d4 = [];
+			var l4 = [];
+			var ll4 = [];
+			var lll4 = [];
+			
+			
+			if(r.data.graph_lib) {				
+				angular.forEach(r.data.graph_lib, function(item, key) {																									
+					d4.push(item.size);
+					l4.push(item.name + ' (%)');					
+					lll4.push(item.name);					
+					ll4.push(item.disc_size);					
+				});								
+			}			
+			
+			$rootScope.dataSize = d4;
+			$rootScope.labelsSize = l4;
+			$rootScope.labelsSizeDisc = ll4;
+			$rootScope.labelsSizeNames = lll4;
 			
 			responceMessage(r.data);	
 		},
@@ -2480,11 +2738,15 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		prodSetParam: prodSetParam, 
 		prodToggleParam: prodToggleParam,
 		prodSetTextParam: prodSetTextParam,
+		moveProduct: moveProduct,
 		setMainPreview: setMainPreview,
 		removePreview: removePreview,
 		removeTag: removeTag,
 		prodDelete: prodDelete,
+		prodDeleteFromEdit: prodDeleteFromEdit,
 		addTag: addTag,
+		findMissingModels: findMissingModels,
+		delMissingModel: delMissingModel,
 		productChangeName: productChangeName,
 		productChangeOverview: productChangeOverview,
 		getPreviews: getPreviews,

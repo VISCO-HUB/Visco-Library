@@ -45,7 +45,7 @@
 	<div class="dashboard-card color2">
 		<div class="big-font">{{dashBoardInfo.space}}</div>
 		<div class="icon"><span class="glyphicon glyphicon-hdd" aria-hidden="true"></span></div>
-		<div>Free Space <br><br>Total: {{dashBoardInfo.total_space}} | Free: {{dashBoardInfo.free_space}}
+		<div>Storage Free Space <br><br>Total: {{dashBoardInfo.total_space}} | Free: {{dashBoardInfo.free_space}}
 		</div>
 		<div class="bottom"></div>
 	</div>
@@ -61,22 +61,49 @@
 	</div>
 </div>
 </a>
+
+<a href class="href-clear">
+<div class="col-md-6 col-sm-6 col-lg-6">
+	<div class="dashboard-card color5">
+		<div class="big-font">{{dashBoardInfo.web_space}}</div>
+		<div class="icon"><span class="glyphicon glyphicon-globe" aria-hidden="true"></span></div>
+		<div>Free Space: C:\ <br><br>Total: {{dashBoardInfo.web_total}} | Free: {{dashBoardInfo.web_free}}
+		</div>
+		<div class="bottom"></div>
+	</div>
+</div>
+</a>
+
+<a href class="href-clear" ng-click="changeTabRow1(5)">
+<div class="col-md-6 col-sm-6 col-lg-6">
+	<div class="dashboard-card color4">
+		<div class="big-font">{{dashBoardInfo.lib_size}}</div>
+		<div class="icon"><span class="glyphicon glyphicon-scale" aria-hidden="true"></span></div>
+		<div>Library  Size
+		</div>
+		<div class="bottom"></div>
+	</div>
+</div>
+</a>
+
 <br style="clear: both">
 <div ng-if="auth.rights==2">
 	<hr>
-	<h3>Model Downloads</h3>
 	<ul class="nav nav-pills pull-right" id="tabs">
-		<li ng-class="{'active': tabRow1==1}"><a href="" ng-click="changeTabRow1(1)">Month</a></li>
+		<li ng-class="{'active': tabRow1==1}"><a href="" ng-click="changeTabRow1(1)">Downloads</a></li>
+		<li ng-class="{'active': tabRow1==5}"><a href="" ng-click="changeTabRow1(5)">Size</a></li>
 		<li ng-class="{'active': tabRow1==2}"><a href="" ng-click="changeTabRow1(2)">Top</a></li>
 		<li ng-class="{'active': tabRow1==3}"><a href="" ng-click="changeTabRow1(3)">By User</a></li>
-		<li ng-class="{'active': tabRow1==4}"><a href="" ng-click="changeTabRow1(4)">Log</a></li>
+		<li ng-class="{'active': tabRow1==4}"><a href="" ng-click="changeTabRow1(4)">Log</a></li>		
 	</ul>
 	<br style="clear: both">
 	<br style="clear: both">
 	<div ng-show="tabRow1==1">
+		<h3>Last Models Downloads</h3>
 		<canvas id="line" class="chart chart-line" chart-data="dataMonthDownload" chart-labels="labelsMonthDownload" chart-dataset-override="datasetOverride" chart-options="options" chart-colors="colors"> </canvas>
 	</div>
 	<div ng-show="tabRow1==2">
+		<h3>Top Downloads</h3>	
 		<div class="table-responsive">
 			<table class="table table-hover">
 				<tr class="active">
@@ -95,6 +122,7 @@
 		</div>
 	</div>
 	<div ng-show="tabRow1==3">
+	<h3>Downloads By User</h3>
 		<div class="col-md-8">
 			<canvas id="bar" class="chart-doughnut" chart-data="dataUserDownload" chart-labels="labelsUserDownload" chart-dataset-override="datasetOverride3" chart-options="options3" chart-colors="labelsUserColors"> </canvas>
 		</div>
@@ -108,6 +136,7 @@
 		
 	</div>
 	<div ng-show="tabRow1==4">
+	<h3>Log User Downloads</h3>
 		<div class="table-responsive">
 			<table class="table table-hover">
 				<tr class="active">
@@ -139,3 +168,15 @@
 			</div>
 		</div>
 	</div>
+<div ng-show="tabRow1==5">
+		<div class="col-md-8">
+			<canvas id="bar" class="chart-doughnut" chart-data="dataSize" chart-labels="labelsSize" chart-dataset-override="labelsSizeDisc" chart-options="options4" chart-colors="labelsSizeColors"> </canvas>
+		</div>
+		<div class="col-md-4">
+			<br>
+			<ul class="legend">
+				<li ng-repeat="l in labelsSizeNames"><span class="color" ng-style="{'background-color': labelsSizeColors[$index]}"></span>{{labelsSizeDisc[$index]}}: <b>{{l}}</b></li>
+			</ul>
+			<br>
+		</div>
+</div>

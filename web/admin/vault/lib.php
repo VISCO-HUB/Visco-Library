@@ -12,6 +12,12 @@
 			$S = $MYSQLI->real_escape_string($S);			
 			RETURN $S;
 		}
+		
+		PUBLIC STATIC FUNCTION CLEAR_NAME($NAME) {																		
+			$NAME = STR_REPLACE('&', 'and', $NAME);
+			$NAME = STR_REPLACE('"', '\'', $NAME);
+			RETURN $NAME;
+		}
 						
 		PUBLIC STATIC FUNCTION PARSE_VALUE($VALUE, $DELIM = ';') {
 			RETURN ARRAY_FILTER(EXPLODE($DELIM, STR_REPLACE(' ', '', $VALUE)));
@@ -620,7 +626,15 @@
 			//$ZIP->close();			
 			RETURN TRUE;
 		}
-			
+		
+		PUBLIC STATIC FUNCTION DIR_SIZE($DIR) {
+			$SIZE = 0;
+			FOREACH (GLOB(RTRIM($DIR, '/') . '/*', GLOB_NOSORT) AS $EACH) {
+				$SIZE += IS_FILE($EACH) ? FILESIZE($EACH) : SELF::DIR_SIZE($EACH);
+			}
+			RETURN $SIZE;
+		}
+		
 		PUBLIC STATIC FUNCTION ISDIREMPTY($DIR) {
 			//IF (!IS_READABLE($DIR)) RETURN NULL; 
 			RETURN (COUNT(SCANDIR($DIR)) == 2);		  
@@ -663,6 +677,43 @@
 			}					
 		}
 		
+		PUBLIC STATIC FUNCTION GET_LIST($DIR, $LIST = []) {
+			
+			$FILES = GLOB($DIR . '/*'); 
+  
+			FOREACH($FILES AS $FILE){ 
+			
+				IF(IS_DIR($FILE) AND !IN_ARRAY($FILE, ARRAY('..', '.')))  {					
+					
+					$LIST = SELF::GET_LIST($FILE, $LIST);
+					
+				} 
+				ELSE IF(IS_FILE($FILE) AND ($FILE != __FILE__)) {					
+					$LIST[] = $FILE;
+				}
+			}	
+			
+			RETURN $LIST;
+		}
+		
+		
+		PUBLIC STATIC FUNCTION GET_LIST_BY_EXT($PATH, $EXT = 'max') {
+			
+			$DI = NEW RECURSIVEDIRECTORYITERATOR($PATH ,RECURSIVEDIRECTORYITERATOR::SKIP_DOTS);
+			$IT = NEW RECURSIVEITERATORITERATOR($DI);
+			
+			$LIST = [];
+			
+			FOREACH($IT AS $FILE) {
+				IF (PATHINFO($FILE, PATHINFO_EXTENSION) ==  $EXT) {
+					$LIST[] = PATHINFO($FILE, PATHINFO_DIRNAME) . '\\';
+				}
+			}
+			
+			RETURN $LIST;
+		}
+		
+		
 		PUBLIC STATIC FUNCTION MOVE($DIR1, $DIR2) {
 			$DIR = OPENDIR($DIR1); 
 			SELF::CREATEDIR($DIR2); 
@@ -694,6 +745,13 @@
 		PUBLIC STATIC FUNCTION SIZE($FILE) {	
 			RETURN @FILESIZE($FILE);
 		}
+		
+		PUBLIC STATIC FUNCTION POP_DIR($PATH) {
+			$TMP_PATH = EXPLODE('\\', $PATH);			
+			ARRAY_POP($TMP_PATH);
+			ARRAY_POP($TMP_PATH);
+			RETURN IMPLODE('\\', $TMP_PATH) . '\\';
+		}
 	}
 	
 	///////////////////////////////////////////////////////
@@ -716,6 +774,7 @@
 					IF($FLAG) {
 						$I = SELF::EXTRACTIDS($CATEGORIES, $CATEGORY->id, $IDS);
 						$IDS = ARRAY_MERGE($IDS, $I);
+						$IDS = ARRAY_UNIQUE($IDS);
 					}
 
 					$IDS[] = $CATEGORY->id;
@@ -875,6 +934,12 @@
 			RETURN $ERROR;
 		}
 		
+		PUBLIC STATIC FUNCTION ASSOC_CAT($CATS, $KEY = 'id') {
+			$TMP = [];
+			FOREACH($CATS AS $CAT) $TMP[$CAT->{$KEY}] = $CAT;
+			RETURN $TMP;
+		}
+		
 		PUBLIC STATIC FUNCTION CATADDGRP($DATA) {
 			$ERROR = '{"responce": "CATGRPBAD"}';
 			$SUCCESS = '{"responce": "CATGRPOK"}';
@@ -978,6 +1043,21 @@
 			}
 						
 			RETURN $ERROR;
+		}
+		
+		PUBLIC STATIC FUNCTION GETLIB($ID) {			
+			$RESULT = DB::SELECT('category');
+			$CATEGORIES = DB::TOARRAY($RESULT);
+			$CATS_ASSOC = SELF::ASSOC_CAT($CATEGORIES, 'id');
+			
+			$TMP_ID = $ID;
+			$TMPCAT = $CATS_ASSOC[$TMP_ID];
+			
+			WHILE($TMP_ID = $TMPCAT->parent) {				
+				$TMPCAT = $CATS_ASSOC[$TMP_ID];				
+			}
+			
+			RETURN $TMPCAT->parent == 0 ?  $TMPCAT : -1;
 		}
 		
 		PUBLIC STATIC FUNCTION GETPRODCAT($CATEGORIES, $ID = NULL) {
@@ -1520,6 +1600,78 @@
 			RETURN JSON_ENCODE($OUT);
 		}
 			
+		PUBLIC STATIC FUNCTION PRODMOVE($DATA) {			
+			$ERROR = '{"responce": "MOVEBAD"}';
+			$SUCCESS = '{"responce": "MOVEOK"}';
+			
+			IF(!ISSET($DATA->id) 
+				OR !ISSET($DATA->cid) 
+				OR !ISSET($DATA->type) 
+				OR !IS_NUMERIC($DATA->type)
+				OR !IS_NUMERIC($DATA->id) 
+				OR !IS_NUMERIC($DATA->cid)) RETURN $ERROR;
+			
+			$TYPE = SELF::TYPE($DATA->type);
+			
+			$PROD = JSON_DECODE(SELF::PRODUCTINFO($DATA));
+			
+			IF(!$PROD->info) RETURN $ERROR;
+			
+			$WHERE = [];
+			$WHERE['name'] = $PROD->info->name;
+			$WHERE['render'] = $PROD->info->render;
+			$WHERE['catid'] = $DATA->cid;
+						
+			$RESULT = DB::SELECT($TYPE, $WHERE, NULL, TRUE);
+			$EXIST = DB::TOARRAY($RESULT);
+			
+			IF(COUNT($EXIST)) {
+				$OUT['responce'] = 'MOVEEXIST';
+				$OUT['prod'] = $EXIST[0];
+				$OUT['url'] = '<a href="' . HOSTNAME . '#/' . PRODUCTPAGE[$DATA->type] . '/' . $OUT['prod']->id . '">View Item</a>';
+				RETURN JSON_ENCODE($OUT);
+			}
+			
+			$PATH2 = $DEST = CAT::BUILDPATH($DATA->cid) . CAT::CLEAR($PROD->info->name) . '\\';
+			
+			$PATH1 = SELF::PRODFULLPATH($PROD->info);			
+			$PATH1 =FS::POP_DIR($PATH1);
+			
+			$LIST1 = FS::GET_LIST($PATH1);
+			
+			FS::CLEAR($PATH2);
+			FS::MOVE($PATH1, $PATH2);
+						
+			$LIST2 = FS::GET_LIST($PATH2);
+			
+			$DIFF = ARRAY_DIFF($LIST1, $LIST1);
+			
+			IF(COUNT($DIFF)) {
+				FS::CLEAR($PATH2);
+				FS::DELDIR($PATH2);
+				
+				RETURN $ERROR;
+			}
+				
+			$SET = [];
+			$WHERE = [];
+			
+			$SET['catid'] = $DATA->cid;
+			$WHERE['id'] = $DATA->id;
+			
+			$RESULT = DB::UPDATE($TYPE, $SET, $WHERE);
+			
+			IF($RESULT > 0) 
+			{	
+				FS::CLEAR($PATH1);
+				FS::DELDIR($PATH1);
+				FS::DELDIR($PATH1);
+				RETURN $SUCCESS;	
+			}
+						
+			RETURN $ERROR;
+			
+		}
 		
 		PUBLIC STATIC FUNCTION PRODSETPARAM($DATA) {			
 			$ERROR = '{"responce": "SETTINGBAD"}';
@@ -2380,6 +2532,20 @@
 	///////////////////////////////////////////////////////
 	
 	CLASS STATISTIC {
+		
+		PUBLIC STATIC FUNCTION DISCSIZE($BYTES)
+		{
+			$TYPE = ARRAY("", "KB", "MG", "GB", "TB", "PB", "EB", "ZB", "YB");
+			$I = 0;
+			WHILE($BYTES >= 1024)
+			{
+				$BYTES /= 1024;
+				$I++;
+			  }
+			
+			RETURN(ROUND($BYTES, 2) . " " . $TYPE[$I]);
+		}
+		
 		PUBLIC STATIC FUNCTION GETBYMONTH() {
 			// STATISTIC BY MONTH
 			
@@ -2393,6 +2559,32 @@
 			$STAT = DB::TOARRAY($RESULT);
 						
 			RETURN ARRAY_REVERSE($STAT);
+		}
+		
+		PUBLIC STATIC FUNCTION LIBSIZE($BYCAT = FALSE) {
+			
+			$WHERE['parent'] = 0;
+			$RESULT = DB::SELECT('category', $WHERE);
+			
+			$CATEGORIES = DB::TOARRAY($RESULT);
+			
+			$SIZE = 0;
+			$CAT_SIZE = [];
+			
+			$SIZES = [];
+			
+			FOREACH($CATEGORIES AS $CAT) {
+				$SIZE += $CAT->size;
+			}
+			
+			FOREACH($CATEGORIES AS $CAT) {
+				@$CAT_SIZE[$CAT->name]->name = $CAT->name;
+				@$CAT_SIZE[$CAT->name]->size = ROUND($CAT->size / $SIZE  * 100, 0);
+				@$CAT_SIZE[$CAT->name]->disc_size = SELF::DISCSIZE($CAT->size);
+			}
+						
+			IF($BYCAT) RETURN $CAT_SIZE;
+			RETURN SELF::DISCSIZE($SIZE);
 		}
 		
 		PUBLIC STATIC FUNCTION GETTOP() {
@@ -2453,6 +2645,26 @@
 				
 			RETURN $T;
 		}
+		
+		PUBLIC STATIC FUNCTION SET_LIBSIZE($ID) {
+			$LIB = CAT::GETLIB($ID);
+			IF($LIB == -1 OR !$LIB->id) RETURN FALSE;
+			
+			IF(TIME() - $LIB->updated < 86400) RETURN FALSE;
+			
+			$GLOBS = GLOBS::PARSE();
+			$DIR = $GLOBS->path . $LIB->path . '\\';
+			
+			$SIZE = FS::DIR_SIZE($DIR);
+			
+			IF(!$SIZE) RETURN FALSE;
+			
+			$SET['size'] = $SIZE;
+			$SET['updated'] = TIME();
+			$WHERE['id'] = $LIB->id;
+			
+			$RESULT = DB::UPDATE('category', $SET, $WHERE);						
+		}
 	}
 	
 	///////////////////////////////////////////////////////
@@ -2460,29 +2672,25 @@
 	///////////////////////////////////////////////////////
 	
 	CLASS DASHBOARD {
-		
-		PUBLIC STATIC FUNCTION DISCSIZE($BYTES)
-		{
-			$TYPE = ARRAY("", "KB", "MG", "GB", "TB", "PB", "EB", "ZB", "YB");
-			$I = 0;
-			WHILE($BYTES >= 1024)
-			{
-				$BYTES /= 1024;
-				$I++;
-			  }
-			
-			RETURN(ROUND($BYTES, 2) . " " . $TYPE[$I]);
-		}
+				
 		PUBLIC STATIC FUNCTION INFO() {
 			$GLOBS = GLOBS::PARSE();
 			$DIR = $GLOBS->path;
 			
 			$OUT = [];
+			
+			$WEB = 'C:\\';
 				
+			$LIB_SIZE = STATISTIC::LIBSIZE();
+			$GRAPH_LIB = STATISTIC::LIBSIZE(TRUE);
+			
 						
 			$OUT['space'] = (FLOOR(100 * DISK_FREE_SPACE($DIR) / DISK_TOTAL_SPACE($DIR))) . '%';			
-			$OUT['free_space'] = SELF::DISCSIZE(DISK_FREE_SPACE($DIR));			
-			$OUT['total_space'] = SELF::DISCSIZE(DISK_TOTAL_SPACE($DIR));			
+			$OUT['free_space'] = STATISTIC::DISCSIZE(DISK_FREE_SPACE($DIR));			
+			$OUT['total_space'] = STATISTIC::DISCSIZE(DISK_TOTAL_SPACE($DIR));
+			$OUT['web_total'] = STATISTIC::DISCSIZE(DISK_TOTAL_SPACE($WEB));
+			$OUT['web_free'] = STATISTIC::DISCSIZE(DISK_FREE_SPACE($WEB));
+			$OUT['web_space'] = (FLOOR(100 * DISK_FREE_SPACE($WEB) / DISK_TOTAL_SPACE($WEB))) . '%';
 			$OUT['mdl'] = DB::CNT('models');
 			$OUT['tex'] = DB::CNT('textures');
 			$OUT['urs'] = DB::CNT('users');
@@ -2491,7 +2699,11 @@
 			$OUT['graph_month'] = STATISTIC::GETBYMONTH();
 			$OUT['graph_top'] = STATISTIC::GETTOP();
 			$OUT['graph_user'] = STATISTIC::GETUSER();
-				
+			$OUT['dist_path'] = $DIR;
+			$OUT['lib_size'] = $LIB_SIZE;
+			$OUT['graph_lib'] = $GRAPH_LIB;
+			
+			
 			
 			RETURN JSON_ENCODE($OUT);
 		}
@@ -2862,6 +3074,127 @@
 		}
 	}
 
+	///////////////////////////////////////////////////////
+	// MISSING CLASS
+	///////////////////////////////////////////////////////
+	
+	CLASS MISSING {
+		
+		PUBLIC STATIC FUNCTION COMPARE_LISTS($LIST1, $LIST2) {
+			
+			$MISSING = [];
+			
+			FOREACH($LIST1 AS $L1) {
+				$FOUND = FALSE;
+				
+				FOREACH($LIST2 AS $L2) {
+					IF(STRIPOS($L1, $L2) !== FALSE) {						
+						$FOUND = $L2;
+						BREAK;
+					}
+				}
+				
+				IF(!$FOUND) {	
+					$MISSING[] = $L1;
+				}
+			}
+			
+			RETURN $MISSING;
+		}
+		
+		PUBLIC STATIC FUNCTION DEL($DATA) {
+			$ERROR = '{"responce": "MISSINGDELBAD"}';
+			$SUCCESS = '{"responce": "MISSINGDELOK"}';
+			
+			IF(!ISSET($DATA->path)) RETURN $ERROR;
+			$GLOBS = GLOBS::PARSE();
+			IF(STRIPOS($DATA->path, $GLOBS->path) === FALSE) RETURN $ERROR;
+
+			IF(FS::ISDIREMPTY($DATA->path)) RETURN $ERROR;
+			
+			$MAX = GLOB($DATA->path . '*.max');
+			
+			IF(!COUNT($MAX)) RETURN $ERROR;
+			
+			$WHERE['status'] = 1;
+			$RESULT = DB::SELECTUNIQUE('render', 'models', $WHERE);
+			
+			$RENDERS = [];
+			
+			FOREACH(DB::TOARRAY($RESULT) AS $ROW) IF(STRLEN($ROW->render)) $RENDERS[] = $ROW->render;
+						
+			$P = EXPLODE('\\', $DATA->path);
+			
+			$RENDER = (END(ARRAY_FILTER($P)));
+			
+			IF(IN_ARRAY($RENDER, $RENDERS)) {
+				IF(!END($P)) ARRAY_POP($P);				
+				ARRAY_POP($P);
+				
+				$UP = IMPLODE('\\', $P) . '\\';
+				
+				IF(COUNT(SCANDIR($UP)) == 3) $DATA->path = IMPLODE('\\', $P) . '\\';								
+			}
+					
+			FS::CLEAR($DATA->path);
+			FS::DELDIR($DATA->path);
+					
+			
+			RETURN $SUCCESS;
+		}
+		
+		PUBLIC STATIC FUNCTION FIND($DATA) {
+			$ERROR = '{"responce": "MISSINGFINDBAD"}';
+			
+			IF(!ISSET($DATA->id) OR !IS_NUMERIC($DATA->id)) RETURN $ERROR;
+			
+			$WHERE['id'] = $DATA->id;
+			$RESULT = DB::SELECT('category');
+			$TMP = DB::TOARRAY($RESULT);
+			
+			$CATEGORIES = CAT::ASSOC_CAT($TMP, 'id');
+						
+			$ROW = $CATEGORIES[$DATA->id];
+						
+			IF(!$ROW) RETURN $ERROR;
+			
+			$GLOBS = GLOBS::PARSE();
+			$PATH = $GLOBS->path . $ROW->path . '\\';
+						
+			
+			$LIST1 = FS::GET_LIST_BY_EXT($PATH, 'max');
+						
+			
+			$IDS = [];
+			$IDS = ACCESS::EXTRACTIDS($CATEGORIES, $DATA->id, $IDS);
+			
+			$WHERE = [];
+			$WHERE['catid'] = $IDS;
+			$RESULT = DB::SELECT('models', $WHERE);
+			
+			$PRUDUCTS = DB::TOARRAY($RESULT);
+			
+			$LIST2 = [];
+			
+			FOREACH($PRUDUCTS AS $PROD) {
+				
+				$C = $CATEGORIES[$PROD->catid];
+				$C = CAT::CLEAR($C->name);
+				$LIST2[] = '\\' . $C . '\\' . CAT::CLEAR($PROD->name) . '\\' . $PROD->render . '\\';				
+			}
+			
+			
+			$MISSING = SELF::COMPARE_LISTS($LIST1, $LIST2);
+			
+			//print_r($LIST2);
+			//print_r($LIST1);
+			$OUT['missing'] = $MISSING;
+			$OUT['missing_count'] = COUNT($MISSING);			
+			
+			RETURN JSON_ENCODE($OUT);
+		}
+	}
+	
 	///////////////////////////////////////////////////////
 	// MSGSYSTEM CLASS
 	///////////////////////////////////////////////////////

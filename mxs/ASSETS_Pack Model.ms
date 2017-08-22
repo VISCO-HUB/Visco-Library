@@ -2,7 +2,7 @@
 [INFO] 
 
 NAME = Pack Model
-VERSION = 1.0.8
+VERSION = 1.0.9
 AUTHOR = Vasily Lukyanenko
 DEV = VISCO
 HELP = 
@@ -61,6 +61,10 @@ ICON=#("PhysX_Main", 30)
 [1.0.8]
 
 - BugFix: Incorrect IES paths=
+
+[1.0.9]
+
++ Added: Remove Layers option= 
 
 [ABOUT]
 
@@ -2075,6 +2079,7 @@ rollout _STEP5 "STEP 5: Pack Model"
 		checkbox cbxRenameObjects "Rename Objects" checked: true 
 		checkbox cbxRenameMaterials "Rename Materials" checked: true across: 2
 		checkbox cbxRenameGroups "Rename Groups" checked: true
+		checkbox cbxRemoveLayers "Remove Layers" checked: true 
 	)
 	
 	button btnPackModel "Pack Model" width: 244 height: 45 align: #left across: 2
@@ -2158,6 +2163,9 @@ rollout _STEP5 "STEP 5: Pack Model"
 			
 		v = useSettings "RENGRP" "bool" "r"	
 		cbxRenameGroups.checked = if(v == false) then false else true
+		
+		v = useSettings "REMLAYERS" "bool" "r"	
+		cbxRemoveLayers.checked = if(v == false) then false else true
 			
 		v = getActuatlMaxVersion()
 		ddlMaxVer.items = v
@@ -2350,8 +2358,19 @@ rollout _STEP5 "STEP 5: Pack Model"
 	
 	fn removeLayers = 
 	(
-		layer0 = LayerManager.getLayer 0
-		for i in objects do layer0.addNode i
+		layerManager.closeDialog()
+		defLayer = LayerManager.getLayerFromName "0"
+		defLayer.current = true
+		
+		for i in objects do defLayer.addNode i
+			
+		for i in (layerManager.count - 1) to 1 by -1 do
+		(
+			l = layerManager.getLayer i
+			n = l.name
+					
+			layerManager.deleteLayerByName n
+		)
 	)
 	
 	fn copyIESfiles _selection szAssets szName = 
@@ -2444,6 +2463,7 @@ rollout _STEP5 "STEP 5: Pack Model"
 	on cbxRenameObjects changed v do useSettings "RENOBJ"	v "w"	
 	on cbxRenameMaterials changed v do useSettings "RENMAT"	v "w"	
 	on cbxRenameGroups changed v do useSettings "RENGRP"	v "w"
+	on cbxRemoveLayers changed v do useSettings "REMLAYERS"	v "w"
 	on ddlMaxVer selected v do _lblFormat.text = ddlMaxVer.selected
 
 	
@@ -2533,7 +2553,7 @@ rollout _STEP5 "STEP 5: Pack Model"
 			
 		renameObjects szName
 		renameMaterials szName 
-		removeLayers()
+		if(cbxRemoveLayers.checked) do removeLayers()
 			
 		-- Save file properties
 		saveAllProp()

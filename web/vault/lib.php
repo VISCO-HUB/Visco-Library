@@ -1447,7 +1447,7 @@
 			IF(!$R) {
 				DB::INSERT('statistic_downloads', $SET);
 			} ELSE {
-				DB::UPDATE('statistic_downloads', $SET, $WHERE);
+				DB::UPDATE('statistic_downloads', $SET, $WHERE, TRUE);
 			}
 		}
 	}

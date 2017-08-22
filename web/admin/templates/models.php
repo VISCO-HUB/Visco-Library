@@ -53,6 +53,7 @@
 				<a href="/#/model/{{prod.id}}">View</a>
 				<span ng-show="auth.browser=='MXS'">| <a href="" ng-click="openModel(prod.id)">Open</a></span>
 				<span ng-show="auth.browser=='MXS'">| <a href="" ng-click="mergeModel(prod.id)">Merge</a></span>
+				| <a href="" ng-click="downloadUrl(prod.id, type)">Download</a>
 			</td>
 			</td>
 		</tr>

@@ -13,7 +13,9 @@
 	<a class="btn btn-default" ng-show="product.list.prev" href="#/models-edit/{{product.list.prev}}/1"><span class="glyphicon glyphicon-step-backward" aria-hidden="true"></span> Prev Model</a>
 	<a class="btn btn-default" ng-show="product.list.next" href="#/models-edit/{{product.list.next}}/1">Next Model <span class="glyphicon glyphicon glyphicon-step-forward" aria-hidden="true"></span></a>
 
-	<a class="btn btn-default pull-right" href="/#/model/{{product.info.id}}">View</a>
+	<button ng-click="downloadUrl(product.info.id, type)" class="btn btn-primary pull-right">Download</button>
+	<a class="btn btn-danger pull-right" href="" ng-click="prodDeleteFromEdit(product.info.id, product.info.name)">Delete</a>
+	<a class="btn btn-info pull-right" href="/#/model/{{product.info.id}}">View</a>
 	<a class="btn btn-default pull-right" href="" ng-show="auth.browser=='MXS'" ng-click="openModel(product.info.id)">Open</a>
 	<a class="btn btn-default pull-right" href="" ng-show="auth.browser=='MXS'" ng-click="mergeModel(product.info.id)">Merge</a>
 </div>
@@ -44,10 +46,11 @@
 <hr>
 <h2><small>Path:</small></h2>
 <div class="form-group">
-	<input type="text" class="form-control" value="{{product.dir}}">
-	</<br>
+	<input type="text" class="form-control" value="{{product.dir}}">	
 	<br>
 	<span class="label label-success" ng-show="product.exist">Directory Exist</span> <span class="label label-danger" ng-show="!product.exist">Directory Not Exist!</span> </div>
+	
+	<br>	
 <hr>
 <h2><small>Preview:</small></h2>
 <div class="well well-lg">
@@ -104,39 +107,39 @@
 <h2><small>Info:</small></h2>
 <table class="model-info" width="100%">
 	<tr>
-		<td>Uploaded By: </td>
+		<td width="30%">Uploaded By: </td>
 		<td>{{product.info.uploadedby}}</td>
-		<td></td>
+		
 	</tr>
 	<tr>
-		<td width="30%">Format: </td>
-		<td width="30%">{{product.info.format}}</td>
-		<td></td>
+		<td>Format: </td>
+		<td>{{product.info.format}}</td>
+		
 	</tr>
 	<tr>
 		<td>Date: </td>
 		<td>{{tm(product.info.date)}}</td>
-		<td></td>
+		
 	</tr>
 	<tr>
 		<td>Units: </td>
 		<td>{{product.info.units}}</td>
-		<td></td>
+		
 	</tr>
 	<tr>
 		<td>Dimension: </td>
 		<td>{{product.info.dim}}</td>
-		<td></td>
+		
 	</tr>
 	<tr>
 		<td>Polys: </td>
 		<td>{{product.info.polys}}</td>
-		<td></td>
+		
 	</tr>
 	<tr>
 		<td>Render: </td>
 		<td>{{product.info.render}}</td>
-		<td></td>
+		
 	</tr>
 	<tr>
 		<td>Modeller: </td>
@@ -184,42 +187,42 @@
 		<td>
 			<btn-trigger cls="'btn-xs'" active="product.info.unwrap" toggle="prodToggleParam('unwrap')"></btn-trigger>
 		</td>
-		<td></td>
+		
 	</tr>
 	<tr>
 		<td>Game Engine Ready: </td>
 		<td>
 			<btn-trigger cls="'btn-xs'" active="product.info.gameengine" toggle="prodToggleParam('gameengine')"></btn-trigger>
 		</td>
-		<td></td>
+		
 	</tr>	
 	<tr>
 		<td>Lights: </td>
 		<td>
 			<btn-trigger cls="'btn-xs'" active="product.info.lights" toggle="prodToggleParam('lights')"></btn-trigger>
 		</td>
-		<td></td>
+		
 	</tr>
 	<tr>
 		<td>Lods: </td>
 		<td>
 			<btn-trigger cls="'btn-xs'" active="product.info.lods" toggle="prodToggleParam('lods')"></btn-trigger>
 		</td>
-		<td></td>
+		
 	</tr>
 	<tr>
 		<td>Baked: </td>
 		<td>
 			<btn-trigger cls="'btn-xs'" active="product.info.baked" toggle="prodToggleParam('baked')"></btn-trigger>
 		</td>
-		<td></td>
+		
 	</tr>
 	<tr>
 		<td>Rigged: </td>
 		<td>
 			<btn-trigger cls="'btn-xs'" active="product.info.rigged" toggle="prodToggleParam('rigged')"></btn-trigger>
 		</td>
-		<td></td>
+		
 	</tr>	
 </table>
 <br>
@@ -249,6 +252,45 @@
 		</div>
 </div>
 
-
+<div class="well well-lg" ng-show="auth.rights==2">
+	<h2 style="margin: 0"><small>Move To Category:</small></h2>
+	<br>
+	<div class="alert alert-warning"><b>Backup Database before moving the model!</b></div>
+	<br>	
+	
+	Choose Category:<br>
+	
+	<div class="btn-group dropup">
+		<button type="button" class="btn dropdown-toggle btn-default" ng-class="{'btn-success': moveToCat[0]}" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{{moveToCatName[0] ? moveToCatName[0] : 'None'}} <span class="caret"></span></button>
+		<ul class="dropdown-menu">
+			<li role="presentation" ng-repeat="lib in categories"><a href="" ng-click="selectMoveToCat(lib.id, lib.name, 0)">{{lib.name}}</a></li>
+			
+		</ul>
+	</div>	
+	&rarr;
+	
+	
+	<div class="btn-group dropup">
+		<button type="button" class="btn dropdown-toggle btn-default" ng-class="{'btn-success': moveToCat[1]}" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{{moveToCatName[1] ? moveToCatName[1] : 'None'}} <span class="caret"></span></button>
+		<ul class="dropdown-menu">
+			<li role="presentation" ng-repeat="cat in categories[moveToCat[0]].child"><a href="" ng-click="selectMoveToCat(cat.id, cat.name, 1)">{{cat.name}}</a></li>
+			
+		</ul>
+	</div>	
+	
+	&rarr;	
+	
+	<div class="btn-group dropup">
+		<button type="button" class="btn dropdown-toggle btn-default" ng-class="{'btn-success': moveToCat[2]}" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{{moveToCatName[2] ? moveToCatName[2] : 'None'}}  <span class="caret"></span></button>
+		<ul class="dropdown-menu">
+			<li role="presentation" ng-repeat="sub in categories[moveToCat[0]].child[moveToCat[1]].child"><a href="" ng-click="selectMoveToCat(sub.id, sub.name, 2)">{{sub.name}}</a></li>		
+		</ul>
+	</div>	
+		
+	<br><br>
+	<button type="button" ng-disabled="!moveToCat[2]" class="btn dropdown-toggle btn-danger" ng-click="moveProduct(moveToCat[2])">Move model  {{moveToCat[2] ? 'to ' + moveToCatName[2] : ''}}</button>
+	
+	
+</div>
 
 </div>

@@ -98,6 +98,8 @@
 	<div menu class="margin-top-40"></div>
 </div>
 
+
+<iframe id="download" ng-src="{{download}}" iframe-onload="downloadMsg()" class="hidden"></iframe>
 <?php ECHO $USER; ?>
 </body>
 </html>

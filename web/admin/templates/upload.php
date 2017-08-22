@@ -23,7 +23,7 @@
 				<td class="text-center"><span ng-show="item.isSuccess"><i class="glyphicon glyphicon-ok"></i></span> <span ng-show="item.isCancel"><i class="glyphicon glyphicon-ban-circle"></i></span> <span ng-show="item.isError"> <i class="glyphicon glyphicon-remove"></i></span> <span ng-show="item.isReplace"><i class="glyphicon glyphicon-refresh"></i> </span></td>
 				<td nowrap><button type="button" class="btn btn-success btn-xs" ng-click="item.upload()" ng-disabled="item.isReady || item.isUploading || item.isSuccess" ng-show="!item.isReplace"> <span class="glyphicon glyphicon-upload"></span> Upload </button>
 					<button type="button" class="btn btn-danger btn-xs" ng-click="replaceUpload(item)" ng-disabled="item.isReady || item.isUploading || item.isSuccess" ng-show="item.isReplace"> <span class="glyphicon glyphicon-refresh"></span> Replace </button>
-					<button type="button" class="btn btn-warning btn-xs" ng-click="item.cancel()" ng-disabled="!item.isUploading"> <span class="glyphicon glyphicon-ban-circle"></span> Cancel </button>
+					<button type="button" class="btn btn-warning btn-xs" ng-click="item.cancel()" ng-disabled="!item.isUploading || item.isReplace"> <span class="glyphicon glyphicon-ban-circle"></span> Cancel </button>
 					<button type="button" class="btn btn-danger btn-xs" ng-click="item.remove()"> <span class="glyphicon glyphicon-trash"></span> Clear </button></td>
 			</tr>
 		</tbody>

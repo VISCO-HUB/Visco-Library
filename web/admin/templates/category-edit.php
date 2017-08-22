@@ -101,7 +101,7 @@
 </div>
 <hr>
 <h2><small>Categories:</small></h2>			
-<div class="col-sm-12 col-md-12col-lg-12">		
+<div class="col-sm-12 col-md-12 col-lg-12">		
 	<div class="admin-cat-hierarchy col-sm-6 col-md-6 col-lg-6">
 		<a href="" ng-click="subCatEdit(catId)" ng-class="{active: isSubCatActive(categories[catId].id)}">{{categories[catId].name}} <i>({{count(categories[catId].child)}})</i></a>
 		<ul>
