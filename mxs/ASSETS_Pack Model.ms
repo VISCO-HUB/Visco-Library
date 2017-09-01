@@ -2,7 +2,7 @@
 [INFO] 
 
 NAME = Pack Model
-VERSION = 1.0.9
+VERSION = 1.1.0
 AUTHOR = Vasily Lukyanenko
 DEV = VISCO
 HELP = 
@@ -65,6 +65,11 @@ ICON=#("PhysX_Main", 30)
 [1.0.9]
 
 + Added: Remove Layers option= 
+
+[1.1.0]
+
+- BugFix: Not save Game Engine Ready option=
+* Changed: Wider field for 3Ds Max Version dropdown=
 
 [ABOUT]
 
@@ -1662,6 +1667,7 @@ rollout _STEP2 "STEP 2: Model Info"
 		cbxRigged.checked = getProp "cbxRigged" type: #bool
 		cbxAnimated.checked = getProp "cbxAnimated" type: #bool
 		cbxBakedTextures.checked = getProp "cbxBakedTextures" type: #bool
+		cbxGameEngineReady.checked = getProp "cbxGameEngineReady" type: #bool
 		cbxLods.checked = getProp "cbxLods" type: #bool
 		cbxUnwrap.checked	= getProp "cbxUnwrap" type: #bool
 		cbxLights.checked	= getProp "cbxLights" type: #bool
@@ -2074,7 +2080,7 @@ rollout _STEP5 "STEP 5: Pack Model"
 	group "Settings" 
 	(
 		label lblMaxVer "3Ds Max Version: " across: 2 align: #left 
-		dropdownlist ddlMaxVer "" width: 50 offset: [-30, -3]
+		dropdownlist ddlMaxVer "" width: 70 offset: [-30, -3]
 		checkbox cbxRenameTextures "Rename Textures" checked: true across: 2		
 		checkbox cbxRenameObjects "Rename Objects" checked: true 
 		checkbox cbxRenameMaterials "Rename Materials" checked: true across: 2
