@@ -5,6 +5,7 @@
   <li ng-class="{active:show == 'tabBackups'}"><a href="" ng-click="show='tabBackups'">Backups</a></li>
   <li ng-class="{active:show == 'tabTags'}"><a href="" ng-click="show='tabTags'">Tags</a></li>
   <li ng-class="{active:show == 'tabMissingModels'}"><a href="" ng-click="show='tabMissingModels'">Missing Models</a></li>
+  <li ng-class="{active:show == 'tabMissingModelsPreview'}"><a href="" ng-click="show='tabMissingModelsPreview'">Missing Models Preview</a></li>
 </ul>
 
 <div ng-show="show == 'tabGlobal'">
@@ -19,7 +20,7 @@
 <div ng-show="show == 'tabTags'">
 <h2><small>Refresh Model Tags:</small></h2>
 <div class="alert alert-warning">Warning! This operation can be carried out within 20 minutes!<br>Do not close the page!</div><br><br>
-<button type="submit" class="btn btn-primary" ng-click="tagsRefresh('models')">Refresh</button>
+<button type="submit" disabled class="btn btn-primary" ng-click="tagsRefresh('models')">Refresh</button>
 </div>
 
 <div ng-show="show == 'tabBackups'">
@@ -84,6 +85,32 @@ Found {{missingModels.missing_count}} models!
 		</tr>
 	</tbody>
 </table>
+
+
+</div>
+
+</div>	
+
+
+<div ng-show="show == 'tabMissingModelsPreview'">
+<h2><small>Excess Models Preview:</small></h2>
+
+<div class="alert alert-warning">Warning! This operation can be carried out within 20 minutes!<br>Do not close the page!</div>
+
+<div ng-show="!loadingData">
+
+<button class="btn btn-primary" ng-click="findMissingModelsPreview()">Find Excess Preview</button>
+</div>
+<hr>
+
+<div ng-show="loadingData" class="loader-container"><div class="loader"></div> Loading...</div>
+
+<div ng-show="missingModelsPreview.missing_count==0 && !loadingData">Missing Models Preview not found!</div>
+<div class="table-responsive" ng-show="missingModelsPreview.missing_count && !loadingData">
+
+Found {{missingModelsPreview.missing_count}} models Preview!
+<br><br>
+<button class="btn btn-danger" ng-click="delMissingModelsPreview(missingModelsPreview.missing)">Delete {{missingModelsPreview.missing_count}}  Previews</button>
 
 
 </div>

@@ -904,6 +904,8 @@
 			$ERROR = '{"responce": "PRODINFOBAD"}';
 			$NOACCESS = '{"responce": "PRODINFONOACCESS"}';
 			$STATUSOFF = '{"responce": "PRODINFOOFF"}';
+			$NOTEXIST = '{"responce": "PRODINFONOTEXIST"}';
+			
 			$AUTH = $GLOBALS['AUTH']['user'];
 			$ISNOADMIN = $AUTH->rights < 1 OR $AUTH->status == 0;
 			
@@ -923,6 +925,8 @@
 			IF(!$RESULT) RETURN $ERROR;
 			$INFO = $RESULT->fetch_object();
 			
+			IF(!$INFO) RETURN $NOTEXIST;
+			
 			$CANDL = CAT::CANDOWNLOAD($INFO->catid, $CATEGORIES);
 				
 			// PATHWAY
@@ -941,7 +945,7 @@
 			IF(!COUNT(ARRAY_INTERSECT($GRP1, $GRP2)) AND COUNT($GRP1) AND $AUTH->rights < 1) RETURN $NOACCESS;
 			IF($INFO->status == 0 AND $ISNOADMIN) RETURN $STATUSOFF;
 			
-			// TAGS
+			// TAGS			
 			$TAGS = DB::PARSE_VALUE($INFO->tags, ',');
 			$INFO->tags = ARRAY_UNIQUE($TAGS);
 			

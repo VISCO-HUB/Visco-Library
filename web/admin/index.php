@@ -81,7 +81,12 @@
 	</div>
 </div>
 <div class="container" alerts></div>
+
 <div class="container">
+	<div ng-show="globals.status==0" class="alert alert-danger">
+	{{globals.message}}
+	</div>
+
 	<div class="col-sm-3 col-md-3 col-lg-3 hidden-xs hidden-sm"> <br>
 		<div menu></div>	
 	</div>
@@ -97,7 +102,6 @@
 	<div class="close"><span class="glyphicon glyphicon-remove" aria-hidden="true" ng-click="toggleOverlayMenu()"></span></div>
 	<div menu class="margin-top-40"></div>
 </div>
-
 
 <iframe id="download" ng-src="{{download}}" iframe-onload="downloadMsg()" class="hidden"></iframe>
 <?php ECHO $USER; ?>

@@ -175,7 +175,7 @@
 		<div class="col-md-4">
 			<br>
 			<ul class="legend">
-				<li ng-repeat="l in labelsSizeNames"><span class="color" ng-style="{'background-color': labelsSizeColors[$index]}"></span>{{labelsSizeDisc[$index]}}: <b>{{l}}</b></li>
+				<li ng-repeat="l in labelsSizeNames"><span class="color" ng-style="{'background-color': labelsSizeColors[$index]}"></span>{{labelsSizeDisc[$index]}} - <b>{{l}}</b></li>
 			</ul>
 			<br>
 		</div>

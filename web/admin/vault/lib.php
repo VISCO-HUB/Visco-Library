@@ -569,6 +569,21 @@
 			RETURN JSON_ENCODE($OUT);
 		}
 		
+		PUBLIC STATIC FUNCTION SETPARAM($DATA) {			
+			$ERROR = '{"responce": "SETTINGBAD"}';
+			$SUCCESS = '{"responce": "SETTINGOK"}';
+			
+			IF(!ISSET($DATA->param) OR !ISSET($DATA->value)) RETURN $ERROR;
+						
+			$SET['value'] = $DATA->value;
+			$WHERE['name'] = $DATA->param;
+			
+			$RESULT = DB::UPDATE('global', $SET, $WHERE);
+			
+			IF($RESULT > 0) RETURN $SUCCESS;
+			RETURN $ERROR ;
+		}
+		
 		PUBLIC STATIC FUNCTION ADD($DATA) {
 			$ERROR = '{"responce": "SETTINGBAD"}';
 			$SUCCESS = '{"responce": "SETTINGOK"}';
@@ -677,6 +692,16 @@
 			}					
 		}
 		
+		PUBLIC STATIC FUNCTION CLEAR_FILES_BY_PATTERN($DIR, $FILE_LIST) {
+			FOREACH($FILE_LIST AS $FILE) {
+				$F = $DIR . $FILE . '*';
+				$FILES_TO_DEL = GLOB($F);
+				FOREACH($FILES_TO_DEL AS $TO_DEL) {								
+					UNLINK($TO_DEL);
+				}					
+			}
+		}
+		
 		PUBLIC STATIC FUNCTION GET_LIST($DIR, $LIST = []) {
 			
 			$FILES = GLOB($DIR . '/*'); 
@@ -697,7 +722,7 @@
 		}
 		
 		
-		PUBLIC STATIC FUNCTION GET_LIST_BY_EXT($PATH, $EXT = 'max') {
+		PUBLIC STATIC FUNCTION GET_LIST_BY_EXT($PATH, $EXT = 'max', $OUT = 'path') {
 			
 			$DI = NEW RECURSIVEDIRECTORYITERATOR($PATH ,RECURSIVEDIRECTORYITERATOR::SKIP_DOTS);
 			$IT = NEW RECURSIVEITERATORITERATOR($DI);
@@ -706,7 +731,11 @@
 			
 			FOREACH($IT AS $FILE) {
 				IF (PATHINFO($FILE, PATHINFO_EXTENSION) ==  $EXT) {
-					$LIST[] = PATHINFO($FILE, PATHINFO_DIRNAME) . '\\';
+					IF($OUT == 'path') {
+						$LIST[] = PATHINFO($FILE, PATHINFO_DIRNAME) . '\\';
+					} ELSE {
+						$LIST[] = PATHINFO($FILE, PATHINFO_DIRNAME) . '\\' . PATHINFO($FILE, PATHINFO_FILENAME) . '.' . PATHINFO($FILE, PATHINFO_EXTENSION);
+					}
 				}
 			}
 			
@@ -809,6 +838,7 @@
 
 	CLASS CAT {
 		PUBLIC STATIC FUNCTION CLEAR($S) {
+			$S = TRIM($S);
 			$S = STR_REPLACE(' ', '-', $S); 
 			$S = PREG_REPLACE('/[^A-Za-z0-9\-]/', '', $S); 
 			RETURN $S;
@@ -2004,7 +2034,7 @@
 			$ROWS = DB::TOARRAY($RESULT);
 			IF(!$ROWS[0]) RETURN $ERROR;
 		
-			$PREVIEWS = EXPLODE(';', $ROWS[0]->previews);
+			$PREVIEWS = DB::PARSE_VALUE($ROWS[0]->previews);
 						
 			$DEL[] = $DATA->id;
 			
@@ -2021,13 +2051,8 @@
 			FS::DELDIR($DIR);
 			IF(FS::ISDIREMPTY($PATH)) FS::DELDIR($PATH);
 			
+			FS::CLEAR_FILES_BY_PATTERN(IMG_PATH, $PREVIEWS);
 						
-			FOREACH($PREVIEWS AS $P) {
-				FS::DEL(SELF::GETPREVIEWPATH($P, IMG_HUGE));
-				FS::DEL(SELF::GETPREVIEWPATH($P, IMG_THUMB));
-				FS::DEL(SELF::GETPREVIEWPATH($P, IMG_SMALL));
-			}
-			
 			SELF::PRODREMOVEWEBGL($DATA);
 			
 			$RESULT = DB::DEL($TYPE, $DEL, 'id');
@@ -3189,6 +3214,51 @@
 			//print_r($LIST2);
 			//print_r($LIST1);
 			$OUT['missing'] = $MISSING;
+			$OUT['missing_count'] = COUNT($MISSING);			
+			
+			RETURN JSON_ENCODE($OUT);
+		}
+		
+		PUBLIC STATIC FUNCTION DELPREVIEW($DATA) {
+			$ERROR = '{"responce": "MISSDELBAD"}';
+			$SUCCESS = '{"responce": "MISSDELOK"}';
+			
+			IF(!ISSET($DATA->miss) OR !IS_ARRAY($DATA->miss)) RETURN $ERROR;
+			
+			FOREACH($DATA->miss AS $MISS) {								
+				FS::DEL(IMG_PATH . $MISS);
+			}
+			
+			RETURN $SUCCESS;
+		}
+		
+		PUBLIC STATIC FUNCTION PREVIEW($DATA) {
+			$ERROR = '{"responce": "MISSINGFINDBAD"}';
+									
+			$LIST1 = [];				
+			$LIST1 = FS::GET_LIST_BY_EXT(IMG_PATH, 'jpg', 'file');
+						
+			$RESULT = DB::SELECT('models');			
+			$PRUDUCTS = DB::TOARRAY($RESULT);
+			
+			$LIST2 = [];
+			
+			FOREACH($PRUDUCTS AS $PROD) {				
+				$PREVIEWS = DB::PARSE_VALUE($PROD->previews);				
+				$LIST2 = ARRAY_MERGE($LIST2, $PREVIEWS);
+			}
+			
+								
+			$MISSING = SELF::COMPARE_LISTS($LIST1, $LIST2);
+			
+			$MISSING_IMG = [];
+			FOREACH($MISSING AS $M) {
+				$MISSING_IMG[] = PATHINFO($M, PATHINFO_FILENAME) . '.' . PATHINFO($M, PATHINFO_EXTENSION);
+			}
+			
+			//print_r($LIST2);
+			//print_r($LIST1);
+			$OUT['missing'] = $MISSING_IMG;		
 			$OUT['missing_count'] = COUNT($MISSING);			
 			
 			RETURN JSON_ENCODE($OUT);

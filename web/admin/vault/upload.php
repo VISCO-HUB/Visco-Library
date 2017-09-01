@@ -9,7 +9,9 @@
 	$DATE = DATE('d.m.Y');
 			
 	$MYSQLI = DB::CONNECT();
-	$GLOBS = GLOBS::GET();	
+	$GLOBS = GLOBS::GET();
+	$G = GLOBS::PARSE();
+		
 	
 	$AUTH = AUTH::CHECK();
 		
@@ -29,6 +31,9 @@
 	$SUCCESS = '{"response": "DONE", "name": "' . $ONAME . '"}';	
 	$BADZIP = '{"response": "BADZIP", "name": "' . $ONAME . '"}';
 	$BADUSER = '{"response": "BADUSER", "name": "' . $ONAME . '"}';
+	$UPLOADCLOSED = '{"response": "UPLOADCLOSED", "name": "' . $ONAME . '"}';
+	
+	IF(!$G->status) DIE($UPLOADCLOSED);
 	
 	IF(!$AUTH['exist'] OR $AUTH['user']->rights < 1) DIE($BADUSER);
 	
@@ -133,7 +138,10 @@
 		
 		$IMG_CNT = 0;
 		$N = $INFO['CATID'] . '-' . CAT::CLEAR($NAME) . '-' . $INFO['RENDER'];
+		$N = DB::UNIQUEID(20);
+		
 		$RENDERS[] = $N . '-' . $IMG_CNT;
+				
 		NEW PREVIEW($EXTRACTTO . '\\main.jpg', END($RENDERS));
 		
 		FOREACH(GLOB($EXTRACTTO . '\\preview\\*.jpg') AS $V) {				
@@ -150,6 +158,8 @@
 		}
 		ELSE
 		{
+			$OLD_PREVIEWS = DB::PARSE_VALUE($EXIST[0]->previews);
+			FS::CLEAR_FILES_BY_PATTERN(IMG_PATH, $OLD_PREVIEWS);
 			$RESULT = DB::UPDATE('models', $SET, $WHERE, TRUE);
 		}
 		

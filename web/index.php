@@ -96,6 +96,12 @@
 </div>
 
 <div class="container">
+	<div class="alert-global">
+		<div ng-show="globals.status==0" class="alert alert-danger">
+		{{globals.message}}
+		</div>
+	</div>
+
 	<div class="col-lg-6 col-lg-offset-3 col-md-6 col-md-offset-3 col-sm-12 col-xlg-4 col-xlg-offset-4 padding-0" search ng-if="isHome"></div>
 	<div class="col-sm-4 col-md-4 col-lg-3 col-xlg-2" ng-controller="menuCtrl"  ng-class="isHome ? 'hidden visible-xs' : 'col-sm-4 col-md-4 col-lg-3 hidden-xs col-xlg-3 col-xxlg-2'">				
 		<div menu></div>

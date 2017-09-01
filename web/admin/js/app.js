@@ -198,6 +198,12 @@ app.controller('uploadCtrl', function($scope, FileUploader, vault, $rootScope, $
 		if(response.response == 'BADZIP') {
 			vault.showMessage('Bad zip file \"' + response.name + '\"' , 'error');	
 		}
+		
+		if(response.response == 'UPLOADCLOSED') {
+			vault.showMessage('Uploading closed!<br><br>' + $rootScope.globals.message , 'error');
+			fileItem.isError = true;
+			fileItem.isSuccess = false;
+		}
 				
 		if(response.response == 'REPLACEFILE') {
 			vault.showMessage('Some files already exist. Click "Replace" button if you want to keep the new files or \"Clear\" button to delete from list.', 'warning');
@@ -807,7 +813,6 @@ app.controller('texturesCtrl', function($scope, vault, $rootScope, $location, $r
  
   	// MODELS
 app.controller("modelsEditCtrl", function ($scope, $rootScope, $routeParams, vault, FileUploader, $window) {
-	vault.getGlobal();
 	vault.catGet();
 			
 	$rootScope.section = '/models';
@@ -1263,7 +1268,6 @@ app.controller('adminMsgCtrl', function($scope, vault, $rootScope, $location, $r
 	
  	// CATEGORY	
 app.controller("categoryEditCtrl", function ($scope, $rootScope, $routeParams, vault) {
-	vault.getGlobal();
 	vault.catGet();	
 	vault.usersGetFilter();
 		
@@ -1383,7 +1387,6 @@ app.controller("categoryEditCtrl", function ($scope, $rootScope, $routeParams, v
 });
 	// CATEGORY EDIT
 app.controller("categoryCtrl", function ($scope, $rootScope, vault) {
-	vault.getGlobal();
 	vault.catGet();
 	vault.usersGetFilter();
 	
@@ -1453,7 +1456,7 @@ app.controller("settingsCtrl", function ($scope, $rootScope, vault) {
 	
 	$rootScope.addCrumb('Settings', '');
 	
-	$scope.globalsChange = function() {
+	$scope.globalsPath = function() {
 		var n = prompt('Please enter library path!', '');			
 		
 		if(!n || !n.length) {			
@@ -1462,10 +1465,28 @@ app.controller("settingsCtrl", function ($scope, $rootScope, vault) {
 			return false;
 		}
 		
-		vault.globalsChange(n);		
+		vault.globalsPath(n);		
 	}
 	
-	vault.getGlobal();
+	$scope.globSetParam = function(param, value, def) {
+		if(!value) {
+			var value = prompt('Please enter value!', def);			
+		
+			if(!value || !value.length) {			
+				vault.showMessage('Please enter the value!', 'warning');
+			
+				return false;
+			}						
+		}
+		
+		if(value.match(/[^a-zA-Z0-9-:()_ \!.\\]/)) {
+			vault.showMessage('Wrong format!', 'warning');
+			
+			return false;
+		}
+		
+		vault.globSetParam(param, value);
+	}	
 });
 
 
@@ -1520,6 +1541,24 @@ app.controller("toolsCtrl", function ($scope, $rootScope, vault) {
 		$rootScope.loadingData = true;
 		vault.findMissingModels($scope.findIn.id);
 	}
+	
+	$scope.findMissingModelsPreview = function() {
+				
+		$rootScope.loadingData = true;
+		vault.findMissingModelsPreview();
+	}
+	
+	$scope.delMissingModelsPreview = function(miss) {
+		if(!confirm('Do you really want to delete previews?')){
+			return false;
+		}
+		
+		if(!confirm('WARNING!\nThis action will delete this previews permanently!\Did you make a copy of the files?')){
+			return false;
+		}
+		
+		vault.delMissingModelsPreview(miss);
+	}
 		
 	
 	$scope.delMissingModel = function(path) {
@@ -1550,6 +1589,7 @@ app.controller("toolsCtrl", function ($scope, $rootScope, vault) {
 // AUTO RUN
 app.run(function($rootScope, $location, $routeParams, vault, $timeout) {
 	
+
 	$rootScope.download = '';
 	$rootScope.downloadUrl = function(id, type) {
 		if(!confirm('Do you really want download?')){
@@ -1618,6 +1658,7 @@ app.run(function($rootScope, $location, $routeParams, vault, $timeout) {
 		}
 		
 		$rootScope.goHome = function() {
+			$rootScope.oldLocation = window.location;
 			window.location = hostname + 'login/';
 		}
 		
@@ -1701,6 +1742,8 @@ app.run(function($rootScope, $location, $routeParams, vault, $timeout) {
 		$rootScope.mxsForceRefresh = function(){
 			vault.sendCommandMXS('FORCEREFRESH');
 		}
+		
+		vault.getGlobal();
     });
 });
 
@@ -1809,6 +1852,10 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 			case 'MISSINGDELBAD': s.error = 'Error while deleting folder!';
 			break;
 			case 'MISSINGDELOK': s.success = 'Success! Folder removed!';
+			break;
+			case 'MISSDELBAD': s.error = 'Error while deleting previews!';
+			break;
+			case 'MISSDELOK': s.success = 'Success! Previews removed!';
 			break;			
 		}
 		
@@ -2177,6 +2224,18 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		});
 	}
 	
+	var globSetParam = function(param, value) {
+		
+		var json = {'param': param, 'value': value};
+		
+		HttpPost('GLOBSETPARAM', json).then(function(r){															
+			getGlobal();	
+		},
+		function(r){
+			responceMessage(r);
+		});
+	}
+	
 	var prodToggleParam = function(param, id, type) {
 		var json = {'param': param, 'id': id, 'type': type};
 		
@@ -2442,7 +2501,7 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		});
 	}
 	
-	var globalsChange = function(path) {
+	var globalsPath = function(path) {
 		if(path == null) path = '';
 				
 		var json = {'path': path};
@@ -2536,6 +2595,36 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 			$rootScope.loadingData = false;
 			$rootScope.missingModels = r.data;
 					
+			responceMessage(r.data);			
+		},
+		function(r){
+			responceMessage(r);
+		});
+	}
+	
+	var findMissingModelsPreview = function(id) {
+		var json = {'id': id};
+		
+		HttpPost('ADMINBFINDMISSINGPREVIEW', json).then(function(r){									
+			
+			
+			$rootScope.loadingData = false;
+			$rootScope.missingModelsPreview = r.data;
+					
+			responceMessage(r.data);			
+		},
+		function(r){
+			responceMessage(r);
+		});
+	}
+	
+	var delMissingModelsPreview = function(miss) {
+		var json = {'miss': miss};
+		
+		HttpPost('ADMINDELMISSINGPREVIEW', json).then(function(r){									
+						
+			$rootScope.missingModelsPreview = {};
+								
 			responceMessage(r.data);			
 		},
 		function(r){
@@ -2726,7 +2815,8 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		catAdd: catAdd,
 		catTogglePermission: catTogglePermission,
 		getGlobal: getGlobal,
-		globalsChange: globalsChange,
+		globalsPath: globalsPath,
+		globSetParam: globSetParam,
 		catSetParam: catSetParam,
 		catChangeName: catChangeName,
 		catSort: catSort,
@@ -2746,6 +2836,8 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		prodDeleteFromEdit: prodDeleteFromEdit,
 		addTag: addTag,
 		findMissingModels: findMissingModels,
+		findMissingModelsPreview: findMissingModelsPreview,
+		delMissingModelsPreview: delMissingModelsPreview,
 		delMissingModel: delMissingModel,
 		productChangeName: productChangeName,
 		productChangeOverview: productChangeOverview,

@@ -660,6 +660,10 @@ app.controller("modelsCtrl", function ($scope, vault, $rootScope, $location, $ro
 // AUTO RUN
 app.run(function($rootScope, $location, $routeParams, $timeout, $cookieStore, vault) {
       
+	vault.getGlobal();  
+	  
+	  
+	$rootScope.oldLocation = '';  
    $rootScope.menuItemActive = [];
    $rootScope.searchFilter = {};
    $rootScope.searchIn = {};
@@ -1232,7 +1236,7 @@ app.run(function($rootScope, $location, $routeParams, $timeout, $cookieStore, va
 
 // SERVICES
 
-app.service('vault', function($http, $rootScope, $timeout, $interval, $templateCache) {
+app.service('vault', function($http, $rootScope, $timeout, $interval, $templateCache, $cookieStore) {
 		
 	var showMessage = function(m, t) {
 		$rootScope.msg = {};
@@ -1315,7 +1319,12 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 			data: json
 		}).then(function(r) {					
 				console.log(r.data);
-				if(r.data.responce == 'RESTRICTED') {$rootScope.goLogin(); return false;}
+				if(r.data.responce == 'RESTRICTED') {					 
+					$cookieStore.put('old-location', window.location);
+					$rootScope.goLogin(); 
+					return false;
+					
+				}
 				return r;
 			}			
 		);
@@ -1334,7 +1343,12 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 			
 			if(m == 'USEROK') {
 				$timeout(function(){							
-					$rootScope.goHome();
+					loc = $cookieStore.get('old-location');
+					if(!loc) {
+						$rootScope.goHome();						
+					} else {												
+						window.location = loc.href;
+					}
 				}, 200);
 			}
 			
@@ -1356,6 +1370,7 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 			responceMessage(r.data);
 						
 			$timeout(function(){
+				$cookieStore.put('old-location', '');
 				window.location = hostname + 'login/';
 			}, 200);			
 		},
