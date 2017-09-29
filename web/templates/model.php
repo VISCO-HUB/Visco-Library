@@ -19,6 +19,7 @@
 		<br>
 		<ul class="nav nav-tabs">
 			  <li ng-class="{'active': tabinfo=='desc'}"><a href="" ng-click="changeTabInfo('desc')">Description</a></li>
+			  <li ng-class="{'active': tabinfo=='files'}"><a href="" ng-click="changeTabInfo('files')">Files</a></li>
 			  <li ng-class="{'active': tabinfo=='comments'}"><a href="" ng-click="changeTabInfo('comments')">Comments ({{comments.length}})</a></li>
 		</ul>
 		<br>
@@ -29,20 +30,7 @@
 		<div ng-show="tabinfo=='comments'">						
 			<div comments></div>			
 		</div>
-	</div>
-	<div class="col-md-12 col-lg-4 col-sm-12 col-xs-12 fontsize-12">
-		<h3 class="capitalize">{{prod.name}}</h3>
-		<button type="button" class="btn btn-default custom-button-gray button-fixed button-rating" ng-class="{'highlight': product.userrate}" uib-tooltip="Rate model" ng-click="rateProduct(prod.id, libType)"> &nbsp;&nbsp;</button>&nbsp;
-		<button type="button" class="btn btn-default custom-button-gray button-fixed button-heart" uib-tooltip="Add to favorite" ng-click="hideShowQuickFavortites(prod)"> &nbsp;&nbsp;</button>&nbsp;
-		<button type="button" class="btn btn-default custom-button-gray button-fixed button-download" uib-tooltip="Download model" ng-click="downloadUrl(prod.id, libType)" ng-show="auth.rights >= 0 && product.candl"> &nbsp;&nbsp;</button>&nbsp;
-		<a ng-href="admin/#/models-edit/{{prod.id}}/1" class="btn btn-default custom-button-gray button-fixed button-edit" uib-tooltip="Edit" ng-show="auth.rights > 0"> &nbsp;&nbsp;</a>&nbsp;
-		<hr>
-		<ul class="nav nav-tabs nav-justified">
-			  <li ng-class="{'active': tabinfo2 =='info'}"><a href="" ng-click="changeTabInfo2('info')">Info</a></li>
-			  <li ng-class="{'active': tabinfo2 =='files'}"><a href="" ng-click="changeTabInfo2('files')">Files</a></li>
-		</ul>
-		<br>
-		<div ng-show="tabinfo2=='files'">
+		<div ng-show="tabinfo=='files'">
 			<div ng-show="!fileList.responce" class="text-center text-muted"><br>Loading...</div>
 			<div class="file-list" ng-show="fileList.responce == 'OK'">
 				<h4>Files</h4>
@@ -75,8 +63,8 @@
 							<td>
 								<a href ng-click="downloadItem(prod.id, libType, (img | rmdir))" class="file-list-href" uib-tooltip="Download"><span class="glyphicon glyphicon-download-alt inline" aria-hidden="true"></span></a>
 							</td>
-							<td>
-								<img ng-src="vault/r.php?p={{fileList.path + key + '\\' + img}}" uib-tooltip="{{imgSize($index)}}" title="{{img | rmdir}}"></span>
+							<td>								
+								<img drop-file="{{fileList.path + key + '\\' + img}}" ng-src="vault/r.php?p={{fileList.path + key + '\\' + img}}" uib-tooltip="{{imgSize($index)}}" title="{{img | rmdir}}"></span>
 							</td>
 							<td class="wrap">
 								{{img | rmdir}}
@@ -86,7 +74,17 @@
 				</div>				
 			</div>
 		</div>
-		<div ng-show="tabinfo2=='info'" class="text-muted">
+	</div>
+	<div class="col-md-12 col-lg-4 col-sm-12 col-xs-12 fontsize-12">
+		<h3 class="capitalize">{{prod.name}}</h3>
+		<button type="button" class="btn btn-default custom-button-gray button-fixed button-rating" ng-class="{'highlight': product.userrate}" uib-tooltip="Rate model" ng-click="rateProduct(prod.id, libType)"> &nbsp;&nbsp;</button>&nbsp;
+		<button type="button" class="btn btn-default custom-button-gray button-fixed button-heart" uib-tooltip="Add to favorite" ng-click="hideShowQuickFavortites(prod)"> &nbsp;&nbsp;</button>&nbsp;
+		<button type="button" class="btn btn-default custom-button-gray button-fixed button-download" uib-tooltip="Download model" ng-click="downloadUrl(prod.id, libType)" ng-show="auth.rights >= 0 && product.candl"> &nbsp;&nbsp;</button>&nbsp;
+		<a ng-href="admin/#/models-edit/{{prod.id}}/1" class="btn btn-default custom-button-gray button-fixed button-edit" uib-tooltip="Edit" ng-show="auth.rights > 0"> &nbsp;&nbsp;</a>&nbsp;
+		<br><br>
+		<hr>		
+				
+		<div class="text-muted">
 			<div class="capitalize"><strong>Date:</strong> {{tm(prod.date)}}</div>
 			<div class="capitalize"><strong>Downloads:</strong> {{prod.downloads}}</div>
 			<div class="capitalize"><strong>Rating:</strong> <a>{{product.rating}}</a></div>
@@ -132,12 +130,15 @@
 				</button>
 			</td>
 			<td width="30">
-			<button type="button" class="btn btn-primary dropdown-toggle btn-block" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"> <span class="caret"></span> <span class="sr-only">Toggle Dropdown</span> </button>
-			<ul class="dropdown-menu width-100" aria-labelledby="dropdownMenu1">										
-				<li><a href="" ng-click="changePlace(2)" >Open Model</a></li>
-				<li><a href="" ng-click="changePlace(1)" >X-Ref Model</a></li>
-				<li><a href="" ng-click="changePlace(0)" >Merge Model</a></li>
-			</ul>
+			<div class="dropdown">
+			  <button class="btn btn-primary dropdown-toggle" type="button" data-toggle="dropdown">Dropdown Example
+			  <span class="caret"></span></button>
+			  <ul class="dropdown-menu">
+				<li><a href="#">HTML</a></li>
+				<li><a href="#">CSS</a></li>
+				<li><a href="#">JavaScript</a></li>
+			  </ul>
+			</div>
 			</td>
 			</tr>
 		</table>
@@ -147,5 +148,5 @@
 <div ng-show="!product.product.name.length && !product.responce"><h3 class="text-center">Loading...</h3></div>
 <div ng-show="product.responce == 'PRODINFONOTEXIST'"><h3 class="text-center">Model not found!</h3></div>
 <div ng-show="product.responce == 'PRODINFONOACCESS'"><h3 class="text-center">You have no access to view this content!</h3></div>
-<div ng-show="product.responce == 'PRODINFOOFF'"><h3 class="text-center">This model disabled!M</h3></div>
+<div ng-show="product.responce == 'PRODINFOOFF'"><h3 class="text-center">This model disabled!</h3></div>
 <img ng-repeat="img in productGallery" ng-src="{{img}}" class="hidden">

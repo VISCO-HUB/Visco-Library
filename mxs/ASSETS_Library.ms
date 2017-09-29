@@ -50,8 +50,8 @@ Open Assets Library via 3Ds Max=
 */
 
 
---global siteUrl = @"http://assets.visco.no/"
-global siteUrl = @"http://svg-web-003/"
+global siteUrl = @"http://assets.visco.no/"
+--global siteUrl = @"http://svg-web-003/test/card2.php"
 global iconFile = @"\\visco.local\data\Instal_Sync\scripts\scripts\img\assets_favicon.ico"
 global trustUrl = siteUrl + @"vault/mxs/mxsTrustUser.php?user=" + sysInfo.username
 global forceRefresh
@@ -503,7 +503,7 @@ fn addFile id mode: #merge =
 	toolMode.selectioncenter() 
 	enableSceneRedraw()
 	
-	max tool zoomextents all
+	--max tool zoomextents all
 		
 	try(destroyDialog PasteStatus) catch()
 	

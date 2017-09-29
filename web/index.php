@@ -31,6 +31,7 @@
 <script type="text/javascript" src="js/bootstrap.min.js"></script>
 <script type="text/javascript" src="js/ui-bootstrap-tpls-2.1.3.min.js"></script>
 <link href="../css/bootstrap.css" rel="stylesheet" type="text/css">
+<!--<link href="../css/dark-theme.min.css" rel="stylesheet" type="text/css">-->
 <link href="../css/template.css" rel="stylesheet" type="text/css">
 <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
 <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
@@ -107,7 +108,7 @@
 		<div menu></div>
 	</div>
 	<div class="" ng-class="isHome ? 'col-sm-12 col-md-12 col-lg-12' : 'col-sm-8 col-md-8 col-lg-9 col-xs-12 col-xlg-9 col-xxlg-10'">
-		<div ng-view autoscroll="true"></div>
+		<div ng-view autoscroll="true" keep-scroll-pos></div>
 	</div>
 </div>
 <br>

@@ -173,7 +173,7 @@ struct _placer
 				if(not alt and not ctrl) do
 				(					
 					maxops.cloneNodes placeObj clonetype:#instance actualNodelist:placeObj newnodes:&n					
-					selectMore n
+					--selectMore n
 					
 					join placeOn n
 										

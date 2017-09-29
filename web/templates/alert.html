@@ -1,6 +1,8 @@
 <div class="col-xs-12 col-sm-5 col-md-5 col-lg-4 col-xlg-3 alert-msg" ng-show="msg.error || msg.success || msg.warning">
 	<div ng-controller="msgCtrl" class="alert alert-dismissible pointer" ng-class="{'alert-warning': msg.warning, 'alert-success': msg.success, 'alert-danger': msg.error}" ng-click="deleteMsg()">
 		<button type="button" class="close"  aria-label="Close"><span aria-hidden="true">&times;</span></button>
-		{{msg.error}}{{msg.success}}{{msg.warning}}		
+		<span ng-bind-html="msg.error"></span>
+		<span ng-bind-html="msg.success"></span>
+		<span ng-bind-html="msg.warning"></span>			
 	</div>
 </div>

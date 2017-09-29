@@ -240,7 +240,7 @@ app.controller('uploadCtrl', function($scope, FileUploader, vault, $rootScope, $
 					item.isUploading = false;
 					item.isReplace = false;
 					
-					vault.showMessage('Success file "' + item.file.name + '" replaced success!', 'success');
+					vault.showMessage('File "' + item.file.name + '"  successfully replaced!', 'success');
 				} else {
 					item.isError = true;
 				}				
@@ -831,12 +831,15 @@ app.controller("modelsEditCtrl", function ($scope, $rootScope, $routeParams, vau
 		$scope.moveToCat[lvl] = id;
 		$scope.moveToCatName[lvl] = name;
 	}
+	
+	$rootScope.moveProductActive = false;
 		
 	$scope.moveProduct = function(cid) {
 		if(!confirm('Do you really want to move model?')){
 			return false;
 		}
 		
+		$rootScope.moveProductActive = true;
 		vault.moveProduct(id, cid, $scope.type);
 	}
 		
@@ -2289,7 +2292,7 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 				showMessage(m, 'warning');
 			}
 		
-			
+			$rootScope.moveProductActive = false;
 			productInfo(type, id);		
 		},
 		function(r){

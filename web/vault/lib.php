@@ -1984,6 +1984,7 @@
 					$WHERE = [];
 					
 					FOREACH($V2['ids'] AS $CATID) $WHERE['catid'][] = $CATID;
+					IF(!COUNT($WHERE)) CONTINUE;
 					
 					$RESULT = DB::SELECT($TYPE, $WHERE, [], 'date', $LIMIT);
 					$RESULT = DB::TOARRAY($RESULT);	

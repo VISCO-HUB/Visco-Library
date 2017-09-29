@@ -25,6 +25,7 @@ document.addEventListener("contextmenu", function(e){
    }
 }, false);
 
+
 var hostname = window.location.protocol + '//' + window.location.hostname + '/';
 
 var getUrlVars = function (url) {
@@ -172,6 +173,55 @@ app.directive('watchChange', function() {
             });
         }
     };
+});
+
+app.directive('dropFile', function() {
+    return {
+        restrict: 'A',
+		scope: {
+            data: '@dropFile'			
+        },
+        link: function(scope, element, attrs) {
+	
+			element.on('dragover', function(event) {
+				
+				window.external.text = "DRAG=" + scope.data;
+					//event.preventDefault();
+					
+			});			
+        }
+    };
+});
+
+app.directive("keepScrollPos", function($route, $window, $timeout, $location, $anchorScroll) {
+
+    // cache scroll position of each route's templateUrl
+    var scrollPosCache = {};
+
+    // compile function
+    return function(scope, element, attrs) {
+
+        scope.$on('$routeChangeStart', function() {
+            // store scroll position for the current view
+            if ($route.current) {
+                scrollPosCache[$route.current.loadedTemplateUrl] = [ $window.pageXOffset, $window.pageYOffset ];
+            }
+        });
+
+        scope.$on('$routeChangeSuccess', function() {
+            // if hash is specified explicitly, it trumps previously stored scroll position
+            if ($location.hash()) {
+                $anchorScroll();
+
+            // else get previous scroll position; if none, scroll to the top of the page
+            } else {
+                var prevScrollPos = scrollPosCache[$route.current.loadedTemplateUrl] || [ 0, 0 ];
+                $timeout(function() {
+                    $window.scrollTo(prevScrollPos[0], prevScrollPos[1]);
+                }, 0);
+            }
+        });
+    }
 });
 
 // FILTERS
@@ -539,6 +589,8 @@ app.controller("modelCtrl", function ($scope, vault, $rootScope, $location, $rou
 	$rootScope.libType = 1;
 	$rootScope.fileList = {};
 	
+	vault.sendCommandMXS('SHOW_DROP_TEX');
+	
 	$scope.getProduct = function(id, type){				
 		vault.getProduct(id, type);
 	};
@@ -560,6 +612,16 @@ app.controller("modelCtrl", function ($scope, vault, $rootScope, $location, $rou
 		}, 1000);
 	}
 	
+	$scope.dragTimer;
+	
+	$(document).on('dragenter', function(e){		
+		$timeout.cancel($scope.dragTimer);
+		$scope.dragTimer = $timeout(function(){
+			vault.showMessage('This file will be downloaded to local drive cash folder. Don\'t forget to move it to the proper place and relink.', 'warning');
+		}, 150);		
+	});
+
+
 	$scope.imgSize = function(index) {
 		s = $rootScope.fileList.files.imgsize[index];
 		return s[0] + 'x' + s[1] + ' px';
@@ -587,6 +649,11 @@ app.controller("modelCtrl", function ($scope, vault, $rootScope, $location, $rou
 	$scope.tabinfo = 'desc';
 	$scope.changeTabInfo = function(s) {
 		$scope.tabinfo = s;		
+		
+		switch(s) {
+			case 'files': $scope.getFileList($scope.id, 1);
+			break;
+		}
 	}
 	
 	$scope.rateProduct = function(id, type) {
@@ -596,17 +663,7 @@ app.controller("modelCtrl", function ($scope, vault, $rootScope, $location, $rou
 	$scope.favoriteProduct = function(id, type) {
 		vault.favoriteProduct(id, type);
 	}
-	
-	$scope.tabinfo2 = 'info';
-	$scope.changeTabInfo2 = function(s) {
-		$scope.tabinfo2 = s;
-				
-		switch(s) {
-			case 'files': $scope.getFileList($scope.id, 1);
-			break;
-		}
-	}
-	
+		
 	$rootScope.favGet($rootScope.libType);
 });
 
