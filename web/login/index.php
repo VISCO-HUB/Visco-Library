@@ -21,11 +21,14 @@
    	<script type="text/javascript" src="../js/angular-animate.min.js"></script>
    	<script type="text/javascript" src="../js/angular-cookies.min.js"></script>
 	<script type="text/javascript" src="../js/angular-file-upload.min.js"></script>
+	<script type="text/javascript" src="../js/angular-touch.min.js"></script>
 	<script type="text/javascript" src="../js/app.js"></script>   
     <script type="text/javascript" src="../js/bootstrap.min.js"></script>
 	<script type="text/javascript" src="../js/ui-bootstrap-tpls-2.1.3.min.js"></script>
-    <link href="../css/bootstrap.css" rel="stylesheet" type="text/css">
-	<link href="../css/template.css" rel="stylesheet" type="text/css">
+    <!--<link href="../css/bootstrap.css" rel="stylesheet" type="text/css">-->
+	<link href="../css/dark-theme.min.css" rel="stylesheet" type="text/css">
+	<!--<link href="../css/template.css" rel="stylesheet" type="text/css">-->
+	<link href="../css/template-dark.css" rel="stylesheet" type="text/css">
     <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
     <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
     <!--[if lt IE 9]>
@@ -41,6 +44,7 @@
 		<form ng-submit="signIn()">
 			<h2>Sign in</h2>
 			<input type="text" id="name" class="form-control" placeholder="User name" required="" autofocus ng-model="userName" ng-class="{warning: badUserName}">
+			<br>
 			<input type="password" id="password" class="form-control" placeholder="Password" required="" ng-model="userPassword" ng-class="{warning: badUserPassword}">
 			<br>
 			<button class="btn btn-lg btn-native btn-block" type="submit">Sign in</button>

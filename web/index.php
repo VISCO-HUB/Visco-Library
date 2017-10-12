@@ -8,7 +8,7 @@
 ?>
 
 <!doctype html>
-<html ng-app="app">
+<html ng-app="app" ng-swipe-right="toggleOverlayMenu(true)" ng-swipe-left="toggleOverlayMenu(false)">
 <head>
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -26,13 +26,15 @@
 <script type="text/javascript" src="js/angular-sanitize.min.js"></script>
 <script type="text/javascript" src="js/angular-cookies.min.js"></script>
 <script type="text/javascript" src="js/angular-file-upload.min.js"></script>
+<script type="text/javascript" src="js/angular-touch.min.js"></script>
 <script type="text/javascript" src="js/angular-animate.min.js"></script>
 <script type="text/javascript" src="js/app.js"></script>
 <script type="text/javascript" src="js/bootstrap.min.js"></script>
 <script type="text/javascript" src="js/ui-bootstrap-tpls-2.1.3.min.js"></script>
-<link href="../css/bootstrap.css" rel="stylesheet" type="text/css">
-<!--<link href="../css/dark-theme.min.css" rel="stylesheet" type="text/css">-->
-<link href="../css/template.css" rel="stylesheet" type="text/css">
+<!--<link href="../css/bootstrap.css" rel="stylesheet" type="text/css">-->
+<link href="../css/dark-theme.min.css" rel="stylesheet" type="text/css">
+<!--<link href="../css/template.css" rel="stylesheet" type="text/css">-->
+<link href="../css/template-dark.css" rel="stylesheet" type="text/css">
 <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
 <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
 <!--[if lt IE 9]>
@@ -41,7 +43,7 @@
 	<![endif]-->
 </head>
 
-<body ng-style="{'overflow': showLightBox || webgl.length ? 'hidden' : 'auto'}">
+<body ng-style="{'overflow': showLightBox || webgl.length || showOverlayMenu ? 'hidden' : 'auto'}" >
 <div preview></div>
 <div class="header">
 	<div class="container">

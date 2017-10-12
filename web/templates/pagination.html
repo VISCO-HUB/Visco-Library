@@ -3,10 +3,10 @@
 	</ul>
 </div>
 <hr>
-<div class="dropdown dropup clr pull-right"> Show:
+<div class="dropdown dropup clr pull-right"> Show:&nbsp;&nbsp;
 	<div class="btn-group">
-		<button type="button" class="btn btn-default">{{products.perpage}}</button>
-		<button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span class="caret"></span><span class="sr-only">Toggle Dropdown</span></button>
+		<button type="button" class="btn btn-default btn-dropdown dropdown-toggle" data-toggle="dropdown">{{products.perpage}}</button>
+		<button type="button" class="btn btn-default btn-dropdown dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span class="caret"></span><span class="sr-only">Toggle Dropdown</span></button>
 		<ul class="dropdown-menu" style="min-width: 100%;" role="menu" aria-labelledby="dropdownMenu">
 			<li ng-repeat="i in [12, 12 * 2, 12 * 4, 12 * 5, 12 * 8]"><a href="" ng-click="changePerPage(i)">{{i}}</a></li>			
 		</ul>

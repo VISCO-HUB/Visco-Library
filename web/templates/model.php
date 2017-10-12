@@ -5,6 +5,7 @@
 </script>
 
 <div ng-show="product.product.name.length">
+	<div class="row">
 	<div class="col-md-12 col-lg-8 col-sm-12 col-xs-12">
 	<div class="prod-gallery-frame">
 		<img src="img/loading.gif" ng-src="{{productGallery[currItem]}}" ng-class="{'show': !showLightBox}" class="img-responsive margin-auto pointer" ng-click="hideShowLightBox(true, prod.previews)" fade-in>		
@@ -14,6 +15,9 @@
 			<li ng-repeat="item in productGalleryPreviews" ng-style="{'background-image': 'url(' + item + ')'}" ng-click="showItem($index)" ng-class="{'active': $index == currItem}"></li>
 			<li ng-style="{'background-image': 'url(' + productGalleryPreviews[0] + ')'}" ng-show="prod.webgl && auth.browser!='MXS'" ng-click="webglUrl(prod.webgl, prod.name)">
 				<div style="background-image:url('/img/3d2.svg'); background-size: contain; height: 20px; width: 20px; bottom: 0" ></div>
+			</li>
+			<li ng-style="{'background-image': 'url(' + productGalleryPreviews[0] + ')'}" ng-show="prod.webgl && auth.browser!='MXS'" ng-click="debugDevelop()">
+				<div style="background-image:url('/img/ar.svg'); background-size: contain; height: 20px; width: 20px; bottom: 0"></div>
 			</li>
 		</ul>
 		<br>
@@ -37,7 +41,7 @@
 					
 				<table class="table table-striped">
 					<tr>
-						<td>#</td>
+						<td width="20px">#</td>
 						<td>Name</td>
 					</tr>	
 					<tr ng-repeat="file in fileList.files.file">
@@ -55,8 +59,8 @@
 					<h4>Images</h4>
 					<table class="table table-striped">
 						<tr>
-							<td>#</td>
-							<td>Preview</td>
+							<td width="20px">#</td>
+							<td width="120px">Preview</td>
 							<td>Name</td>
 						</tr>
 						<tr ng-repeat="img in fileList.files.img">
@@ -84,7 +88,7 @@
 		<br><br>
 		<hr>		
 				
-		<div class="text-muted">
+		<div class="">
 			<div class="capitalize"><strong>Date:</strong> {{tm(prod.date)}}</div>
 			<div class="capitalize"><strong>Downloads:</strong> {{prod.downloads}}</div>
 			<div class="capitalize"><strong>Rating:</strong> <a>{{product.rating}}</a></div>
@@ -130,19 +134,16 @@
 				</button>
 			</td>
 			<td width="30">
-			<div class="dropdown">
-			  <button class="btn btn-primary dropdown-toggle" type="button" data-toggle="dropdown">Dropdown Example
-			  <span class="caret"></span></button>
-			  <ul class="dropdown-menu">
-				<li><a href="#">HTML</a></li>
-				<li><a href="#">CSS</a></li>
-				<li><a href="#">JavaScript</a></li>
-			  </ul>
-			</div>
+			<button type="button" class="btn btn-primary dropdown-toggle btn-block" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"> <span class="caret"></span> <span class="sr-only">Toggle Dropdown</span> </button>
+				<ul class="dropdown-menu place-dropdown-menu" aria-labelledby="dropdownMenu1">										
+					<li><a href="" ng-click="changePlace(2)" >Open Model</a></li>
+					<li><a href="" ng-click="changePlace(1)" >X-Ref Model</a></li>
+					<li><a href="" ng-click="changePlace(0)" >Merge Model</a></li>
+				</ul>
 			</td>
 			</tr>
 		</table>
-		
+	</div>	
 	</div>
 </div>
 <div ng-show="!product.product.name.length && !product.responce"><h3 class="text-center">Loading...</h3></div>

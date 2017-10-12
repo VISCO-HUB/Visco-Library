@@ -38,7 +38,7 @@ var getUrlVars = function (url) {
 
 /* APP */
 
-var app = angular.module('app', ['ngRoute', 'ngSanitize', 'ui.bootstrap', 'ngAnimate', 'ngCookies', 'angularFileUpload']);
+var app = angular.module('app', ['ngRoute', 'ngSanitize', 'ui.bootstrap', 'ngAnimate', 'ngCookies', 'angularFileUpload', 'ngTouch']);
 
 // CONFIG 
 app.config(['$routeProvider', function($routeProvider) {
@@ -614,7 +614,7 @@ app.controller("modelCtrl", function ($scope, vault, $rootScope, $location, $rou
 	
 	$scope.dragTimer;
 	
-	$(document).on('dragenter', function(e){		
+	$('img').on('dragenter', function(e){		
 		$timeout.cancel($scope.dragTimer);
 		$scope.dragTimer = $timeout(function(){
 			vault.showMessage('This file will be downloaded to local drive cash folder. Don\'t forget to move it to the proper place and relink.', 'warning');
@@ -792,8 +792,16 @@ app.run(function($rootScope, $location, $routeParams, $timeout, $cookieStore, va
 		return count;
 	}
 	
-	$rootScope.toggleOverlayMenu = function(){
-		$rootScope.showOverlayMenu = !$rootScope.showOverlayMenu;
+	$rootScope.toggleOverlayMenu = function(a){
+		
+		if($rootScope.showLightBox) {return false;}
+		
+		if(a != undefined) {
+			$rootScope.showOverlayMenu = a;
+		} else
+		{
+			$rootScope.showOverlayMenu = !$rootScope.showOverlayMenu;			
+		}
 	}
 	
 	$rootScope.isActiveMenu = function(id) {
@@ -1000,9 +1008,10 @@ app.run(function($rootScope, $location, $routeParams, $timeout, $cookieStore, va
 		
 		if($rootScope.showResults == true) {
 			if($(".fast-result a.active").length != 0) {
-				var href = $('.fast-result').find("a.active").attr('href');
+				var href = $('.fast-result').find("a.active").attr('href').replace('#', '');
+				console.log(href);
 				$location.path(href);
-				
+								
 				return false;
 			}						
 		}
@@ -1028,23 +1037,36 @@ app.run(function($rootScope, $location, $routeParams, $timeout, $cookieStore, va
 		
 	// LIGHTBOX
 	
+	$rootScope.slideLightBoxInit = false;
+	
 	$rootScope.hideShowLightBox = function(x, img){
 		$rootScope.showLightBox = x;
-				
+		$rootScope.slideLightBoxInit = false;	
+			
 		if(!img) return false;		
-		$rootScope.currItem = 0;		
+		$rootScope.currItem = 0;
 		$rootScope.productGalleryPreviews = [];
 		$rootScope.productGallery = [];			
 		$rootScope.productGallery[0] = 'img/loading.gif';
+		
 			
-		$timeout(function(){			
+		$timeout(function(){						
 			$rootScope.productGallery = $rootScope.getProdImages(img, 2, false);
-			$rootScope.productGalleryPreviews = $rootScope.getProdImages(img, 0, false);			
+			$rootScope.productGalleryPreviews = $rootScope.getProdImages(img, 0, false);															
+			
+			$rootScope.slideLightBoxInit = true;
 		}, 150);		
 	};
 	
+	
+	$rootScope.slideLightBoxDirection = 1;
+	
 	$rootScope.slideLightBox = function(i){
 		
+		
+		
+		$rootScope.slideLightBoxDirection = i;
+						
 		var c = $rootScope.currItem;
 		var l = $rootScope.productGallery.length - 1;
 		
@@ -1214,7 +1236,7 @@ app.run(function($rootScope, $location, $routeParams, $timeout, $cookieStore, va
 			return false;
 		}
 		
-		var name = prompt('Please enter collection name! Ex.: Cars', '');
+		var name = prompt('Please enter collection name! Ex.: Cars', name);
 		
 		if(!name || !name.length) {			
 			vault.showMessage('Please enter the name!', 'warning');
@@ -1288,6 +1310,8 @@ app.run(function($rootScope, $location, $routeParams, $timeout, $cookieStore, va
 		$rootScope.bindSearchEvent();
 		
 		$rootScope.webglUrl(null);
+		
+		$rootScope.debugDevelop = function() {alert('This option under construction!');}
     });
 });
 
@@ -1401,11 +1425,17 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 			if(m == 'USEROK') {
 				$timeout(function(){							
 					loc = $cookieStore.get('old-location');
-					if(!loc) {
-						$rootScope.goHome();						
-					} else {												
-						window.location = loc.href;
-					}
+					h = window.location.hash
+					
+					if(h.length) {
+						window.location = hostname + h;
+					} else {
+						if(!loc) {
+							$rootScope.goHome();
+						} else {
+							window.location = loc.href;
+						}
+					}					
 				}, 200);
 			}
 			

@@ -673,7 +673,7 @@
 					$I['desc'] = $CATEGORY->description;
 					$I['type'] = $CATEGORY->type;
 					$I['sort'] = $CATEGORY->sort;
-					$I['editors'] = IMPLODE(';', DB::PARSE_VALUE($CATEGORY->editors));
+					$I['editors'] = STRTOLOWER(IMPLODE(';', DB::PARSE_VALUE($CATEGORY->editors)));
 					$I['access'] = $AUTH['user']->rights > 0;
 					
 										
@@ -2133,7 +2133,7 @@
 				<br /><br /><table width="100%" border="0" cellspacing="0" cellpadding="0" class="footer" align="center" style="background: #F5F5F5; color: #888; font-size: 11px; font-family: Gotham, "Helvetica Neue", Helvetica, Arial, sans-serif; line-height: 16px;"><tbody><tr>
 				<td style="padding: 20px; background-color: #FFF;">&copy; ' . DATE('Y') . ' - VISCO. ALL RIGHTS RESERVED.</td>
 				   <td align="right" style="padding: 20px; background-color: #FFF;">
-				<a href="' . HOSTNAME . '/#/profile/profile" style="color: #8EC961; text-decoration: underline;">Unsubscribe</a> of this newsletter instantly.</td>
+				<a href="/#/profile/profile" style="color: #8EC961; text-decoration: underline;">Unsubscribe</a> of this newsletter instantly.</td>
 				  </tr></tbody></table>
 
 				</td></tr></table>
@@ -2171,7 +2171,7 @@
 			$RESULT = DB::SELECT($TABLE, $WHERE);
 			$PROD = $RESULT->fetch_object();
 						
-			$MSG = '<a href="' . HOSTNAME . '#/' . RTRIM($TABLE, 's') . '/' . $ID . '">' . $PROD->name . '</a><br>';
+			$MSG = '<a href="/#/' . RTRIM($TABLE, 's') . '/' . $ID . '">' . $PROD->name . '</a><br>';
 			$MSG .= 'Added comment by ' . $AUTH->user . '<br><br>';						
 			$MSG .= '<pre>' . $TXT. '</pre><br>';
 			
