@@ -2,7 +2,7 @@
 [INFO] 
 
 NAME = Make Preview
-VERSION = 1.0.8
+VERSION = 1.0.9
 AUTHOR = Vasily Lukyanenko
 DEV = VISCO
 HELP = 
@@ -52,6 +52,10 @@ ICON=#("PhysX_Main", 3)
 
 [1.0.8]
 * Changed: Save both images render and wire instantly=
+
+[1.0.9]
+* Changed: Catmull Rom filter to Sharp Quadratic=
+* Added: Final+ quality=
 
 [ABOUT]
 
@@ -741,6 +745,11 @@ fn setRenderQuality =
 			x = renderSizeWidth
 			y = renderSizeHeight	
 		)
+		3: 
+		(
+			x = renderSizeWidth
+			y = renderSizeHeight	
+		)
 		default: 
 		(
 			x = (renderSizeWidth / 2.2) as integer
@@ -757,8 +766,8 @@ fn setRenderQuality =
 		(	
 			_rStep3.cbxDR.visible = false
 			_rStep3.btnOpenEditor.visible = false
-			
-			if(renderImageFilter == true) do scanlineRender.antiAliasFilter = Catmull_Rom()
+						
+			if(renderImageFilter == true) do scanlineRender.antiAliasFilter = Sharp_Quadratic()
 			
 			rendForce2Side = true			
 			LT = SceneRadiosity.radiosity
@@ -802,7 +811,7 @@ fn setRenderQuality =
 			renderSystem.environment_refract_color = white
 			renderSystem.system_region_x = 24
 			renderSystem.system_region_y = 24
-			renderSystem.colorMapping_affectBackground = on
+			renderSystem.colorMapping_affectBackground = off
 			renderSystem.colorMapping_subpixel = on
 			renderSystem.colorMapping_clampOutput = on
 			renderSystem.colorMapping_clampLevel = 1.0
@@ -816,7 +825,7 @@ fn setRenderQuality =
 			if(renderImageFilter == true) do
 			(	
 				renderSystem.filter_on  = on
-				renderSystem.filter_kernel = Catmull_Rom()
+				renderSystem.filter_kernel = Sharp_Quadratic()
 			)
 					
 			case q of 
@@ -845,6 +854,20 @@ fn setRenderQuality =
 					renderSystem.gi_primary_type = 2				
 					renderSystem.gi_secondary_type = 2
 					renderSystem.dmcgi_subdivs	= 12				
+					renderSystem.dmc_earlyTermination_threshold = 0.004
+				)
+				3:
+				(					
+					renderSystem.imageSampler_type = 1
+					
+					renderSystem.imageSampler_shadingRate = 15				
+					renderSystem.twoLevel_baseSubdivs = 1				
+					renderSystem.twoLevel_fineSubdivs = 8				
+					renderSystem.twoLevel_threshold = 0.001								
+					renderSystem.gi_primary_type = 2				
+					renderSystem.gi_secondary_type = 2
+					renderSystem.dmcgi_subdivs	= 12	
+					renderSystem.dmc_earlyTermination_threshold = 0.001
 				)
 				default:
 				(
@@ -914,7 +937,7 @@ fn rolloutToggle t =
 	addRollout _rStep2 fFastRender rolledUp:false
 	--addRollout _rStep3 fFastRender
 	addRollout _rPreset fFastRender rolledUp:true
-	createDialog _rStep3 200 360 style: #(#style_titlebar, #style_border) parent: _rStep0.hwnd
+	createDialog _rStep3 230 360 style: #(#style_titlebar, #style_border) parent: _rStep0.hwnd
 	
 	r = getRender()
 	
@@ -2255,10 +2278,11 @@ rollout _rStep3  "Render / Post Process" category:4
 (		
 	group "Render Quality"
 	(
-		slider sldQuality "" ticks: 2 range:[0, 2, 0] type: #integer
-		label lblQualityLow "Draft" align: #left across: 3
-		label lblQualityMedium "Preview" align: #center
-		label lblQualityHigh "Final" align: #right
+		slider sldQuality "" ticks: 2 range:[0, 3, 0] type: #integer
+		label lblQualityLow "Draft" align: #left across: 4
+		label lblQualityMedium "Preview" align: #left
+		label lblQualityHigh "Final" align: #center
+		label lblQualityHighPlus "Final+" align: #right
 	)
 	group "Render"
 	(
@@ -2268,7 +2292,7 @@ rollout _rStep3  "Render / Post Process" category:4
 		label lblX " x " 
 		spinner spnRenderSizeY "" range: [100, 999999999, 800] fieldWidth: 50 type: #integer align: #left offset: [-20, 0]
 		--button btnStartRender "Start Render" height: 30 width: 215		
-		dotnetcontrol btnStartRender "System.Windows.Forms.Button" height: 40 width: 175
+		dotnetcontrol btnStartRender "System.Windows.Forms.Button" height: 40 width: 203
 		
 		checkbox cbxDR "Distributed rendering"
 	)
@@ -2281,7 +2305,7 @@ rollout _rStep3  "Render / Post Process" category:4
 	(
 		--button btnOpenEditor "Open Editor" height: 30 width: 215
 		
-		dotnetcontrol btnOpenEditor "System.Windows.Forms.Button" height: 40 width: 175
+		dotnetcontrol btnOpenEditor "System.Windows.Forms.Button" height: 40 width: 203
 	)
 	timer tmrSetPos "" active: false interval: 300
 	

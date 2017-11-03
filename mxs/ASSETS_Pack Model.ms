@@ -2,7 +2,7 @@
 [INFO] 
 
 NAME = Pack Model
-VERSION = 1.1.0
+VERSION = 1.1.1
 AUTHOR = Vasily Lukyanenko
 DEV = VISCO
 HELP = 
@@ -70,6 +70,11 @@ ICON=#("PhysX_Main", 30)
 
 - BugFix: Not save Game Engine Ready option=
 * Changed: Wider field for 3Ds Max Version dropdown=
+
+
+[1.1.1]
+
+- BugFix: Animated option not save=
 
 [ABOUT]
 
@@ -2443,6 +2448,7 @@ rollout _STEP5 "STEP 5: Pack Model"
 		setIniInfo f "INFO" "CLIENT" (getNA sClient)
 		setIniInfo f "INFO" "RIGGED" (getYesNo bRigged) 
 		setIniInfo f "INFO" "LODS" (getYesNo bLods) 
+		setIniInfo f "INFO" "ANIMATED" (getYesNo bAnimated) 
 		setIniInfo f "INFO" "MODELLER" (getNA sModeller) 
 		setIniInfo f "INFO" "TAGS" sTags 
 		setIniInfo f "INFO" "MANUFACTURER" (getNA sManufacturer) 
