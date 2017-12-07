@@ -10,6 +10,13 @@ HELP =
 [1.0.0]
 
 * First release =
+
+[1.0.1]
+
++ Added: VRay to Standard converter=
++ Added: Set color 240 240 240 by default for Standard materials=
++ Added: Batch Setup Standard Material Properties=
+
 [ABOUT]
 
 This script helps to prepare model for WebGL Player in Assets Library=
@@ -20,7 +27,7 @@ This script helps to prepare model for WebGL Player in Assets Library=
 */	
 
 try(closeRolloutFloater fAssetsLibraryWebGLExport)catch()
-global fAssetsLibraryWebGLExport = newRolloutFloater "WebGL Export" 220 380
+global fAssetsLibraryWebGLExport = newRolloutFloater "WebGL Export" 220 610
 global szChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890-_ "
 
 global _SAVEPATH = @"C:\temp\Assets Library\"
@@ -115,6 +122,7 @@ struct zip
 	)
 )
 
+
 fn convertFileToUTF8 o n  =
 (
 	f = openFile o
@@ -156,6 +164,120 @@ fn getScriptInfo s releaseInfo: "" =
 	return #(n, a, v, o, r, c, h)
 )
 
+rollout _rWebGLExport_PreExportFixes "PreExport Fixes" 
+(
+	group "Convert VRay to Standard" (
+		button btnConvertVrayToStandard "Convert"
+	)
+	
+	group "Setup Standard Material Properties" (
+		spinner spnSpecularLevel "Specular Level  " type: #integer range: [0, 900, 60]
+		spinner spnGlossiness "Glossines  " type: #integer range: [0, 900, 55]
+		button btnSetupProperties "Setup Properties" offset: [0, 5]
+	)
+	
+	fn isVRayInstalled = (
+		return (for o in rendererClass.classes where matchPattern (o as string) pattern:"*v_ray*" collect o).count > 0
+	)
+	
+	fn getConvertColorToPercent c =
+	(
+		k = (c.r + c.g + c.b) / 3
+		
+		return 100 - (k / 2.55)
+	)
+	
+	fn isBlack c =
+	(
+		--c = c as point3
+		--return (distance c [0,0,0]) == 0
+		return c == (color 0 0 0)
+	)
+	
+	fn convertVrayToStandard = 
+	(
+		if(isVRayInstalled() == false) do return messageBox "Vray not installed!" title: "Warning!"
+		
+		MMClean.fixAll prompt: false
+		
+		for m in getClassInstances VrayMtl do (
+			nm = Standard()
+			
+			nm.name = m.name
+			
+			-- Set diffuse as VRay
+			nm.DiffuseMap = m.texmap_diffuse
+			
+			-- Set default shiness
+			nm.glossiness = 20
+			nm.specularLevel = 20
+			nm.Specular = color 70 70 70
+				
+			-- If has reflect
+			refl = m.Reflection
+			if(not isBlack refl or m.texmap_reflection != undefined) do (
+				nm.reflectionMapEnable = on
+				nm.reflectionMap = m.texmap_reflection				
+				nm.shaderType = 1
+				
+				-- Get color amount in percent
+				k = getConvertColorToPercent refl
+				
+				-- Set refl level 40 if texmap exist and color black
+				if(k < 10 and m.texmap_reflection != undefined) do k = 40
+				
+				nm.reflectionMapAmount = k
+				nm.glossiness = 30
+				nm.specularLevel = 60
+				nm.Specular = color 200 200 200
+			)
+			
+			-- If has opacity
+			refr = m.Refraction 
+			if(not isBlack refr) do (
+				nm.Diffuse = m.Diffuse
+				nm.opacity = 40	
+				nm.glossiness = 20
+				nm.specularLevel = 90
+				nm.Specular = color 120 120 120
+			)
+			
+			replaceInstances m nm
+		)
+		
+		for m in getClassInstances VRayLightMtl do (
+			nm = Standard()
+			nm.useSelfIllumColor = on
+			nm.selfIllumColor = m.color
+			
+			replaceInstances m nm
+		)
+		
+		messageBox "Convert successfully done!" title: "Success!" beep: false
+	)
+	
+	on btnConvertVrayToStandard pressed do (
+		q = queryBox "Do you really want to convert All materials VRay -> Standard?" title: "Confirm!"
+		
+		if(not q) do return false
+		
+		convertVrayToStandard()
+	)
+	
+	on btnSetupProperties pressed do (
+		q = queryBox "Do you really want to set properties \nfor All Standard materials in scene?" title: "Confirm!"
+		
+		if(not q) do return false
+		
+		for i in getClassInstances Standard do (
+			i.glossiness = spnGlossiness.value
+			i.specularLevel = spnSpecularLevel.value
+		)
+		
+		messageBox "Setup properties successfully done!" title: "Success!" beep: false
+	)
+)
+
 rollout _rWebGLExport_Settings "Export Settings" 
 (	
 	group "Note!"
@@ -188,8 +310,16 @@ rollout _rWebGLExport_Settings "Export Settings"
 			
 		return s
 	)
-	
+		
 	fn trim s tag: " "= trimLeft (trimRight s tag) tag
+	
+	
+	fn getMatIDs o = (
+		ids = #()
+		for f in 1 to  getNumFaces o do appendIfUnique ids (getFaceMatID o f)
+		
+		return ids
+	)
 	
 	fn hasMaterialError =
 	(
@@ -200,12 +330,15 @@ rollout _rWebGLExport_Settings "Export Settings"
 			if(classOf  m == Multimaterial) then join mat m.materialList  else append mat m			
 		)
 		
-		badMats = for m in mat where m != undefined and classOf m != Standard collect m
+		mat = makeUniqueArray mat
 		
-		m = "Found errors in Materials:\n\n"
-		for i in badMats do m += i.name + " - not Standard material!\n"
+		badMats = #()
+		badMats = for m in mat where m != undefined and classOf m != Standard  collect m
 		
-		if(badMats.count != 0) do messageBox m title: "Error!"
+		msg = "Found errors in Materials:\n\n"
+		for i in badMats do msg += i.name + " (" + (classOf i) as string + ") - not Standard material!\n"
+		
+		if(badMats.count != 0) do messageBox msg title: "Error!"
 		
 		return badMats.count != 0
 	)
@@ -216,6 +349,13 @@ rollout _rWebGLExport_Settings "Export Settings"
 	(	
 		return b == undefined or b.filename == undefined or b.filename == "" or b.filename.count == 0 or not doesFileExist b.filename
 	)
+	
+	fn normalizeDiffuseColor = (
+		c = color 240 240 240
+		for i in getClassInstances Standard where i.opacity == 100 do i.Diffuse = c
+	)
+	
+
 	
 	fn checkTexturesError =
 	(
@@ -244,6 +384,42 @@ rollout _rWebGLExport_Settings "Export Settings"
 		)
 		
 		return false
+	)TangentSpaceExport
+
+	
+	fn setFbxSettings =
+	(
+		-- Geometry
+		
+		FBXExporterSetParam "SmoothingGroups" true		
+		FBXExporterSetParam "NormalsPerPoly" false
+		FBXExporterSetParam "TangentSpaceExport" false
+		FBXExporterSetParam "SmoothMeshExport" false
+		FBXExporterSetParam "Preserveinstances" false
+		FBXExporterSetParam "SelectionSetExport" false
+		FBXExporterSetParam "GeomAsBone" false
+		FBXExporterSetParam "Triangulate" true
+		FBXExporterSetParam "ColladaTriangulate" true
+		FBXExporterSetParam "ConvertUnit" "m"
+		FBXExporterSetParam "PreserveEdgeOrientation" true
+		FBXExporterSetParam "ASCII" false
+		FBXExporterSetParam "EmbedTextures" true
+		FBXExporterSetParam "FileVersion" "FBX200900"
+		FBXExporterSetParam "UseSceneName" true
+		
+		-- Animation
+		FbxExporterSetParam "Animation" false
+		FbxExporterSetParam "Cameras" false
+		FbxExporterSetParam "Lights" false
+		FbxExporterSetParam "Shape" false		
+		
+		-- Import Settings
+		try(
+			FbxImporterSetParam "RescaleRoot" true
+		) catch (
+			FbxImporterSetParam "ScaleConversion" true
+			FbxImporterSetParam "ConvertUnit" "m"
+		)
 	)
 	
 	fn setObjExpSettings =
@@ -286,8 +462,16 @@ rollout _rWebGLExport_Settings "Export Settings"
 		return _INI
 	)
 	
+	fn setUnits = 
+	(
+		units.DisplayType = #Metric
+		units.MetricType = #Meters
+		units.SystemType = #Meters
+	)
+	
 	fn exportToWebGL =
-	(			
+	(	
+		_REOPEN = maxFilePath + maxFileName
 		_NAME = replaceBadChars edtModelName.text
 		_NAME = trim _NAME
 		
@@ -298,29 +482,49 @@ rollout _rWebGLExport_Settings "Export Settings"
 		err =  units.SystemType != #meters
 		if(err) do return messageBox "Please use system units Meters for export and try again!" title: "Warning"
 		
+		MMClean.fixAll prompt: false
+		
 		err = hasMaterialError()
 		if(err) do return false
 		
 		err = checkTexturesError()
 		if(err) do return false
 		
+		normalizeDiffuseColor()
+		
 		if(_NAME.count < 2) do return messageBox "Please enter the name!" title: "Warning!"
 		makeDir _SAVEPATH	
 		makeDir _DIR	
 				
 		ungroupRecursive objects
+				
+		for i in geometry do try(
+			resetXForm i
+			if(canConvertTo i Editable_Mesh) do convertToMesh i
+		)catch()
 		
-		for i in geometry do try(resetXForm i)catch()
 		for i in geometry do i.name = uniqueName (_NAME + "_")
 		geometry.pivot = geometry.center
 		geometry.pivot.z = geometry.min.z
 		geometry.pos = [0,0,0]
 		geometry.pivot = geometry.center
 				
+		setFbxSettings()
+		exportFile (_DIR + "index.fbx") #noPrompt
+		resetMaxFile #noPrompt
+		
+		-- Set units
+		setUnits()
+		setFbxSettings()
+		importFile (_DIR + "index.fbx") #noPrompt
+		deleteFile (_DIR + "index.fbx")
+				
 		_INI = setObjExpSettings()
 		exportFile (_DIR + "index.obj") #noPrompt		
 		deleteFile _INI
 		
+		for ff in getFiles (_DIR + @"index.fbm\*") do deleteFile ff
+				
 		setIniSetting _INFOINITMP "INFO" "TYPE" "\"webgl\""
 		
 		convertFileToUTF8 _INFOINITMP	_INFOINI
@@ -329,6 +533,8 @@ rollout _rWebGLExport_Settings "Export Settings"
 		
 		zipper = zip()
 		zipper.packFiles source: _DIR target: _SAVEPATH name: _NAME del: true
+		
+		if(_REOPEN != "") do loadMaxFile  _REOPEN useFileUnits: true quiet: true
 		
 		q = queryBox "Export done!\nDo you want to open destination folder?" title: "Done!"
 		if(not q) do return false
@@ -364,4 +570,5 @@ rollout _rAbout "About"
 )
 
 addRollout _rWebGLExport_Settings fAssetsLibraryWebGLExport rolledUp:false
+addRollout _rWebGLExport_PreExportFixes fAssetsLibraryWebGLExport rolledUp:false
 addRollout _rAbout fAssetsLibraryWebGLExport rolledUp:true 

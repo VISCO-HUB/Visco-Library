@@ -289,7 +289,8 @@ app.controller("menuCtrl", function($scope, $rootScope, vault){
 	}
 	
 	$rootScope.libType = 1;
-	$scope.getCat();
+	// !!!!!! TEST MINIMIZE QUERIES
+	//$scope.getCat();
 	
 	$scope.changeTab = function(t) {$scope.type = t;}	
 
@@ -716,14 +717,14 @@ app.controller("modelsCtrl", function ($scope, vault, $rootScope, $location, $ro
 
 // AUTO RUN
 app.run(function($rootScope, $location, $routeParams, $timeout, $cookieStore, vault) {
-      
-	vault.getGlobal();  
-	  
-	  
+    	  
 	$rootScope.oldLocation = '';  
-   $rootScope.menuItemActive = [];
-   $rootScope.searchFilter = {};
-   $rootScope.searchIn = {};
+	$rootScope.menuItemActive = [];
+	$rootScope.searchFilter = {};
+	$rootScope.searchIn = {};
+	$rootScope.globals = {};
+	
+	vault.getGlobal();  
   
 	$rootScope.yesNo = function(s) {
 		if(s == 0 || !s || s == undefined || s == null || s == 'No' || s == 'NO' || s == 'no' ) {return 'No';}
@@ -792,10 +793,10 @@ app.run(function($rootScope, $location, $routeParams, $timeout, $cookieStore, va
 		return count;
 	}
 	
-	$rootScope.toggleOverlayMenu = function(a){
+	$rootScope.toggleOverlayMenu = function(a, e){
 		
 		if($rootScope.showLightBox) {return false;}
-		
+			
 		if(a != undefined) {
 			$rootScope.showOverlayMenu = a;
 		} else
@@ -1281,8 +1282,7 @@ app.run(function($rootScope, $location, $routeParams, $timeout, $cookieStore, va
 			
 		// INIT
 		$rootScope.quickFavID = -1;		
-		$rootScope.msg = {};						
-		$rootScope.globals = {};				
+		$rootScope.msg = {};											
 		$rootScope.showOverlayMenu = false;			
 		if(!$rootScope.categories) {vault.getCat();}				
 		$rootScope.breadcrumbs = [];

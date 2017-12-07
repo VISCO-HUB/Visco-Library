@@ -46,6 +46,10 @@ app.config(function($routeProvider, $sceProvider) {
         templateUrl : "templates/upload.php",
 		controller: 'uploadCtrl'
     })
+	.when('/upload-textures', {
+        templateUrl : "templates/upload-textures.php",
+		controller: 'uploadTexturesCtrl'
+    })
 	.when('/dashboard/:page', {
         templateUrl : "templates/dashboard.php",
 		controller: 'dashboardCtrl'
@@ -161,6 +165,108 @@ app.filter('orderObjectBy', function() {
 app.controller('uploadCtrl', function($scope, FileUploader, vault, $rootScope, $http) {
 	
 	$rootScope.addCrumb('Upload', '#/upload');
+		
+	var uploader = $scope.uploader = new FileUploader({
+		url: hostname + 'admin/vault/upload.php'
+	});
+
+	// FILTERS
+
+	uploader.filters.push({
+		name: 'customFilter',
+		fn: function(item /*{File|FileLikeObject}*/, options) {
+				return this.queue.length < 10;
+			}
+		},
+		{
+            name: 'zipFilter',
+            fn: function(item /*{File|FileLikeObject}*/, options) {
+               
+				var type = '|' + item.type.slice(item.type.lastIndexOf('/') + 1) + '|';
+                var t = '|x-zip-compressed|'.indexOf(type) !== -1;
+				if(!t) {alert('Supported only *.zip format!\n\nIf you uploaded zip archive and you see this message, you have a problem with the definition of this format. You need to reinstall 7Zip or edit the registry.\n\nDownload registry fix: ' + hostname + 'fix/zip-reg.zip')}
+				return t;
+            }
+		}
+	);
+	
+	uploader.onSuccessItem = function(fileItem, response, status, headers) {
+		vault.deleteMessage();
+		
+		angular.forEach(uploader.queue, function(item, key) {
+			if(fileItem.file.name == item.file.name) {					
+				uploader.queue[key].isReplace = false;
+			}
+		});
+		
+		if(response.response == 'BADZIP') {
+			vault.showMessage('Bad zip file \"' + response.name + '\"' , 'error');	
+		}
+		
+		if(response.response == 'UPLOADCLOSED') {
+			vault.showMessage('Uploading closed!<br><br>' + $rootScope.globals.message , 'error');
+			fileItem.isError = true;
+			fileItem.isSuccess = false;
+		}
+				
+		if(response.response == 'REPLACEFILE') {
+			vault.showMessage('Some files already exist. Click "Replace" button if you want to keep the new files or \"Clear\" button to delete from list.', 'warning');
+			console.log(response);
+			angular.forEach(uploader.queue, function(item, key) {
+				  if(fileItem.file.name == item.file.name) {					
+					uploader.queue[key].isReplace = true;
+					uploader.queue[key].isSuccess = false;
+					uploader.queue[key].isUploaded = false;
+					uploader.queue[key].progress = 0;
+					uploader.queue[key].url = hostname + 'admin/vault/upload.php?replace=true&dist=' + response.dist + '&name=' + response.name;
+				}
+			});										
+		}
+    };
+	
+	$scope.replaceUpload = function(item) {		
+		
+		if(!confirm('Do you really want to update file: \"' + item.file.name + '\"?')){
+			return false;
+		}
+		
+		item.isUploading = true;
+		item.isCancel = false;
+		
+		console.log(item);
+		
+		
+		$http({method: 'GET', url: item.url}).
+            then(function success(response) {
+                if(response.data.response == 'DONE') {
+					item.isSuccess = true;
+					item.isUploaded = true;
+					item.isUploading = false;
+					item.isReplace = false;
+					
+					vault.showMessage('File "' + item.file.name + '"  successfully replaced!', 'success');
+				} else {
+					item.isError = true;
+				}				
+		});
+			
+		
+		//item.upload();
+	}
+	
+	uploader.onErrorItem = function(fileItem, response, status, headers) {
+            console.info('onErrorItem', fileItem, response, status, headers);
+	};
+ });
+ 
+ 
+ 
+ // UPLOAD TEXTURES
+ app.controller('uploadTexturesCtrl', function($scope, FileUploader, vault, $rootScope, $http) {
+	
+	$rootScope.addCrumb('Upload Textures', '#/upload-textures');
+	
+	vault.catGet();
 		
 	var uploader = $scope.uploader = new FileUploader({
 		url: hostname + 'admin/vault/upload.php'
@@ -1036,8 +1142,11 @@ app.controller("modelsEditCtrl", function ($scope, $rootScope, $routeParams, vau
 	
 	// UPLOAD WEBGL
 	var uploaderWebGl = $scope.uploaderWebGl = new FileUploader({
-		url: hostname + 'admin/vault/upload.webgl.php?id=' + id + '&type=' + $scope.type
+		url: hostname + 'admin/vault/upload.webgl.php?id=' + id + '&type=' + $scope.type,
+		removeAfterUpload: true
 	});
+		
+		
 	
 	uploaderWebGl.onAfterAddingFile = function(fileItem) {
         uploaderWebGl.uploadAll();
@@ -1062,16 +1171,19 @@ app.controller("modelsEditCtrl", function ($scope, $rootScope, $routeParams, vau
 		
 		if(response.response == 'BADZIP')	{
 			vault.showMessage('Error model has wrong format!', 'error');
+			
 		}
 		
 		if(response.response == 'MOVEERROR')	{
 			vault.showMessage('Model uploaded but not moved to Model folder!', 'error');
 		}
 		
-		uploaderWebGl.clearQueue();
-		console.log(response)	
-			
+		
+		//uploaderWebGl.clearQueue();		
+		console.log(response)				
 		$scope.productGet();	
+		
+		
 		
 	};
 	

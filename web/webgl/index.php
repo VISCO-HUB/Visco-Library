@@ -20,7 +20,8 @@ FUNCTION E($S) {ECHO "'" . $S . "'";}
 			
 			body, html {
 				font-family: Verdana;
-				background-color: #FFF;
+				/*background-color: #FFF;*/
+				background-color: #353535;
 				color: #fff;
 				margin: 0px;
 				padding: 0px;
@@ -41,7 +42,8 @@ FUNCTION E($S) {ECHO "'" . $S . "'";}
 				width: 100%;
 				height: 100%;
 				display: block;
-				background-color: #FFF;	
+				/*background-color: #FFF;	*/
+				background-color: #222;	
 				transition: all 1.3s linear;
 				/*background-image: url('/img/loading.gif');*/
 				background-position: 50% 50%;
@@ -180,7 +182,7 @@ FUNCTION E($S) {ECHO "'" . $S . "'";}
 			
 			#measureText label {
 				    color: #ffffff;
-					text-shadow: 1px 1px #826600;
+					text-shadow: 1px 1px #000;
 					font-size: 18px;
 					padding: 0 5px;
 					min-height: 34px;
@@ -240,7 +242,7 @@ FUNCTION E($S) {ECHO "'" . $S . "'";}
 				right: 0;
 				color: #5cb85c;
 				font-size: 24px;
-				text-shadow: 0px 1px #2b692b;
+				text-shadow: 0px 1px #000;
 				margin: 20px;
 				padding: 3px;
 			}
@@ -321,7 +323,7 @@ FUNCTION E($S) {ECHO "'" . $S . "'";}
 						antialias: true,
 						autoClear: true
 					} );
-					this.renderer.setClearColor( 0xFFFFFF  );
+					this.renderer.setClearColor( 0x353535  );
 					this.renderer.setPixelRatio( window.devicePixelRatio );
 
 					this.scene = new THREE.Scene();
@@ -437,7 +439,7 @@ FUNCTION E($S) {ECHO "'" . $S . "'";}
 					var center = boundingSphere.center;
 					var radius = Math.ceil(boundingSphere.radius);
 					
-					var helperGrid = new THREE.GridHelper( radius * 2, 10, 0xFF4444, 0xe0e0e0 );					
+					var helperGrid = new THREE.GridHelper( radius * 2, 10, 0xb93e3e, 0x494545 );					
 					this.scene.add( helperGrid );										
 				}
 						
@@ -458,7 +460,7 @@ FUNCTION E($S) {ECHO "'" . $S . "'";}
 					var h = bBox.max.y / 4;
 					console.log(bBox);
 									
-					this.controls.target.set(0, h, 0);					
+					this.controls.target.set(0, h, 0);				
 				};
 				
 				_OBJLOADER.prototype.initPostGL = function ( objDef ) {

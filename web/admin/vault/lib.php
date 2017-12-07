@@ -2484,7 +2484,7 @@
 							
 				FOREACH($TAGS AS $TAG) {
 					$TAG = STRTOLOWER(TRIM($TAG));
-					IF(STRLEN($TAG) > 2) $T[] = $TAG;
+					IF(STRLEN($TAG) > 1) $T[] = $TAG;
 				}
 				// ADD ADDITIONAL TAGS
 				FOREACH($ADDITIONAL AS $V) 

@@ -222,6 +222,9 @@
 			$QUERY = "SELECT COUNT(*) AS cnt FROM " . $TABLE . ' ' . $ATTACHWHERE .";";			
 			
 			$RESULT = $MYSQLI->query($QUERY);
+			
+			IF(!$RESULT) RETURN 0;
+			
 			$ROW = MYSQLI_FETCH_ASSOC($RESULT);
 		
 			RETURN $ROW['cnt'];
@@ -1429,11 +1432,11 @@
 			
 			$WHERE['year'] = $Y;
 			$WHERE['month'] = $M;
-			$RESULT = DB::SELECT('statistic_downloads', $WHERE);
+			$RESULT = DB::SELECT('statistic_downloads', [], $WHERE);
 			$R = $RESULT->fetch_object();
 			$CNT = 1;
 			
-			IF($R) {
+			IF($R->cnt) {
 				$CNT = $R->cnt + 1;
 			}
 			
@@ -1448,7 +1451,7 @@
 			$SET['cnt'] = $CNT;
 			$SET['date'] = TIME();
 						
-			IF(!$R) {
+			IF(!$R->cnt) {
 				DB::INSERT('statistic_downloads', $SET);
 			} ELSE {
 				DB::UPDATE('statistic_downloads', $SET, $WHERE, TRUE);

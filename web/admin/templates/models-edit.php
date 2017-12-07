@@ -190,6 +190,13 @@
 		
 	</tr>
 	<tr>
+		<td>Animated: </td>
+		<td>
+			<btn-trigger cls="'btn-xs'" active="product.info.animated" toggle="prodToggleParam('animated')"></btn-trigger>
+		</td>
+		
+	</tr>
+	<tr>
 		<td>Game Engine Ready: </td>
 		<td>
 			<btn-trigger cls="'btn-xs'" active="product.info.gameengine" toggle="prodToggleParam('gameengine')"></btn-trigger>
@@ -229,7 +236,7 @@
 <div class="well well-lg">
 	<h2 style="margin: 0" ng-click="isCollapsed = !isCollapsed"><small>Upload Interactive 3D Model (WebGL):</small></h2>
 		<br>
-		<iframe id="webgl" ng-src="{{webgl}}" ng-show="webgl.length" iframe-onload="webglMsg()" style="width: 100%" ng-style="webglStyle"></iframe>	
+		<iframe id="webgl" ng-src="{{webgl}}" ng-if="webgl.length" ng-show="webgl.length" iframe-onload="webglMsg()" style="width: 100%" ng-style="webglStyle"></iframe>	
 			
 		<div ng-show="product.info.webgl">			
 			Interactive Model ID: {{product.info.webgl}} <br><br>
@@ -237,7 +244,7 @@
 			<button ng-show="webgl.length && auth.browser!='MXS'" class="btn btn-primary" ng-click="webglUrl(null)">Hide Interactive Model</button>
 			<button class="btn btn-danger" ng-click="removeWebGLModel(product.info.webgl)">Delete Interactive Model</button>
 		</div>
-		<div ng-show="!product.info.webgl">
+		<div ng-show="!product.info.webgl">			
 			<div ng-show="uploaderWebGl.queue[0].progress">
 			Upload progress:
 			<div class="progress" style="margin-bottom: 0;">
@@ -245,10 +252,11 @@
 			</div>
 			</div>
 			<br>
-			<label>
-			<span type="button" class="btn btn-success"><span class="glyphicon glyphicon-plus" aria-hidden="true"></span> Upload *.zip</span>
-			<input type="file" nv-file-select="" uploader="uploaderWebGl" class="hidden">
-			</label>
+			
+			<div ng-show="!uploaderWebGl.queue[0].progress" class="well drop-zone" nv-file-over="" uploader="uploaderWebGl"> <span><i style="font-size: 2em;transform: translateY(30%);" class="glyphicon glyphicon-upload" aria-hidden="true"></i> Click here or drop files!</span>
+				<input type="file" nv-file-select="" uploader="uploaderWebGl" multiple="">
+				<br>
+			</div>						
 		</div>
 </div>
 

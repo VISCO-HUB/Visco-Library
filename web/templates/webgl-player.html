@@ -1,5 +1,5 @@
 <div class="webgl-container" ng-show="webgl.length" ng-class="{'webgl-animate': webgl.length}">
 	<span  class="webgl-close glyphicon glyphicon-remove" aria-hidden="true" ng-click="webglUrl(null)" title="Close"></span>
-	<iframe id="webgl" ng-src="{{webgl}}" iframe-onload="webglMsg()"></iframe>	
+	<iframe ng-if="webgl.length" id="webgl" ng-src="{{webgl}}" iframe-onload="webglMsg()"></iframe>	
 	<div class="webgl-title">{{webglTitle}}</div>
 </div>

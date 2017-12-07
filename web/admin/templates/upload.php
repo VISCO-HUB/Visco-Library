@@ -1,4 +1,4 @@
-<h1>Upload</h1>
+<h1>Upload Models</h1>
 <hr>
 <div nv-file-drop="" uploader="uploader" filters="queueLimit, customFilter, zipFilter">
 <div style="margin-bottom: 40px">

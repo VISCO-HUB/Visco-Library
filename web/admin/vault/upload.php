@@ -113,6 +113,7 @@
 		$SET['rigged'] = $INFO['RIGGED'];		
 		$SET['lods'] = $INFO['LODS'];		
 		$SET['unwrap'] = $INFO['UNWRAP'];
+		$SET['animated'] = $INFO['ANIMATED'];
 		$SET['baked'] = $INFO['BAKED'];
 		$SET['gameengine'] = $INFO['GAMEENGINE'];
 		$SET['lights'] = $INFO['LIGHTS'];

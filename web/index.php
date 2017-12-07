@@ -8,7 +8,7 @@
 ?>
 
 <!doctype html>
-<html ng-app="app" ng-swipe-right="toggleOverlayMenu(true)" ng-swipe-left="toggleOverlayMenu(false)">
+<html ng-app="app" ng-swipe-right="toggleOverlayMenu(true, $event)" ng-swipe-left="toggleOverlayMenu(false, $event)" ng-swipe-disable-mouse>
 <head>
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">

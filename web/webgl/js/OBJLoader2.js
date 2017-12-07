@@ -442,7 +442,8 @@ THREE.OBJLoader2 = (function () {
 					break;
 
 				case Consts.LINE_O:
-					if ( this.rawObject.vertices.length > 0 ) {
+					// MastaMan FIX!!!!! With this code not work models from 3Ds Max > 2014
+					/*if ( this.rawObject.vertices.length > 0 ) {
 
 						this.processCompletedObject( buffer[ 1 ], null );
 						reachedFaces = false;
@@ -451,7 +452,7 @@ THREE.OBJLoader2 = (function () {
 
 						this.rawObject.pushObject( buffer[ 1 ] );
 
-					}
+					}*/
 					break;
 
 				case Consts.LINE_MTLLIB:
