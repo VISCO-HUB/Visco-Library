@@ -168,6 +168,7 @@ rollout _rWebGLExport_PreExportFixes "PreExport Fixes"
 (
 	group "Convert VRay to Standard" (
 		button btnConvertVrayToStandard "Convert"
+		label lblConvertStatus ""
 	)
 	
 	group "Setup Standard Material Properties" (
@@ -197,6 +198,8 @@ rollout _rWebGLExport_PreExportFixes "PreExport Fixes"
 	fn convertVrayToStandard = 
 	(
 		if(isVRayInstalled() == false) do return messageBox "Vray not installed!" title: "Warning!"
+		
+		lblConvertStatus.caption = "Converting..."
 		
 		MMClean.fixAll prompt: false
 		
@@ -245,6 +248,37 @@ rollout _rWebGLExport_PreExportFixes "PreExport Fixes"
 			replaceInstances m nm
 		)
 		
+		for m in getClassInstances Blend do (
+			mtl1 = undefined
+			mtl2 = undefined
+			
+			if(classOf m.map1 == Standard) do mtl1 = m.map1
+			if(classOf m.map2 == Standard) do mtl2 = m.map2
+			
+			
+			if(mtl1 != undefined and mtl2 != undefined) do (
+				nm = Standard()
+								
+				mixBlend = Mix()
+				
+				nm.name = m.name
+				
+				mixBlend.map1 = mtl1.DiffuseMap
+				mixBlend.map2 = mtl2.DiffuseMap
+				mixBlend.mask = m.mask
+				
+				nm.DiffuseMap = mixBlend
+								
+				nm.DiffuseMap = mtl1.DiffuseMap
+				nm.glossiness = mtl1.glossiness
+				nm.specularLevel = mtl1.specularLevel
+				nm.Specular = mtl1.Specular
+				
+				replaceInstances m nm
+			)
+			
+		)
+		
 		for m in getClassInstances VRayLightMtl do (
 			nm = Standard()
 			nm.useSelfIllumColor = on
@@ -254,6 +288,8 @@ rollout _rWebGLExport_PreExportFixes "PreExport Fixes"
 		)
 		
 		messageBox "Convert successfully done!" title: "Success!" beep: false
+		
+		lblConvertStatus.caption = "Done."
 	)
 	
 	on btnConvertVrayToStandard pressed do (
