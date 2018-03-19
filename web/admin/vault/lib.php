@@ -2098,14 +2098,16 @@
 		
 			
 			IF(!$P[0]) RETURN $ERROR;
-									
+				
+				/*print_r($P);
+				RETURN FALSE;*/
 			$DIR1 = $PATH . CAT::CLEAR($P[0]->name) . '\\';
 			$DIR2 = $PATH . CAT::CLEAR($NAME) . '\\';
 			
 			IF(!IS_DIR($DIR1)) RETURN $PRODNOTFOUND;		
 			IF(!@RENAME($DIR1, $DIR2)) RETURN $ERROR;
 						
-			$RESULT = DB::UPDATE($TYPE, $SET, $WHERE);
+			$RESULT = DB::UPDATE($TYPE, $SET, $WHERE, TRUE);
 						
 			IF($RESULT > 0) RETURN $SUCCESS;
 			RETURN $ERROR;
