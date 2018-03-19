@@ -1063,9 +1063,7 @@ app.run(function($rootScope, $location, $routeParams, $timeout, $cookieStore, va
 	$rootScope.slideLightBoxDirection = 1;
 	
 	$rootScope.slideLightBox = function(i){
-		
-		
-		
+
 		$rootScope.slideLightBoxDirection = i;
 						
 		var c = $rootScope.currItem;

@@ -980,8 +980,8 @@ label {
 }
 
 .right.slide-animation.ng-enter {
-	transform: translate(50%, -50%);	
-	opacity: 0;	
+	transform: translate(50%, -50%);
+	opacity: 0;
 }
 .right.slide-animation.ng-enter-active {
 	transform: translate(-50%, -50%);
@@ -1001,8 +1001,8 @@ label {
 }
 
 .left.slide-animation.ng-enter {
-	transform: translate(-150%, -50%);	
-	opacity: 0;	
+	transform: translate(-150%, -50%);
+	opacity: 0;
 }
 .left.slide-animation.ng-enter-active {
 	transform: translate(-50%, -50%);
@@ -1856,6 +1856,11 @@ label {
 	top: 0;
 	background: url('/img/3d2.svg') 50% 50% no-repeat;
 	background-size: contain;
+	cursor: pointer;
+}
+
+.is3d:hover {
+	opacity: 0.7;
 }
 
 .is3d-small {
@@ -2694,7 +2699,7 @@ label {
 
 
 .pagination-prev {
-	
+
 }
 
 .place-dropdown-menu {

@@ -2078,21 +2078,27 @@
 			$NAME = TRIM($DATA->name);
 			
 			$SET['name'] = $NAME;
-			$WHERE['catid'] = $DATA->id;
+			$WHERE['catid'] = $DATA->catid;
 			$WHERE['name'] = $DATA->oldname;
 			$PATH = CAT::BUILDPATH($DATA->catid);
+			
+			
+			
 			$GLOBS = GLOBS::PARSE();
 			
 			$S = STR_REPLACE($GLOBS->path, '', $PATH);
 			IF(STRLEN($S) < 3) RETURN $ERROR;
 			
-			$RESULT1 = DB::SELECT($TYPE, $WHERE);
+			$RESULT1 = DB::SELECT($TYPE, $WHERE, NULL, TRUE);
+			
 			
 			IF(!$RESULT1) RETURN $ERROR;
 			
 			$P = DB::TOARRAY($RESULT1);
+		
+			
 			IF(!$P[0]) RETURN $ERROR;
-						
+									
 			$DIR1 = $PATH . CAT::CLEAR($P[0]->name) . '\\';
 			$DIR2 = $PATH . CAT::CLEAR($NAME) . '\\';
 			

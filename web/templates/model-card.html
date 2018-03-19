@@ -5,7 +5,7 @@
 			<a ng-href="#/{{prod.productpage}}/{{prod.id}}">
 			<img ng-src="{{getProdImages(prod.previews, 1, true)}}" class="text-center col-xxs-12"></a>					
 			<button type="button" class="btn btn-default custom-button-gray button-fixed button-zoom" ng-click="hideShowLightBox(true, prod.previews)"> &nbsp;&nbsp;</button>
-			<div ng-show="prod.webgl.length" class="is3d"></div>
+			<div ng-show="prod.webgl.length" class="is3d" ng-click="webglUrl(prod.webgl, prod.name)"></div>
 			<div ng-show="prod.webgl.length" class="isar"></div>
 			
 			<a href="admin/#/models-edit/{{prod.id}}/1" class="btn btn-default btn-danger button-fixed button-admin-edit" uib-tooltip="Edit" ng-show="auth.rights>=1"> &nbsp;&nbsp;</a> 

@@ -62,6 +62,7 @@
 							<td width="20px">#</td>
 							<td width="120px">Preview</td>
 							<td>Name</td>
+							<td>Size</td>
 						</tr>
 						<tr ng-repeat="img in fileList.files.img">
 							<td>
@@ -72,6 +73,9 @@
 							</td>
 							<td class="wrap">
 								{{img | rmdir}}
+							</td>
+							<td>
+								{{imgSize($index)}}
 							</td>
 						</tr>
 					</table>
