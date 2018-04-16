@@ -2,7 +2,7 @@
 [INFO] 
 
 NAME = Make Preview
-VERSION = 1.0.9
+VERSION = 1.2.0
 AUTHOR = Vasily Lukyanenko
 DEV = VISCO
 HELP = 
@@ -57,6 +57,18 @@ ICON=#("PhysX_Main", 3)
 * Changed: Catmull Rom filter to Sharp Quadratic=
 * Added: Final+ quality=
 
+[1.1.0]
+
++ Added: Support interactive for V-Ray 3.60=
+
+[1.2.0]
+
++ Added: Batch render=
++ Added: Batch render: Smart Zoom=
+- BugFix: Not reload when file open=
+* Changed: Removed wire params in Post Process=
++ Added: Reset to defaults  button in Post Process=
+
 [ABOUT]
 
 This script helps to quickly make previews=
@@ -82,6 +94,7 @@ global _rStep1
 global _rStep2
 global _rStep3
 global _rPreset
+global _rBatchRender
 
 global _MAKE_PREVIEW_ADMINS = #("v.lukyanenko", "e.astafiev")
 
@@ -214,6 +227,19 @@ fn getRender =
 	if matchpattern r pattern:"*V_Ray_Adv*" do return #VRay
 	if matchpattern r pattern:"*Default_Scanline*" do return #Scanline
 	return #unknown
+)
+
+fn checkVrayCompatible ver =
+(
+	letters = "_abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	nums = "_0123456789"
+	vr = for r in rendererClass.classes where matchPattern (r as string) pattern: ("*V_Ray_Adv*") collect r
+	if(vr.count == 0) do return false
+	
+	n = trimLeft (vr[1] as string) letters		
+	v = substituteString n "_" "."
+	
+	return v > ver
 )
 
 fn findTheRender s =
@@ -807,20 +833,29 @@ fn setRenderQuality =
 			renderSystem.dmc_earlyTermination_minSamples  = 32
 			renderSystem.dmc_earlyTermination_amount = 0.85
 			renderSystem.dmc_earlyTermination_threshold = 0.005
-			renderSystem.environment_refract_on = on
-			renderSystem.environment_refract_color = white
+			
 			renderSystem.system_region_x = 24
 			renderSystem.system_region_y = 24
-			renderSystem.colorMapping_affectBackground = off
+			--renderSystem.colorMapping_affectBackground = off
+			renderSystem.colorMapping_affectBackground = on
 			renderSystem.colorMapping_subpixel = on
 			renderSystem.colorMapping_clampOutput = on
 			renderSystem.colorMapping_clampLevel = 1.0
 			renderSystem.colorMapping_type = 6
 			renderSystem.colorMapping_darkMult = 1.0
 			renderSystem.colorMapping_brightMult = 1.0
-			renderSystem.environment_gi_on = true
-			renderSystem.environment_gi_color = black
+		
 			renderSystem.colorMapping_adaptationOnly = 1
+				
+			
+			if(not checkVrayCompatible "3.60.00") then
+			(
+				renderSystem.environment_refract_on = on
+				renderSystem.environment_refract_color = white	
+			
+				renderSystem.environment_gi_on = true
+				renderSystem.environment_gi_color = black
+			) 			
 				
 			if(renderImageFilter == true) do
 			(	
@@ -927,6 +962,7 @@ fn rolloutToggle t =
 		removeRollout _rStep2 fFastRender
 		removeRollout _rStep3 fFastRender
 		removeRollout _rPreset fFastRender 
+		removeRollout _rBatchRender fFastRender 
 		try(destroyDialog _rStep3)catch()
 		
 		return false
@@ -937,6 +973,7 @@ fn rolloutToggle t =
 	addRollout _rStep2 fFastRender rolledUp:false
 	--addRollout _rStep3 fFastRender
 	addRollout _rPreset fFastRender rolledUp:true
+	addRollout _rBatchRender fFastRender rolledUp:true
 	createDialog _rStep3 230 360 style: #(#style_titlebar, #style_border) parent: _rStep0.hwnd
 	
 	r = getRender()
@@ -971,31 +1008,44 @@ rollout _rStep0  "Basic Setup" category:1
 		setPosStep3()
 	)
 	
-	on _rStep0	open do
-	(	
-		setupImageButton btnSetupScene "Setup Scene" "settings-01"
-		
+	fn addCallbacks = 
+	(
 		callbacks.removeScripts id:#renderChange
 		callbacks.removeScripts id:#postNew
 		callbacks.removeScripts id:#postReset
+		callbacks.removeScripts id:#postOpen
 		callbacks.removeScripts id:#preRender
 		callbacks.removescripts id:#selectionSetChanged
 				
 		--callbacks.addScript #postRendererChange "rebuildScript()" id:#renderChange
 		callbacks.addScript #systemPostNew "rebuildScript()" id:#postNew
 		callbacks.addScript #systemPostReset "rebuildScript()" id:#postReset
+		callbacks.addScript #filePostOpen "rebuildScript()" id:#postOpen
 		callbacks.addScript #preRender "onStartRender()" id:#preRender
 				
-		callbacks.addScript #selectionSetChanged "onSelectionChanged()" id:#selectionSetChanged persistent:false			
+		callbacks.addScript #selectionSetChanged "onSelectionChanged()" id:#selectionSetChanged persistent:false	
 	)
 	
-	on _rStep0 close do
+	fn removeCallbacks = 
 	(
 		callbacks.removeScripts id:#renderChange
 		callbacks.removeScripts id:#postNew
 		callbacks.removeScripts id:#postReset		
 		callbacks.removeScripts id:#preRender		
 		callbacks.removescripts id:#selectionSetChanged
+		callbacks.removeScripts id:#postOpen
+	)
+	
+	on _rStep0	open do
+	(	
+		setupImageButton btnSetupScene "Setup Scene" "settings-01"
+		
+		addCallbacks()
+	)
+	
+	on _rStep0 close do
+	(
+		removeCallbacks()
 	)
 		
 	on btnSetupScene Click do
@@ -1750,7 +1800,7 @@ rollout _rStep2  "Highlights" category:3
 	dotnetcontrol btnPlace "System.Windows.Forms.Button" height: 40 width: 215
 	
 	timer tmrInteractive active: false 
-		
+			
 	local callbackLight = undefined
 	global lightsList = #()
 	local trackCallback = #continue
@@ -2032,6 +2082,7 @@ fn postProcess =
 	global btmPreview = undefined
 	
 	try(destroyDialog rPostProcess) catch()
+	try(destroyDialog rPostSettings) catch()
 	
 	global postRender = undefined
 	
@@ -2052,8 +2103,7 @@ fn postProcess =
 			bs = dotNetclass "System.Windows.Forms.PictureBoxSizeMode"
 			btmPreview.SizeMode = bs.Zoom 
 			
-			if(btmPreview.width > b.width and btmPreview.height > b.height) do btmPreview.SizeMode = bs.CenterImage
-				
+			if(btmPreview.width > b.width and btmPreview.height > b.height) do btmPreview.SizeMode = bs.CenterImage				
 			img = undefined
 			
 			c = dotNetClass "System.Windows.Forms.Clipboard"
@@ -2097,7 +2147,21 @@ fn postProcess =
 			
 			tmrShowRender.active = true
 		)
-				
+			
+		fn restoreDefaults c: 6= (
+			q = queryBox "Do you really want to restore default settings?" title: "Confirm?"
+			if(not q) do return false
+			
+			for s in 1 to c do (
+				s = s as string
+				useSettings ("BLENDMODE" + s) "" "w"
+				useSettings ("OPACITY" + s) "" "w"
+				useSettings ("EFFECT" + s) "" "w"
+			)
+			
+			_rStep3.resetToDefaults()			
+		)
+		
 		fn saveDialog =
 		(
 			return getSaveFileName types: "JPG|*.jpg|PNG|*.png"									
@@ -2185,20 +2249,19 @@ fn postProcess =
 		s = i as string
 		en = if(i == 1) then "false" else "true"
 		-- Save Settings
-		/*
-			blendMode = useSettings ("BLENDMODE" + s) "string" "r"
-			if(blendMode != "") do b = blendMode as integer - 1
-			
-			opacityMode = useSettings ("OPACITY" + s) "string" "r"
-			if(opacityMode != "") do o = opacityMode
-			
-			enableMode = useSettings ("EFFECT" + s) "string" "r"
-			if(enableMode == "") do enableMode = "true"
-			
-			outputMap.blendMode[i] = b
-			outputMap.opacity[i] = o as integer
-		*/
 		
+		blendMode = useSettings ("BLENDMODE" + s) "string" "r"
+		if(blendMode != "") do b = blendMode as integer - 1
+		
+		opacityMode = useSettings ("OPACITY" + s) "string" "r"
+		if(opacityMode != "") do o = opacityMode
+		
+		enableMode = useSettings ("EFFECT" + s) "string" "r"
+		if(enableMode == "") do enableMode = "true"
+		
+		outputMap.blendMode[i] = b
+		outputMap.opacity[i] = o as integer
+				
 		enableMode = "true"
 		
 		ex += "group \"" + n + "\" \n"
@@ -2243,23 +2306,27 @@ fn postProcess =
 
 	ex += "rPostProcess.showRender now: true\n"
 	ex += ")\n"
-	ex += "group\"Wire Parameters\"(\n"
-	ex += "checkbox cbxBlendWire \"Blend\" checked: false\n"
-	ex += "checkbox cbxInvertWire \"Invert\" checked: true\n"	
-	ex += "spinner spnOpacityWire \"Opacity: \" range: [0, 100, 100] type: #integer align: #left fieldWidth: 30\n"
+	--ex += "group\"Wire Parameters\"(\n"
+	--ex += "checkbox cbxBlendWire \"Blend\" checked: false\n"
+	--ex += "checkbox cbxInvertWire \"Invert\" checked: true\n"	
+	--ex += "spinner spnOpacityWire \"Opacity: \" range: [0, 100, 100] type: #integer align: #left fieldWidth: 30\n"
+	--ex += ")\n"
+	--ex += "radiobuttons rdoWire \"\" labels:#(\"Render\", \"Wire\") offset: [0, 15]\n"
+	--ex += " on cbxInvertWire changed z do rPostProcess.showWire show: (rdoWire.state) inv: (cbxInvertWire.checked) op: (spnOpacityWire.value) blnd: (cbxBlendWire.checked)\n"
+	--ex += " on spnOpacityWire changed z do rPostProcess.showWire show: (rdoWire.state) inv: (cbxInvertWire.checked) op: (spnOpacityWire.value) blnd: (cbxBlendWire.checked)\n"
+	--ex += " on rdoWire changed z do rPostProcess.showWire show: (rdoWire.state) inv: (cbxInvertWire.checked) op: (spnOpacityWire.value) blnd: (cbxBlendWire.checked)\n"
+	--ex += " on cbxBlendWire changed z do rPostProcess.showWire show: (rdoWire.state) inv: (cbxInvertWire.checked) op: (spnOpacityWire.value) blnd: (cbxBlendWire.checked)\n"
+	ex += "group\"Restore Defaults\"(\n"
+	ex += "button btnRestoreDefaults \"Restore Default Settings\" \n"
 	ex += ")\n"
-	ex += "radiobuttons rdoWire \"\" labels:#(\"Render\", \"Wire\") offset: [0, 15]\n"
-	ex += " on cbxInvertWire changed z do rPostProcess.showWire show: (rdoWire.state) inv: (cbxInvertWire.checked) op: (spnOpacityWire.value) blnd: (cbxBlendWire.checked)\n"
-	ex += " on spnOpacityWire changed z do rPostProcess.showWire show: (rdoWire.state) inv: (cbxInvertWire.checked) op: (spnOpacityWire.value) blnd: (cbxBlendWire.checked)\n"
-	ex += " on rdoWire changed z do rPostProcess.showWire show: (rdoWire.state) inv: (cbxInvertWire.checked) op: (spnOpacityWire.value) blnd: (cbxBlendWire.checked)\n"
-	ex += " on cbxBlendWire changed z do rPostProcess.showWire show: (rdoWire.state) inv: (cbxInvertWire.checked) op: (spnOpacityWire.value) blnd: (cbxBlendWire.checked)\n"
-	ex += "button btnSave \"Save Images\" offset: [0, 15]\n"
+	ex += "button btnSave \"Save Images\" offset: [0, 25]\n"
+	ex += " on btnRestoreDefaults pressed do rPostProcess.restoreDefaults()\n"
 	ex += " on btnSave pressed do (\n"		
 	ex += "f = rPostProcess.saveDialog()\n"
 	ex += "if(f == undefined) do return false\n"
-	ex += "rPostProcess.showWire show: 1 inv: (cbxInvertWire.checked) op: (spnOpacityWire.value) blnd: (cbxBlendWire.checked)\n"
+	ex += "rPostProcess.showWire show: 1 inv: true op: 100 blnd: false\n"
 	ex += "r1 = rPostProcess.preRenderImageFromMap()\n"
-	ex += "rPostProcess.showWire show: 2 inv: (cbxInvertWire.checked) op: (spnOpacityWire.value) blnd: (cbxBlendWire.checked)\n"
+	ex += "rPostProcess.showWire show: 2 inv: true op: 100 blnd: false\n"
 	ex += "r2 = rPostProcess.preRenderImageFromMap()\n"		
 	ex += "rPostProcess.saveImages r1 r2 f\n"	
 	ex += "\n)\n"
@@ -2308,13 +2375,13 @@ rollout _rStep3  "Render / Post Process" category:4
 		dotnetcontrol btnOpenEditor "System.Windows.Forms.Button" height: 40 width: 203
 	)
 	timer tmrSetPos "" active: false interval: 300
-	
+	timer tmrResetToDefaults active: false interval: 100
 	fn createCameraFromView =
 	(
 		n = "MakePreview_FreeCamera"
 		c = getnodeByName n
 		if(c != undefined) do delete c
-		c = freeCamera transform:(inverse(viewport.getTM())) fov: 55 name: n
+		c = freeCamera transform:(inverse(viewport.getTM())) fov: 45 name: n
 		viewport.setCamera c	
 			
 		if(cbxLockCamera.checked) do setTransformLockFlags c #all
@@ -2464,7 +2531,7 @@ rollout _rStep3  "Render / Post Process" category:4
 		l = 7
 		outputMap.mapList[l] = getVFB c: l
 		outputMap.mapList[l].coords.blur = 0.01
-		outputMap.blendMode[l] =9
+		outputMap.blendMode[l] = 9
 		outputMap.opacity[l] = 0
 		outputMap.mask[l] = vfbAlpha
 		outputMap.mapList[l].name = "Wire"
@@ -2600,9 +2667,28 @@ rollout _rStep3  "Render / Post Process" category:4
 			return false
 		)
 		
+		if(_rStep3.sldQuality.value == 0 and r == #VRay) do
+		(
+			if(checkVrayCompatible "3.60.00") do (
+				vrayStartIPR()
+				return false
+			)									
+		)
+		
 		tmrStartRender.active = true		
 	)
 		
+	fn resetToDefaults = (
+		tmrResetToDefaults.active = true
+	)
+	
+	on tmrResetToDefaults tick do
+	(
+		tmrResetToDefaults.active = false
+		try(setupPostProcess()) catch()				
+		postProcess()	
+	)
+	
 	on btnOpenEditor Click do 
 	(			
 		try(setupPostProcess()) catch()		
@@ -2637,7 +2723,7 @@ rollout _rStep3  "Render / Post Process" category:4
 	on cbxLockCamera changed v do lockCamera v
 )
 
-rollout _rPreset  "Save / Load Preset" category:5
+rollout _rPreset  "Save / Load Preset" category:6
 (	
 	button btnSavePreset "Save" across: 2
 	button btnLoadPreset "Load"
@@ -2692,8 +2778,223 @@ rollout _rPreset  "Save / Load Preset" category:5
 	)
 )
 
+rollout _rBatchRender  "Batch Render" category:5
+(	
+	global _BATCH_RENDER_FILELIST = #()
+	
+	group "Files List"
+	(
+		listbox lbxFilesList ""
+		button btnAddModels "Add Models"
+	)
+	
+	group "Settings" 
+	(
+		checkbox cbxSmartZoom "Smart Zoom" checked: true
+		checkbox cbxApplyColorCorrection "Post Process" checked: true
+		checkbox cbxSaveWire "Save Wire" checked: true
+	)
+	
+	dotnetcontrol btnStartRender "System.Windows.Forms.Button" height: 40 width: 203
+		
+	fn mapWorldToScreen cam pos =
+	(	
+		tm = cam.transform	
+		fov = cam.fov
+		
+		aspect  = -renderHeight as float/ renderWidth
 
-rollout _rAbout "About" category:6
+		posCS = pos * inverse tm
+
+		tanX = tan (fov / 2)
+		tanY = aspect * tanX
+		depth = abs posCS.z
+		bounds_X = tanX * depth 
+		bounds_Y = tanY * depth
+
+		nx = ((posCS.x / bounds_X)+1) / 2
+		ny = ((posCS.y / bounds_Y)+1) / 2
+
+		screen_X = nx * renderwidth
+		screen_Y = ny * renderHeight
+
+		return [screen_X, screen_y, 0]
+	)	
+
+	fn getCameraViewportID = 
+	(
+		for i in 1 to viewport.numViews where viewport.getCamera index: i != undefined do return i
+		return undefined
+	)
+
+	fn setSelectionRegion cam: undefined = 
+	(	
+		if(cam == undefined) do return false
+		
+		viewport.setCamera cam
+		view = viewport.activeViewport
+		
+		renderSceneDialog.close()	
+		setRenderType  #blowUp		
+		renderSceneDialog.commit()
+		renderSceneDialog.update()
+			
+		nodes = for node in selection where iskindof node GeometryClass collect node
+		if nodes.count > 0 do
+		(
+			local bmin = [1e9,1e9,0], bmax = [-1e9,-1e9,0]
+			
+			for node in nodes do
+			(
+				mesh = snapshotasmesh node
+				
+				for v=1 to mesh.numverts do
+				(
+					vp = mapWorldToScreen cam (GetVert mesh v)
+				
+					if vp.x < bmin.x do bmin.x = vp.x
+					if vp.x > bmax.x do bmax.x = vp.x
+					if vp.y < bmin.y do bmin.y = vp.y
+					if vp.y > bmax.y do bmax.y = vp.y
+				)
+				free mesh
+			)
+			w = (bmax.x - bmin.x) as integer
+			h = (bmax.y - bmin.y) as integer
+
+			padding = 10
+			
+			kw = 0
+			kh = 0
+			
+			if(w > h) then kh = (w - h) / 2 else kw = (h - w) / 2 
+			
+			x = bmin.x - padding - kw
+			y =  bmin.y - padding - kh
+			w = w + (padding * 2) + (kw * 2)
+			h = h + (padding * 2) + (kh * 2)
+			
+			rect = box2 x y w h
+
+			if(not EditRenderRegion.IsEditing) do EditRenderRegion.EditRegion() 		
+			viewport.setBlowupRect  view rect		
+			EditRenderRegion.UpdateRegion()
+		)
+	)
+	
+	fn getOpenMax = 
+	(
+		f = #()
+		
+		imageDialog = dotNetObject "System.Windows.Forms.OpenFileDialog" 
+		imageDialog.title = "Select Preview"
+		imageDialog.Multiselect = true
+		imageDialog.Filter = "MAX (*.max)|*.max"
+		imageDialog.FilterIndex = 1
+		
+		result = imageDialog.showDialog() 
+		result.ToString() 
+		result.Equals result.OK 
+		result.Equals result.Cancel 
+		
+		f = imageDialog.fileNames 
+		 
+		return f
+	)
+	
+	fn getRenderQuality = return useSettings "RENDER_QUALITY" "int" "r"
+		
+	fn preRenderImageFromMap = renderMap outputMap size:[renderWidth, renderHeight] filter: false scale: 1.0 gamma: 2.2
+	
+	fn updateFilesList = (
+		lbxFilesList.items = for i in 1 to selectionSets.count collect (getNamedSelSetName i) 
+	)
+	
+	fn saveBitmap b f = (
+		b.filename = f
+		save b gamma: 2.2
+		close b
+	)
+	
+	on cbxSmartZoom changed v do useSettings "BATCH_SMART_ZOOM" v "w"
+	on cbxApplyColorCorrection changed v do useSettings "BATCH_POST_PROCESS" v "w"
+	on cbxSaveWire changed v do useSettings "BATCH_SAVE_WIRE" v "w"
+	
+	on _rBatchRender open do
+	(	
+		cbxSmartZoom.checked = useSettings "BATCH_SMART_ZOOM" "bool" "r"
+		cbxApplyColorCorrection.checked = useSettings "BATCH_POST_PROCESS" "bool_not" "r"
+		cbxSaveWire.checked = useSettings "BATCH_SAVE_WIRE" "bool" "r"
+		
+		updateFilesList()
+		setupImageButton btnStartRender "Start Batch Render" "forward-01"
+	)
+	
+	on btnAddModels pressed do
+	(
+		_BATCH_RENDER_FILELIST = getOpenMax()	
+		
+		lbxFilesList.items = for f in _BATCH_RENDER_FILELIST collect getFileNameFile f
+	)
+		
+	global _BATCH_ITERATOR = 1
+	global _BATCH_CAMERA_TM = undefined
+	global _BATCH_CAMERA = undefined
+	global _BATCH_SAVE_PATH = ""
+	global _BATCH_MODELS= #()
+	global _BATCH_SCENE = ""
+	
+	fn loadBatchRenderScript =fileIn (getFileNamePath (getThisScriptFileName()) + @"\Make Preview Batch Render.mcr")--) catch(print "Error while load batch render modules!")	
+	
+	fn startBatchRender = 
+	(
+		_BATCH_ITERATOR = 1
+		
+		if(cameras.count == 0) do  return messageBox "Please add camera!" title: "Warning!"						
+		if(getRenderQuality() < 2) do  return messageBox "Please set render quality to Final+" title: "Warning!"	
+		
+		_BATCH_SCENE = maxFilePath + maxFileName
+		if(_BATCH_SCENE == "") do return messageBox "Please save the scene!" title: "Warning!"		
+		if(_BATCH_RENDER_FILELIST.count == 0 and selectionSets.count == 0) do return messageBox "Please add models!" title: "Warning!"	
+				
+		--saveMaxFile currScene
+				
+		_BATCH_SAVE_PATH = useSettings "BATCH_SAVE_PATH" "str" "r"				
+		_BATCH_SAVE_PATH = getSavePath caption: "Save renders to:" initialDir: _BATCH_SAVE_PATH
+		if(_BATCH_SAVE_PATH == undefined or _BATCH_SAVE_PATH == "") do return false
+		
+		useSettings "BATCH_SAVE_PATH" _BATCH_SAVE_PATH "w"
+				
+		q = queryBox ("Do you really want to start Batch Render?\n\nAnd save renders to:\n" + _BATCH_SAVE_PATH) title: "Confirm?"
+		if(not q) do return false
+		
+		clearSelection()
+		
+		for model in _BATCH_RENDER_FILELIST do (
+			mergeMaxFile model #select #autoRenameDups #renameMtlDups quiet: true
+			
+			selectionSets[getFileNameFile model] = selection
+			hide selection
+		)
+		
+		updateFilesList()
+		
+		tmp = @"c:\temp\_tmpMakePreview.max"
+		
+		--_rStep0.removeCallbacks()
+		saveMaxFile tmp quiet: true
+		--_rStep0.addCallbacks()		
+
+		loadBatchRenderScript()
+	)
+	
+	on btnStartRender Click do 
+	(
+		startBatchRender()
+	)
+)
+
+rollout _rAbout "About" category:100
 (
 	label lblName "" 
 	label lblVer "" 
@@ -2721,4 +3022,5 @@ addRollout _rStep1 fFastRender rolledUp:false
 addRollout _rStep2 fFastRender rolledUp:false
 --addRollout _rStep3 fFastRender rolledUp:false
 addRollout _rPreset fFastRender rolledUp:true
+addRollout _rBatchRender fFastRender rolledUp:true
 addRollout _rAbout fFastRender rolledUp:true 
