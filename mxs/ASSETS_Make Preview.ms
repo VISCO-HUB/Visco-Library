@@ -2,7 +2,7 @@
 [INFO] 
 
 NAME = Make Preview
-VERSION = 1.2.0
+VERSION = 1.2.1
 AUTHOR = Vasily Lukyanenko
 DEV = VISCO
 HELP = 
@@ -68,6 +68,12 @@ ICON=#("PhysX_Main", 3)
 - BugFix: Not reload when file open=
 * Changed: Removed wire params in Post Process=
 + Added: Reset to defaults  button in Post Process=
+
+[1.2.1]
+
++ Added: Savable option in Post Process=
+* Changed: Open last used scene for Batch Render=
+
 
 [ABOUT]
 
@@ -2217,7 +2223,7 @@ fn postProcess =
 		
 		on rPostProcess open do
 		(				
-			showRender()			
+			
 		)
 		
 		on tmrShowRender tick do
@@ -2257,12 +2263,13 @@ fn postProcess =
 		if(opacityMode != "") do o = opacityMode
 		
 		enableMode = useSettings ("EFFECT" + s) "string" "r"
-		if(enableMode == "") do enableMode = "true"
+		if(enableMode == "" or enableMode == "true") do enableMode = "true"
 		
+		outputMap.mapEnabled[i] = if(enableMode == "true") then true else false
 		outputMap.blendMode[i] = b
 		outputMap.opacity[i] = o as integer
 				
-		enableMode = "true"
+		--enableMode = "true"
 		
 		ex += "group \"" + n + "\" \n"
 		ex += "(\n"
@@ -2281,7 +2288,7 @@ fn postProcess =
 		ex += 	"useSettings \"OPACITY" + s + "\" v \"w\" \n"		
 		ex += ")\n"
 		ex += "on cbx" + s + " changed  v do (\n"
-		ex += 	"if(v == false) then outputMap.opacity[" + s + "] = 0 else outputMap.opacity[" + s + "] = spn" + s + ".value \n"
+		ex += 	"outputMap.mapEnabled[" + s + "] = v \n"
 		ex += 	"rPostProcess.showRender now: true\n"
 		ex += 	"useSettings \"EFFECT" + s + "\" v \"w\" \n"
 		ex += ") \n"
@@ -2299,7 +2306,7 @@ fn postProcess =
 			
 			if(i != 1) do 
 			(
-				ex += "if(s == false) then outputMap.opacity[" + s + "] = 0 else outputMap.opacity[" + s + "] = spn" + s + ".value \n"
+				ex += "outputMap.mapEnabled[" + s + "] = s \n"
 				ex += "cbx" + s + ".checked = s \n"			
 			)
 		)
@@ -2321,6 +2328,7 @@ fn postProcess =
 	ex += ")\n"
 	ex += "button btnSave \"Save Images\" offset: [0, 25]\n"
 	ex += " on btnRestoreDefaults pressed do rPostProcess.restoreDefaults()\n"
+	ex += " on rPostSettings open do rPostProcess.showWire show: 1 inv: true op: 100 blnd: false \n"
 	ex += " on btnSave pressed do (\n"		
 	ex += "f = rPostProcess.saveDialog()\n"
 	ex += "if(f == undefined) do return false\n"
@@ -2785,7 +2793,8 @@ rollout _rBatchRender  "Batch Render" category:5
 	group "Files List"
 	(
 		listbox lbxFilesList ""
-		button btnAddModels "Add Models"
+		button btnAddModels "Add Models" across: 2
+		button btnClearList "Clear List"
 	)
 	
 	group "Settings" 
@@ -2930,6 +2939,26 @@ rollout _rBatchRender  "Batch Render" category:5
 		setupImageButton btnStartRender "Start Batch Render" "forward-01"
 	)
 	
+	on btnClearList pressed do
+	(
+		q = queryBox "Do you really want to clear files list?" title: "Confirm?"
+		if(not q) do return false
+		
+		c = getNumNamedSelSets()
+		for i in c to 1 by -1 do (
+			try(delete selectionSets[i]) catch()
+		)
+		
+		c = getNumNamedSelSets()
+		for i in c to 1 by -1 do (
+			deleteItem selectionSets i
+		)
+		
+		_BATCH_RENDER_FILELIST = #()
+		
+		updateFilesList()
+	)
+	
 	on btnAddModels pressed do
 	(
 		_BATCH_RENDER_FILELIST = getOpenMax()	
@@ -2986,10 +3015,12 @@ rollout _rBatchRender  "Batch Render" category:5
 		--_rStep0.addCallbacks()		
 
 		loadBatchRenderScript()
+		
+		loadMaxFile _BATCH_SCENE useFileUnits: true quiet: true
 	)
 	
 	on btnStartRender Click do 
-	(
+	(		
 		startBatchRender()
 	)
 )

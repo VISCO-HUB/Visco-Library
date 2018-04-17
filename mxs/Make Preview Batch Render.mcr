@@ -201,7 +201,7 @@ global outputMap = compositeTextureMap()
 		
 		if(p[1] != -1) do outputMap.blendMode[s] = p[1] 
 		if(p[2] != -1) do outputMap.opacity[s]  = p[2] 
-		if(p[3] == false) do outputMap.opacity[s] = 0		
+		if(p[3] == "false") do outputMap.mapEnabled[s] = false
 	)
 	
 		fn postProcessCorona =
