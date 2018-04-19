@@ -2,7 +2,7 @@
 [INFO] 
 
 NAME = Pack Model
-VERSION = 1.1.1
+VERSION = 1.1.2
 AUTHOR = Vasily Lukyanenko
 DEV = VISCO
 HELP = 
@@ -76,6 +76,10 @@ ICON=#("PhysX_Main", 30)
 
 - BugFix: Animated option not save=
 
+[1.1.2]
+
++ Added: Save scene option=
+
 [ABOUT]
 
 This script helps to prepare model to upload=
@@ -96,7 +100,7 @@ try(closeRolloutFloater fFastRender) catch()
 try(destroyDialog rPostProcess) catch()
 
 try(closeRolloutFloater rAssetsLibraryModelPack)catch()
-global rAssetsLibraryModelPack = newRolloutFloater "Pack Model" 280 773
+global rAssetsLibraryModelPack = newRolloutFloater "Pack Model" 280 800
 
 /* GLOBALS */
 
@@ -1120,7 +1124,7 @@ rollout _STEP1 "STEP 1: Model Transform"
 	
 	on btnNext pressed do 
 	(
-		if(not isSelected()) do return showTooltip nextWarn "Please select model!"
+		if(not isSelected()) do return showTooltip nextWarn "Please select objects!"
 			
 		goStep 2
 	)
@@ -1627,7 +1631,7 @@ rollout _STEP2 "STEP 2: Model Info"
 				
 		if(not isValidText sModelName edtModelName) do return false 
 		if(not isValidText sManufacturer edtManufacturer) do return false 
-		if(not isSelected()) do return showTooltip nextWarn "Please select model!"
+		if(not isSelected()) do return showTooltip nextWarn "Please select objects!"
 			
 		saveAllProp()
 			
@@ -1813,7 +1817,7 @@ rollout _STEP3 "STEP 3: Model Review"
 	)
 	on btnNext pressed do 
 	(
-		if(not isSelected()) do return showTooltip nextWarn "Please select model!"
+		if(not isSelected()) do return showTooltip nextWarn "Please select objects!"
 					
 		sOverview = edtOverview.text			
 		sCustom1 = edtCustom1.text			
@@ -1855,7 +1859,7 @@ rollout _STEP4 "STEP 4: Preview"
 	on btnPrev pressed do goStep 3		
 	on btnNext pressed do 
 	(	
-		if(not isSelected()) do return showTooltip nextWarn "Please select model!"
+		if(not isSelected()) do return showTooltip nextWarn "Please select objects!"
 		if(sPreviewPath.count == 0) do return showTooltip btmPreview "Please add at least one image!\nPress the \"Add New Picture\" button!"
 					
 		saveProp "sPreviewPath" (implode sPreviewPath)
@@ -2093,6 +2097,7 @@ rollout _STEP5 "STEP 5: Pack Model"
 		checkbox cbxRemoveLayers "Remove Layers" checked: true 
 	)
 	
+	radiobuttons rdoPackType "" labels: #("Pack Model", "Pack Scene")
 	button btnPackModel "Pack Model" width: 244 height: 45 align: #left across: 2
 	dotnetcontrol warnMsg "System.Windows.Forms.Button" height:0 width:0 offset: [0, 25]
 	
@@ -2478,10 +2483,20 @@ rollout _STEP5 "STEP 5: Pack Model"
 	on cbxRemoveLayers changed v do useSettings "REMLAYERS"	v "w"
 	on ddlMaxVer selected v do _lblFormat.text = ddlMaxVer.selected
 
+	on rdoPackType changed a do (
+		btnPackModel.caption = case a of (2: "Pack Scene";default: "Pack Model")
+		
+		d = case a of (2: false; default: true)
+		cbxRenameTextures.enabled = d
+		cbxRenameObjects.enabled = d
+		cbxRenameMaterials.enabled = d
+		cbxRenameGroups.enabled = d
+		cbxRemoveLayers.enabled = d
+	)
 	
 	on btnPackModel pressed do
 	(
-		if(not isSelected()) do return showTooltip warnMsg "Please select model!"
+		if(not isSelected()) do return showTooltip warnMsg "Please select objects!"
 		fileToLoad = maxFilePath + maxFileName
 		if(fileToLoad.count < 1) do  return showTooltip warnMsg "Please save scene!"
 		if(sModelName.count < 1) do return showTooltip warnMsg "Please specify Model Name in STEP 1!" 
@@ -2542,30 +2557,33 @@ rollout _STEP5 "STEP 5: Pack Model"
 		MetricType = units.MetricType
 			
 		-- Add Versions
-		
-		saveNodes _selection (szDir + "_tmp.max") quiet:true
-		resetMaxFile #noPrompt
-		try(
-			units.SystemType = SystemType
-			units.SystemScale = SystemScale
-			units.DisplayType	= DisplayType
-			units.MetricType = MetricType
-		)catch()
+		if(rdoPackType.state == 1) do (
+			saveNodes _selection (szDir + "_tmp.max") quiet:true
+			resetMaxFile #noPrompt
+			try(
+				units.SystemType = SystemType
+				units.SystemScale = SystemScale
+				units.DisplayType	= DisplayType
+				units.MetricType = MetricType
+			)catch()
+				
+			-- Delete objects from default scene
+			try(for o in objects where isValidNode o do delete o)catch()
 			
-		-- Delete objects from default scene
-		try(for o in objects where isValidNode o do delete o)catch()
-		
-		mergeMAXFile (szDir + "_tmp.max") #select #mergedups #renameMtlDups #noRedraw quiet:true			
-		deleteFile (szDir + "_tmp.max")
+			mergeMAXFile (szDir + "_tmp.max") #select #mergedups #renameMtlDups #noRedraw quiet:true			
+			deleteFile (szDir + "_tmp.max")
+				
+			try(renderers.current = currentRender)catch()
+		)
 			
-		try(renderers.current = currentRender)catch()
-					
-		select objects
+		select objects						
 		max tool zoomextents all
-			
-		renameObjects szName
-		renameMaterials szName 
-		if(cbxRemoveLayers.checked) do removeLayers()
+		
+		if(rdoPackType.state == 1) do (	
+			renameObjects szName
+			renameMaterials szName 
+			if(cbxRemoveLayers.checked) do removeLayers()
+		)
 			
 		-- Save file properties
 		saveAllProp()
