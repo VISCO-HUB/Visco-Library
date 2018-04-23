@@ -2,7 +2,7 @@
 [INFO] 
 
 NAME = Make Preview
-VERSION = 1.2.1
+VERSION = 1.2.2
 AUTHOR = Vasily Lukyanenko
 DEV = VISCO
 HELP = 
@@ -74,6 +74,9 @@ ICON=#("PhysX_Main", 3)
 + Added: Savable option in Post Process=
 * Changed: Open last used scene for Batch Render=
 
+[1.2.2]
+
++ Added: Save format: jpg, tiff, png=
 
 [ABOUT]
 
@@ -2802,6 +2805,7 @@ rollout _rBatchRender  "Batch Render" category:5
 		checkbox cbxSmartZoom "Smart Zoom" checked: true
 		checkbox cbxApplyColorCorrection "Post Process" checked: true
 		checkbox cbxSaveWire "Save Wire" checked: true
+		dropdownlist ddlOutFormat "Format: " items: #("jpg", "tiff", "png") width: 90
 	)
 	
 	dotnetcontrol btnStartRender "System.Windows.Forms.Button" height: 40 width: 203
@@ -2928,12 +2932,15 @@ rollout _rBatchRender  "Batch Render" category:5
 	on cbxSmartZoom changed v do useSettings "BATCH_SMART_ZOOM" v "w"
 	on cbxApplyColorCorrection changed v do useSettings "BATCH_POST_PROCESS" v "w"
 	on cbxSaveWire changed v do useSettings "BATCH_SAVE_WIRE" v "w"
+	on ddlOutFormat selected v do useSettings "BATCH_OUT_FORMAT" v "w"
 	
 	on _rBatchRender open do
 	(	
 		cbxSmartZoom.checked = useSettings "BATCH_SMART_ZOOM" "bool" "r"
 		cbxApplyColorCorrection.checked = useSettings "BATCH_POST_PROCESS" "bool_not" "r"
 		cbxSaveWire.checked = useSettings "BATCH_SAVE_WIRE" "bool" "r"
+		outFormat = useSettings "BATCH_OUT_FORMAT" "int" "r"
+		ddlOutFormat.selection = if(outFormat == undefined or outFormat == "" or outFormat == 0) then 1 else outFormat
 		
 		updateFilesList()
 		setupImageButton btnStartRender "Start Batch Render" "forward-01"

@@ -1,6 +1,6 @@
 global outputMap = compositeTextureMap()
 
-(
+( 
 	fn removeCallbacks = 
 	(
 		callbacks.removeScripts id:#renderChange
@@ -152,6 +152,15 @@ global outputMap = compositeTextureMap()
 		)
 	)	 
 	
+	fn getBatchFormat = (
+		outFormat = useSettings "BATCH_OUT_FORMAT" "int" "r"
+		if(outFormat == undefined or outFormat == "" or outFormat == 0) do outFormat = 1
+		
+		TIF.setAlpha #true
+		
+		return case outFormat of (2: ".tiff"; 3: ".png"; default: ".jpg")
+	)
+	
 	fn clearCache =
 	(
 		f = @"c:\temp\make-preview\"
@@ -159,8 +168,23 @@ global outputMap = compositeTextureMap()
 		for i in d do deleteFile i
 	)
 	
+	fn getVFBChannel c: 0 = (
+		r = getRender()
+		b = undefined
+		
+		case r of 
+		(
+			#Corona: b = CoronaRenderer.CoronaFp.getVfbContent c true true
+			#VRay: b = vrayVFBGetChannelBitmap c 
+		)
+		
+		return b
+	)
+	
 	fn getVFB c: 0 = 
 	(	
+		_BATCH_FORMAT = getBatchFormat()
+		
 		f = @"c:\temp\make-preview\"
 		makeDir f
 		
@@ -177,7 +201,7 @@ global outputMap = compositeTextureMap()
 		copy b nb
 		
 		t = timeStamp()
-		nb.filename = f + t as string  + ".jpg"
+		nb.filename = f + t as string  + _BATCH_FORMAT
 		
 		save nb gamma: 2.2
 		close nb
@@ -187,6 +211,8 @@ global outputMap = compositeTextureMap()
 			
 		return  bt
 	)
+	
+	
 	
 	fn setIniPostEffect s = (
 		p = #()
@@ -204,7 +230,7 @@ global outputMap = compositeTextureMap()
 		if(p[3] == "false") do outputMap.mapEnabled[s] = false
 	)
 	
-		fn postProcessCorona =
+	fn postProcessCorona =
 	(
 		vfbAlpha = getVFB c:1
 		main = getVFB c:0
@@ -356,6 +382,8 @@ global outputMap = compositeTextureMap()
 		close b
 	)
 	
+	
+	
 	fn batchRender = (	
 				
 		tmp = @"c:\temp\_tmpMakePreview.max"
@@ -366,6 +394,8 @@ global outputMap = compositeTextureMap()
 		usePostProcess = useSettings "BATCH_POST_PROCESS" "bool_not" "r"
 		useSaveWire = useSettings "BATCH_SAVE_WIRE" "bool" "r"
 		
+		_BATCH_FORMAT = getBatchFormat()
+				
 		
 		_BATCH_CAMERA = cameras[1]
 		if(_BATCH_CAMERA == undefined) do return messageBox "Camera not found!" title: "Error!"
@@ -382,8 +412,8 @@ global outputMap = compositeTextureMap()
 		(	
 			if(getProgressCancel() == true) do exit	
 			
-			outputFile = _BATCH_SAVE_PATH + @"\" + (getNamedSelSetName i) + ".jpg"
-			outputFileWire = _BATCH_SAVE_PATH + @"\" + (getNamedSelSetName i) + "_wire.jpg"
+			outputFile = _BATCH_SAVE_PATH + @"\" + (getNamedSelSetName i) + _BATCH_FORMAT
+			outputFileWire = _BATCH_SAVE_PATH + @"\" + (getNamedSelSetName i) + "_wire" + _BATCH_FORMAT
 						
 			select selectionSets[i]
 			unhide selectionSets[i]
@@ -416,16 +446,19 @@ global outputMap = compositeTextureMap()
 					#Corona: postProcessCorona()
 					#VRay: postProcessVRay()
 				)	
+				
+				bt = preRenderImageFromMap()			
+				saveBitmap bt outputFile
 			) else (
-				bb = getVFB c: 1
-				outputMap.mapList[1] = bb
-				outputMap.opacity[1] = 100
-				outputMap.blendMode[1] = 0
+				bb = undefined
+				case r of
+				(
+					#Corona: bb = getVFBChannel c: 0
+					#VRay: bb = getVFBChannel c: 1
+				)	
+				if(bb != undefined) do saveBitmap bb outputFile
 			)
-			
-			bt = preRenderImageFromMap()			
-			saveBitmap bt outputFile
-			
+				
 			if(useSaveWire) do (
 				-- Wire
 				nn = getRenderElementsNum()
