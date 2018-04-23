@@ -2,7 +2,7 @@
 [INFO] 
 
 NAME = Make Preview
-VERSION = 1.2.2
+VERSION = 1.2.3
 AUTHOR = Vasily Lukyanenko
 DEV = VISCO
 HELP = 
@@ -77,6 +77,12 @@ ICON=#("PhysX_Main", 3)
 [1.2.2]
 
 + Added: Save format: jpg, tiff, png=
+
+[1.2.3]
+
+* Changed: Disable VRay region by default for Batch Render=
+* Changed: Save max scene before Batch Render=
+
 
 [ABOUT]
 
@@ -2993,7 +2999,7 @@ rollout _rBatchRender  "Batch Render" category:5
 		if(_BATCH_SCENE == "") do return messageBox "Please save the scene!" title: "Warning!"		
 		if(_BATCH_RENDER_FILELIST.count == 0 and selectionSets.count == 0) do return messageBox "Please add models!" title: "Warning!"	
 				
-		--saveMaxFile currScene
+		saveMaxFile currScene
 				
 		_BATCH_SAVE_PATH = useSettings "BATCH_SAVE_PATH" "str" "r"				
 		_BATCH_SAVE_PATH = getSavePath caption: "Save renders to:" initialDir: _BATCH_SAVE_PATH

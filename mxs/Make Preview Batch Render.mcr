@@ -387,6 +387,7 @@ global outputMap = compositeTextureMap()
 	fn batchRender = (	
 				
 		tmp = @"c:\temp\_tmpMakePreview.max"
+		 
 		resetMaxFile #noPrompt
 		loadMaxFile tmp useFileUnits: true quiet: true
 		
@@ -431,6 +432,9 @@ global outputMap = compositeTextureMap()
 			)
 			
 			clearCache()
+			
+			-- Disable default region for Vray
+			try(vrayVFBSetRegionEnabled false) catch()
 			
 			max quick render
 			
