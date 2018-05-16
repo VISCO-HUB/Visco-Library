@@ -689,7 +689,7 @@ app.controller('tagsCtrl', function($scope, vault, $rootScope, $location, $route
 			return false;
 		}
 		
-		if(newtag.match(/[^a-z0-9]/)) {
+		if(newtag.match(/[^a-z0-9-]/)) {
 			vault.showMessage('Tag has wrong format!', 'warning');
 			
 			return false;
@@ -937,6 +937,16 @@ app.controller("modelsEditCtrl", function ($scope, $rootScope, $routeParams, vau
 		$scope.moveToCat[lvl] = id;
 		$scope.moveToCatName[lvl] = name;
 	}
+
+	$rootScope.$watch('product', function(newVal, oldVal){
+		var c = $rootScope.product.full_cat;
+		if(c) {
+			angular.forEach([0,1,2], function(v, k) {
+				$scope.selectMoveToCat(c[v].id, c[v].name, v);
+			});
+			
+		}
+	});
 	
 	$rootScope.moveProductActive = false;
 		

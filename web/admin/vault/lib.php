@@ -1103,6 +1103,21 @@
 			
 			RETURN $PRODCAT;
 		}
+
+		PUBLIC STATIC FUNCTION GETPRODCATLIST($CATEGORIES, $ID = NULL) {
+			$PRODCAT = [];
+			FOREACH($CATEGORIES AS $CATEGORY) {							
+				IF($CATEGORY->id == $ID) {													
+					$NPC = SELF::GETPRODCATLIST($CATEGORIES, $CATEGORY->parent);
+					
+					$ID = $CATEGORY->id;
+					$PRODCAT[$ID] = $CATEGORY;
+					$PRODCAT = ARRAY_MERGE($PRODCAT, $NPC);
+				}								
+			}
+						
+			RETURN $PRODCAT;
+		}
 				
 		PUBLIC STATIC FUNCTION BUILDTREE($CATEGORIES, $PARENT = 0, $GROUPS = NULL) {
 			$TREE = [];
@@ -1620,6 +1635,7 @@
 			
 			IF($OUT['info']->catid) {		
 				$OUT['cat'] = CAT::GETCATINFO($CATEGORIES, $OUT['info']->catid);
+				$OUT['full_cat'] = @ARRAY_REVERSE(CAT::GETPRODCATLIST($CATEGORIES, $OUT['info']->catid));
 				
 				$PATH = CAT::BUILDPATH($OUT['info']->catid);
 				

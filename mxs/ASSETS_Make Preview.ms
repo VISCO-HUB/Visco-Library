@@ -859,6 +859,7 @@ fn setRenderQuality =
 			renderSystem.colorMapping_type = 6
 			renderSystem.colorMapping_darkMult = 1.0
 			renderSystem.colorMapping_brightMult = 1.0
+			renderSystem.options_hiddenLights = off
 		
 			renderSystem.colorMapping_adaptationOnly = 1
 				
@@ -2999,7 +3000,7 @@ rollout _rBatchRender  "Batch Render" category:5
 		if(_BATCH_SCENE == "") do return messageBox "Please save the scene!" title: "Warning!"		
 		if(_BATCH_RENDER_FILELIST.count == 0 and selectionSets.count == 0) do return messageBox "Please add models!" title: "Warning!"	
 				
-		saveMaxFile currScene
+		saveMaxFile _BATCH_SCENE
 				
 		_BATCH_SAVE_PATH = useSettings "BATCH_SAVE_PATH" "str" "r"				
 		_BATCH_SAVE_PATH = getSavePath caption: "Save renders to:" initialDir: _BATCH_SAVE_PATH

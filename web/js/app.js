@@ -1559,7 +1559,11 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 	
 	var sendCommandMXS = function(cmd, value) {
 		if(!value) {value = '';}
-		window.external.text = cmd + '=' + value + '#' + new Date().getTime();
+		
+		try {
+			window.external.text = cmd + '=' + value + '#' + new Date().getTime();
+		} catch(err) {}
+				
 	}
 	
 	var checkPending = function(id, page, perpage, filter, type, catid) {

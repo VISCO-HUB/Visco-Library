@@ -95,6 +95,7 @@ for Assets Library=
 
 global _URL = "http://svg-web-003/"
 global _SAVEPATH = @"C:\temp\Assets Library\"
+global _SILENT_MODE = false
 
 try(closeRolloutFloater fFastRender) catch()
 try(destroyDialog rPostProcess) catch()
@@ -111,6 +112,7 @@ global _STEP4
 global _STEP5
 global _rAbout
 global _RelTagsList
+global _ASSETS_PACK_TYPE = 1
 
 global Keys = dotNetClass "System.Windows.Forms.Keys"
 global szChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890-"
@@ -157,7 +159,7 @@ global catId1 = 1
 global catId2 = 1
 global catId3 = 1
 
- fn useSettings k p w =
+fn useSettings k p w =
 (
 	/*
 		useSettings "key" "value/int/float/bool/bool_not" "r/w" 
@@ -191,6 +193,20 @@ global catId3 = 1
 		default: return setINISetting settingsFile t k (p as string)
 	)
 )	
+
+fn getPackTypeText pack: "Pack " = (
+	a = case _ASSETS_PACK_TYPE of (2: "Scene"; default: "Model")
+	return pack + a
+)
+
+
+fn getSelectionByPackType type: #objects = (
+	if(_ASSETS_PACK_TYPE == 2) do (
+		if(type == #geometry) do return geometry
+		return objects
+	)
+	return selection
+)
 
 /* CLASSES */
 
@@ -544,7 +560,7 @@ fn loadModelInfo id =
 )
 
 fn isSelected =
-(
+(	
 	if(selection.count < 1) do 
 	(
 		--messageBox "Please select model!" title: "Warning!"
@@ -777,6 +793,10 @@ fn getNA d =
 
 rollout _STEP1 "STEP 1: Model Transform" 
 (
+	group "" (
+		radiobuttons rdoPackType "" labels: #("Pack Model", "Pack Scene")	
+	)
+	
 	group "1. Geometry Fix"
 	(
 		button btnResetXForm "Reset XForm" width: 80 height: 28 across: 2 tooltip: "Collaps modifier stack and reset objects transformation."
@@ -861,7 +881,7 @@ rollout _STEP1 "STEP 1: Model Transform"
 	
 	fn setPivot p: #bottom =
 	(				
-		if(cbxOnePivotForAll.checked) then (
+		if(cbxOnePivotForAll.checked) then (						
 			for i in selection as array do 
 			(	
 				i.pivot = selection.center			
@@ -902,6 +922,8 @@ rollout _STEP1 "STEP 1: Model Transform"
 		
 		v = useSettings "CONVERTTOMESH" "bool" "r"	
 		cbxConvertToMesh.checked = if(v == false) then false else true
+		
+		try(rdoPackType.state = _ASSETS_PACK_TYPE) catch()
 		
 		-- Get Model Data from DB
 		externalModelID = getProp "externalModelID"
@@ -1124,9 +1146,14 @@ rollout _STEP1 "STEP 1: Model Transform"
 	
 	on btnNext pressed do 
 	(
-		if(not isSelected()) do return showTooltip nextWarn "Please select objects!"
+		if(not isSelected() and _ASSETS_PACK_TYPE == 1) do return showTooltip nextWarn "Please select objects!"
 			
 		goStep 2
+	)
+	
+	on rdoPackType changed a do (
+		_ASSETS_PACK_TYPE = a		
+		rAssetsLibraryModelPack.title = getPackTypeText()
 	)
 )
 
@@ -1578,7 +1605,9 @@ rollout _STEP2 "STEP 2: Model Info"
 	
 	fn detectLights =
 	(
-		for i in selection where superClassOf i == light do 
+		_selection = getSelectionByPackType()
+		
+		for i in _selection where superClassOf i == light do 
 		(
 			cbxLights.checked = true
 			bLights = true
@@ -1589,7 +1618,9 @@ rollout _STEP2 "STEP 2: Model Info"
 	(
 		a = false
 		
-		for i in selection do 
+		_selection = getSelectionByPackType()
+		
+		for i in _selection do 
 		(		
 			try(if(numKeys i.pos.controller > 0) do a = true)catch()
 			try(if(numKeys i.rotation.controller > 0) do a = true)catch()
@@ -1631,7 +1662,7 @@ rollout _STEP2 "STEP 2: Model Info"
 				
 		if(not isValidText sModelName edtModelName) do return false 
 		if(not isValidText sManufacturer edtManufacturer) do return false 
-		if(not isSelected()) do return showTooltip nextWarn "Please select objects!"
+		if(not isSelected() and _ASSETS_PACK_TYPE == 1) do return showTooltip nextWarn "Please select objects!"
 			
 		saveAllProp()
 			
@@ -1659,6 +1690,9 @@ rollout _STEP2 "STEP 2: Model Info"
 		
 	on _STEP2 open do
 	(	
+		
+		_STEP2.title = getPackTypeText pack: "" + " Info"
+		
 		initDotNet()
 		
 		edtToken.text = getProp "edtToken"
@@ -1778,6 +1812,8 @@ rollout _STEP3 "STEP 3: Model Review"
 	
 	on _STEP3 open do
 	(
+		_STEP3.title = getPackTypeText pack: "" + " Review"
+		
 		edtOverview.MultiLine = true
 		edtOverview.scrollbars = (dotnetclass "System.Windows.Forms.ScrollBars").vertical		
 		edtOverview.acceptsReturn = true
@@ -1817,7 +1853,7 @@ rollout _STEP3 "STEP 3: Model Review"
 	)
 	on btnNext pressed do 
 	(
-		if(not isSelected()) do return showTooltip nextWarn "Please select objects!"
+		if(not isSelected() and _ASSETS_PACK_TYPE == 1) do return showTooltip nextWarn "Please select objects!"
 					
 		sOverview = edtOverview.text			
 		sCustom1 = edtCustom1.text			
@@ -1859,7 +1895,7 @@ rollout _STEP4 "STEP 4: Preview"
 	on btnPrev pressed do goStep 3		
 	on btnNext pressed do 
 	(	
-		if(not isSelected()) do return showTooltip nextWarn "Please select objects!"
+		if(not isSelected() and _ASSETS_PACK_TYPE == 1) do return showTooltip nextWarn "Please select objects!"
 		if(sPreviewPath.count == 0) do return showTooltip btmPreview "Please add at least one image!\nPress the \"Add New Picture\" button!"
 					
 		saveProp "sPreviewPath" (implode sPreviewPath)
@@ -2096,8 +2132,7 @@ rollout _STEP5 "STEP 5: Pack Model"
 		checkbox cbxRenameGroups "Rename Groups" checked: true
 		checkbox cbxRemoveLayers "Remove Layers" checked: true 
 	)
-	
-	radiobuttons rdoPackType "" labels: #("Pack Model", "Pack Scene")
+		
 	button btnPackModel "Pack Model" width: 244 height: 45 align: #left across: 2
 	dotnetcontrol warnMsg "System.Windows.Forms.Button" height:0 width:0 offset: [0, 25]
 	
@@ -2144,6 +2179,8 @@ rollout _STEP5 "STEP 5: Pack Model"
 		Category.backColor = bg
 		Category.foreColor = txt
 		
+		_selection = getSelectionByPackType type: #geometry
+			
 		Category.text = "No category"
 		if(category3[iCat3][2] != "") do	Category.text = category1[iCat1][2] + " / " + category2[iCat2][2] + " / " + category3[iCat3][2]
 		_lblModelName.text = getNA sModelName
@@ -2153,8 +2190,8 @@ rollout _STEP5 "STEP 5: Pack Model"
 		_lblTags.text = (explode sTags tag: ",").count as string
 		_lblPreview.text = sPreviewPath.count as string
 		_lblUnits.text = getUnits()
-		_lblDim.text = getDim selection
-		_lblPolys.text = polyCount selection
+		_lblDim.text = getDim _selection
+		_lblPolys.text = polyCount _selection
 		_lblRender.text = (getCurrRender())[2]
 		_lblOverview.text = getYesNo (sOverview.count > 0)
 		_lblRigged.text = getYesNo bRigged
@@ -2187,14 +2224,35 @@ rollout _STEP5 "STEP 5: Pack Model"
 		ddlMaxVer.items = v
 		
 		_lblFormat.text = ddlMaxVer.selected
+		
+		
+		-- 
+		if(_ASSETS_PACK_TYPE == 2) do (
+			cbxRenameTextures.enabled = false
+			cbxRenameObjects.enabled = false
+			cbxRenameMaterials.enabled = false
+			cbxRenameGroups.enabled = false
+			cbxRemoveLayers.enabled = false
+			
+			cbxRenameTextures.checked = false
+			cbxRenameObjects.checked = false
+			cbxRenameMaterials.checked = false
+			cbxRenameGroups.checked = false
+			cbxRemoveLayers.checked = false						
+		)		
+		
+		_STEP5.title = getPackTypeText()
+		btnPackModel.caption = getPackTypeText()
 	)
 		
 	fn checkTexturesError =
 	(
 		errorTex = #()
 		oldTex = #()
+		
+		_selection = getSelectionByPackType()
 				
-		for i in selection where i.material != undefined do
+		for i in _selection where i.material != undefined do
 		(
 			for type in BitmapTypes where classOf type == textureMap do
 			(
@@ -2357,10 +2415,12 @@ rollout _STEP5 "STEP 5: Pack Model"
 		
 		oldMtl = #()
 		iCnt = 1
-						
+		
+		_selection = getSelectionByPackType()	
+		
 		toRename = #()
-		mat = getMaterialDependence selection material
-		tex = getMaterialDependence selection textureMap	
+		mat = getMaterialDependence _selection material
+		tex = getMaterialDependence _selection textureMap	
 		
 		join toRename mat
 		join toRename tex
@@ -2419,6 +2479,14 @@ rollout _STEP5 "STEP 5: Pack Model"
 			if(isProperty l #webFile and l.webFile != undefined) do l.webFile = copyIes (l.webFile) szAssets szName
 			if(isProperty l #iesFile and l.iesFile != undefined) do l.iesFile = copyIes (l.iesFile) szAssets szName
 		)		
+	)
+	
+	fn removeDefaultLights = (
+		l = for i in lights where matchPattern i.name pattern: "HighLight_*" collect
+		try(delete l)catch()
+		
+		l = for i in lights where classOf i == VrayLight and i.type == 1 collect i
+		try(delete l)catch()
 	)
 	
 	fn setIniInfo f s k v = 
@@ -2483,28 +2551,22 @@ rollout _STEP5 "STEP 5: Pack Model"
 	on cbxRemoveLayers changed v do useSettings "REMLAYERS"	v "w"
 	on ddlMaxVer selected v do _lblFormat.text = ddlMaxVer.selected
 
-	on rdoPackType changed a do (
-		btnPackModel.caption = case a of (2: "Pack Scene";default: "Pack Model")
-		
-		d = case a of (2: false; default: true)
-		cbxRenameTextures.enabled = d
-		cbxRenameObjects.enabled = d
-		cbxRenameMaterials.enabled = d
-		cbxRenameGroups.enabled = d
-		cbxRemoveLayers.enabled = d
-	)
+	
 	
 	on btnPackModel pressed do
 	(
-		if(not isSelected()) do return showTooltip warnMsg "Please select objects!"
+		if(not isSelected() and _ASSETS_PACK_TYPE == 1) do return showTooltip warnMsg "Please select objects!"
 		fileToLoad = maxFilePath + maxFileName
 		if(fileToLoad.count < 1) do  return showTooltip warnMsg "Please save scene!"
 		if(sModelName.count < 1) do return showTooltip warnMsg "Please specify Model Name in STEP 1!" 
-		if(sTags.count < 1) do return showTooltip warnMsg "Please specify Tags in STEP 2!" 
+		if(sTags.count < 1 and _SILENT_MODE == false) do return showTooltip warnMsg "Please specify Tags in STEP 2!" 
 		if(catID == -1) do return showTooltip warnMsg "Please select the category in STEP 2!"
 		max file save
 		
-		_selection = selection as array 	
+			
+		removeDefaultLights()	
+			
+		_selection = getSelectionByPackType()
 			
 		v = ddlMaxVer.selected 
 		r = getCurrRender()	
@@ -2557,7 +2619,7 @@ rollout _STEP5 "STEP 5: Pack Model"
 		MetricType = units.MetricType
 			
 		-- Add Versions
-		if(rdoPackType.state == 1) do (
+		if(_ASSETS_PACK_TYPE == 1) do (
 			saveNodes _selection (szDir + "_tmp.max") quiet:true
 			resetMaxFile #noPrompt
 			try(
@@ -2579,7 +2641,7 @@ rollout _STEP5 "STEP 5: Pack Model"
 		select objects						
 		max tool zoomextents all
 		
-		if(rdoPackType.state == 1) do (	
+		if(_ASSETS_PACK_TYPE == 1) do (	
 			renameObjects szName
 			renameMaterials szName 
 			if(cbxRemoveLayers.checked) do removeLayers()
@@ -2613,8 +2675,10 @@ rollout _STEP5 "STEP 5: Pack Model"
 		resetMaxFile #noPrompt
 		loadMaxFile fileToLoad useFileUnits: true quiet:true		
 		
-		q = queryBox "Model packed success!\nDo you want to open containing folder?" title: "Success!"
-		if(q) do shellLaunch _SAVEPATH ""		
+		if(_SILENT_MODE == false) do (
+			q = queryBox "Model packed success!\nDo you want to open containing folder?" title: "Success!"
+			if(q) do shellLaunch _SAVEPATH ""		
+		)
 	)
 	
 	progressBar hr "" height: 3 offset:[0,15]

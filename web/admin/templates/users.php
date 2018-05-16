@@ -41,13 +41,13 @@
 <h4>Access rights</h4>
 <table class="table" style="margin-bottom: 0;">
 	<tr>
-		<td width="100px"><span class="label label-info">Guest</span></td><td>View</td>
+		<td width="100px"><span class="label label-info">Guest</span></td><td>Just view</td>
 	</tr>
 	<tr>
-		<td><span class="label label-primary">User</span></td><td>Merge</td>
+		<td><span class="label label-primary">User</span></td><td>Open/Download/Merge to scene</td>
 	</tr>
 	<tr>
-		<td><span class="label label-warning">Moderator</span></td><td>Limited admin rights</td>
+		<td><span class="label label-warning">Moderator</span></td><td>Add/Edit models in accessible libraries</td>
 	</tr>
 	<tr>
 		<td><span class="label label-danger">Super Admin</span></td><td>All permissions</td>

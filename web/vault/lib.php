@@ -1805,9 +1805,19 @@
 			
 			$WHERE['status'] = 1;
 			$WHERE['pending'] = 0;
+			// !!!!!!!!!!!!!!!!!
+			//$FIND = ARRAY_FILTER(EXPLODE(' ', $DATA->query));
+			$FIND = ARRAY_FILTER(PREG_SPLIT( '/(\s|&|,|-)/', $DATA->query));
 			
-			$FIND = ARRAY_FILTER(EXPLODE(' ', $DATA->query));
-			
+			$BAD_WORDS = [];
+			$BAD_WORDS[] = 'with';
+			$BAD_WORDS[] = 'the';
+			$BAD_WORDS[] = 'in';
+			$BAD_WORDS[] = 'end';
+			$BAD_WORDS[] = 'of';
+
+			$FIND = ARRAY_DIFF($FIND, $BAD_WORDS);
+
 			$RESULT = DB::SEARCH($TYPE, $FIND, $COL, $FILTER, $LIMIT);
 			$NUMPAGES = DB::LAST_CNT();
 			

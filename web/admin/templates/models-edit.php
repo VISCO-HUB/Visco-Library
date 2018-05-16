@@ -43,13 +43,60 @@
 	<br>
 	<button type="submit" class="btn btn-primary" ng-click="productChangeName(product.info.catid, product.info.name)">Change</button>
 </div>
+<br>
 <hr>
-<h2><small>Path:</small></h2>
-<div class="form-group">
-	<input type="text" class="form-control" value="{{product.dir}}">	
-	<br>
+<br>
+<div class="well well-lg" ng-show="auth.rights==2">
+	<h2 style="margin: 0"><small>Path:</small></h2>
+	<div class="form-group">
+		<input type="text" class="form-control" value="{{product.dir}}">	
+		<br>
 	<span class="label label-success" ng-show="product.exist">Directory Exist</span> <span class="label label-danger" ng-show="!product.exist">Directory Not Exist!</span> </div>
 	
+	<hr>
+
+	<h2 style="margin: 0"><small>Move To Category:</small></h2>
+	<br>
+	<div ng-show="moveProductActive" class="loader-container"><div class="loader"></div> Loading...</div>
+	<div ng-show="!moveProductActive">
+		<div class="alert alert-warning"><b>Backup Database before moving the model!</b></div>
+		<br>	
+		
+		Choose Category:<br><br>
+		
+		<div class="btn-group dropup">
+			<button type="button" class="btn dropdown-toggle btn-default" ng-class="{'btn-success': moveToCat[0]}" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{{moveToCatName[0] ? moveToCatName[0] : 'None'}} <span class="caret"></span></button>
+			<ul class="dropdown-menu">
+				<li role="presentation" ng-repeat="lib in categories"><a href="" ng-click="selectMoveToCat(lib.id, lib.name, 0)">{{lib.name}}</a></li>
+				
+			</ul>
+		</div>	
+		&rarr;
+		
+		
+		<div class="btn-group dropup">
+			<button type="button" class="btn dropdown-toggle btn-default" ng-class="{'btn-success': moveToCat[1]}" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{{moveToCatName[1] ? moveToCatName[1] : 'None'}} <span class="caret"></span></button>
+			<ul class="dropdown-menu">
+				<li role="presentation" ng-repeat="cat in categories[moveToCat[0]].child"><a href="" ng-click="selectMoveToCat(cat.id, cat.name, 1)">{{cat.name}}</a></li>
+				
+			</ul>
+		</div>	
+		
+		&rarr;	
+		
+		<div class="btn-group dropup">
+			<button type="button" class="btn dropdown-toggle btn-default" ng-class="{'btn-success': moveToCat[2]}" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{{moveToCatName[2] ? moveToCatName[2] : 'None'}}  <span class="caret"></span></button>
+			<ul class="dropdown-menu">
+				<li role="presentation" ng-repeat="sub in categories[moveToCat[0]].child[moveToCat[1]].child"><a href="" ng-click="selectMoveToCat(sub.id, sub.name, 2)">{{sub.name}}</a></li>		
+			</ul>
+		</div>	
+			
+		<br><br>
+		<button type="button" ng-disabled="!moveToCat[2] || moveToCat[2] == product.cat.id" class="btn dropdown-toggle btn-danger" ng-click="moveProduct(moveToCat[2])">Move model  {{moveToCat[2] ? 'to ' + moveToCatName[2] : ''}}</button>
+	</div>	
+	
+</div>
+
 	<br>	
 <hr>
 <h2><small>Preview:</small></h2>
@@ -207,8 +254,7 @@
 		<td>Lights: </td>
 		<td>
 			<btn-trigger cls="'btn-xs'" active="product.info.lights" toggle="prodToggleParam('lights')"></btn-trigger>
-		</td>
-		
+		</td>		
 	</tr>
 	<tr>
 		<td>Lods: </td>
@@ -260,47 +306,6 @@
 		</div>
 </div>
 
-<div class="well well-lg" ng-show="auth.rights==2">
-	<h2 style="margin: 0"><small>Move To Category:</small></h2>
-	<br>
-	<div ng-show="moveProductActive" class="loader-container"><div class="loader"></div> Loading...</div>
-	<div ng-show="!moveProductActive">
-		<div class="alert alert-warning"><b>Backup Database before moving the model!</b></div>
-		<br>	
-		
-		Choose Category:<br>
-		
-		<div class="btn-group dropup">
-			<button type="button" class="btn dropdown-toggle btn-default" ng-class="{'btn-success': moveToCat[0]}" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{{moveToCatName[0] ? moveToCatName[0] : 'None'}} <span class="caret"></span></button>
-			<ul class="dropdown-menu">
-				<li role="presentation" ng-repeat="lib in categories"><a href="" ng-click="selectMoveToCat(lib.id, lib.name, 0)">{{lib.name}}</a></li>
-				
-			</ul>
-		</div>	
-		&rarr;
-		
-		
-		<div class="btn-group dropup">
-			<button type="button" class="btn dropdown-toggle btn-default" ng-class="{'btn-success': moveToCat[1]}" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{{moveToCatName[1] ? moveToCatName[1] : 'None'}} <span class="caret"></span></button>
-			<ul class="dropdown-menu">
-				<li role="presentation" ng-repeat="cat in categories[moveToCat[0]].child"><a href="" ng-click="selectMoveToCat(cat.id, cat.name, 1)">{{cat.name}}</a></li>
-				
-			</ul>
-		</div>	
-		
-		&rarr;	
-		
-		<div class="btn-group dropup">
-			<button type="button" class="btn dropdown-toggle btn-default" ng-class="{'btn-success': moveToCat[2]}" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{{moveToCatName[2] ? moveToCatName[2] : 'None'}}  <span class="caret"></span></button>
-			<ul class="dropdown-menu">
-				<li role="presentation" ng-repeat="sub in categories[moveToCat[0]].child[moveToCat[1]].child"><a href="" ng-click="selectMoveToCat(sub.id, sub.name, 2)">{{sub.name}}</a></li>		
-			</ul>
-		</div>	
-			
-		<br><br>
-		<button type="button" ng-disabled="!moveToCat[2]" class="btn dropdown-toggle btn-danger" ng-click="moveProduct(moveToCat[2])">Move model  {{moveToCat[2] ? 'to ' + moveToCatName[2] : ''}}</button>
-	</div>	
-	
-</div>
+
 
 </div>
