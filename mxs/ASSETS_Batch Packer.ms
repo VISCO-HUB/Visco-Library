@@ -25,12 +25,14 @@ try(closeRolloutFloater rAssetsLibraryBatchPacker)catch()
 global rAssetsLibraryBatchPacker = newRolloutFloater "Batch Packer" 450 800
 global rBatchPacker
 global rBatchSettings
+global rBatchTools
 	
 global _URL = "http://svg-web-003/"
 global Keys = dotNetClass "System.Windows.Forms.Keys"
 
 global imgsList = #()	
 global filesList = #()	
+global checkList = #()	
 
 fn getDefaultIni = (
 	d = getDir (#temp) + @"\"
@@ -431,6 +433,8 @@ fn buildFilesList files =
 		
 		append imgsList imgs
 		
+		ex += "checkbox cbxSelect" + c + "\"  Model #" + c + "\""  + n
+		ex += "on cbxSelect" + c + " changed v do checkList[" + c + "]=v" + n
 		ex += "button btnImage" + c + " \"\" width: 84 height: 84 align: #left across: 3" + n
 		ex += "listbox lbxImages" + c + " \"\" height: 6 width: 280 offset: [-42, 0]" + n
 		ex += "button btnAddImage" + c + " \"+\" width: 25 height: 84 offset: [56, 0]" + n
@@ -481,7 +485,6 @@ fn buildFilesList files =
 		ex += "on edtModelName" + c + " KeyUp s e do (setFileSetting @\"" + f + "\" \"NAME\" (s.text))" + n
 		
 		ex += "on edtTags" + c + " TextChanged s a do tagChanged \"" + rr + "btnTag" + c + "_" + "\" \"" + rr + "edtTags" + c + "\"" + n
-		
 	)
 	
 	ex += "on rBatchPacker open do (" + n
@@ -494,7 +497,7 @@ fn buildFilesList files =
 			fileTags = getFileSetting files[i] "TAGS"
 			fileName = getFileSetting files[i] "NAME"
 			ex += "edtTags" + (i as string) + ".text=\"" + fileTags + "\"" + n
-			if(fileName.count > 3) do ex += "edtModelName" + (i as string) + ".text=\"" + fileName + "\"" + n
+			if(fileName.count > 2) do ex += "edtModelName" + (i as string) + ".text=\"" + fileName + "\"" + n
 		)
 		
 		-- TAGS
@@ -572,7 +575,57 @@ fn implode a tag: ";" =
 	return trimRight s tag
 )
 
+rollout rBatchTools "Tools" category: 2 (
+	button btnAddModels "Add New Models" width: 200 across: 2
+	button btnRemoveChecked "Remove Checked Models" width: 200
+	
+	on btnAddModels pressed do (
+		f = rBatchSettings.getOpenMax()
+		if(f.count == 0) do return false
+
+		imgsList = #()	
+		checkList = #()
+		filesList = join filesList f
+		filesList = makeUniqueArray filesList
+			
+		buildFilesList filesList
+		
+		rBatchTools.open = true
+	)
+	
+	on btnRemoveChecked pressed do (
+		q = queryBox "Do you really want to remove checked models?" title: "Confirm?"
+		if(not q) do return false
+		
+		count = 0
+				
+		newList = #()
+		for i in 1 to filesList.count do (
+			if(checkList[i] != true) then (
+				append newList filesList[i]
+			) else (
+				count += 1
+			)
+		)
+				
+		imgsList = #()	
+		checkList = #()
+		filesList = #()
+		
+		filesList = newList
+		buildFilesList newList
+		rBatchTools.open = true
+		
+		messageBox ("Removed " + count as string + " models from list.") title: "Notify!"
+	)
+)
+
 rollout rBatchSettings "Settings" category: 1  (
+	group "" (
+		dotNetControl edtModelsPath "System.Windows.Forms.TextBox" text: "Please select models..." readonly: true height: 25 tabstop: true	
+		button btnLoadModels "Load Models" height: 30 width: 200
+	) 
+
 	group "Category"
 	(
 		label lbl6 "Library:" align: #left across: 2 
@@ -609,10 +662,7 @@ rollout rBatchSettings "Settings" category: 1  (
 	)
 	
 		
-	group "" (
-		dotNetControl edtModelsPath "System.Windows.Forms.TextBox" text: "Please select models..." readonly: true height: 25 tabstop: true	
-		button btnLoadModels "Load Models" height: 30 width: 200
-	) 
+	
 	
 	group "Pack Settings" (
 		label lblMaxVer "3Ds Max Version: " across: 2 align: #left 
@@ -805,6 +855,7 @@ rollout rBatchSettings "Settings" category: 1  (
 
 		imgsList = #()	
 		filesList = #()
+		checkList = #()
 		
 		filesList = f
 		
@@ -813,6 +864,8 @@ rollout rBatchSettings "Settings" category: 1  (
 		
 		disableUi true
 		getUpdateSettings()
+		
+		rBatchTools.open = true
 	)
 	
 	-------
@@ -876,7 +929,8 @@ rollout rBatchSettings "Settings" category: 1  (
 	on cbxRenameMaterials changed v do useSettings "RENMAT"	v "w"	
 	on cbxRenameGroups changed v do useSettings "RENGRP"	v "w"
 	on cbxRemoveLayers changed v do useSettings "REMLAYERS"	v "w"
-	on ddlMaxVer selected v do _lblFormat.text = ddlMaxVer.selected
+	-- !!!
+	--on ddlMaxVer selected v do _lblFormat.text = ddlMaxVer.selected
 	
 	on rBatchSettings open do (
 		
@@ -966,3 +1020,5 @@ rollout rBatchSettings "Settings" category: 1  (
 
 
 addRollout rBatchSettings rAssetsLibraryBatchPacker border: false
+addRollout rBatchTools rAssetsLibraryBatchPacker border: false rolledUp: true
+
