@@ -2,7 +2,7 @@
 [INFO] 
 
 NAME = Pack Model
-VERSION = 1.1.2
+VERSION = 1.1.3
 AUTHOR = Vasily Lukyanenko
 DEV = VISCO
 HELP = 
@@ -80,6 +80,10 @@ ICON=#("PhysX_Main", 30)
 
 + Added: Save scene option=
 
+[1.1.3]
+
++ Added: Checkbuttons for ignore by hidden, frozen and MakePreview objects=
+
 [ABOUT]
 
 This script helps to prepare model to upload=
@@ -101,7 +105,7 @@ try(closeRolloutFloater fFastRender) catch()
 try(destroyDialog rPostProcess) catch()
 
 try(closeRolloutFloater rAssetsLibraryModelPack)catch()
-global rAssetsLibraryModelPack = newRolloutFloater "Pack Model" 280 800
+global rAssetsLibraryModelPack = newRolloutFloater "Pack Model" 280 820
 
 /* GLOBALS */
 
@@ -931,6 +935,9 @@ rollout _STEP1 "STEP 1: Model Transform"
 		(			
 			getModelById externalModelID			
 		)
+		
+		-- !!! For DBG
+		--goStep 5
 	)
 	
 	on btnRemoveIsolatedVerts pressed do
@@ -2131,6 +2138,12 @@ rollout _STEP5 "STEP 5: Pack Model"
 		checkbox cbxRenameMaterials "Rename Materials" checked: true across: 2
 		checkbox cbxRenameGroups "Rename Groups" checked: true
 		checkbox cbxRemoveLayers "Remove Layers" checked: true 
+		
+		progressBar pbDiv1 "" height: 1
+		
+		checkbox cbxIgnoreHidden "Ignore Hidden" across: 2 checked: false
+		checkbox cbxIgnoreFrozen "Ignore Frozen" checked: false
+		checkbox cbxIgnoreDefaultMakePreviewLights "Ignore Default MakePreview Lights" checked: false
 	)
 		
 	button btnPackModel "Pack Model" width: 244 height: 45 align: #left across: 2
@@ -2217,8 +2230,17 @@ rollout _STEP5 "STEP 5: Pack Model"
 		v = useSettings "RENGRP" "bool" "r"	
 		cbxRenameGroups.checked = if(v == false) then false else true
 		
-		v = useSettings "REMLAYERS" "bool" "r"	
+		v = useSettings "REMLAYERS" "bool_not" "r"	
 		cbxRemoveLayers.checked = if(v == false) then false else true
+		
+		v = useSettings "IGNOREHIDDEN" "bool_not" "r"	
+		cbxIgnoreHidden.checked = if(v == true) then true else false
+		
+		v = useSettings "IGNOREFROZEN" "bool_not" "r"	
+		cbxIgnoreFrozen.checked = if(v == true) then true else false
+		
+		v = useSettings "IGNOREMAKEPREVIEW" "bool_not" "r"	
+		cbxIgnoreDefaultMakePreviewLights.checked = if(v == true) then true else false
 			
 		v = getActuatlMaxVersion()
 		ddlMaxVer.items = v
@@ -2496,6 +2518,28 @@ rollout _STEP5 "STEP 5: Pack Model"
 		setIniSetting f s k ("\"" + v + "\"") 
 	)
 	
+	fn match v p = return matchPattern v pattern: (p + "*")
+	
+	fn filterIgnores _selection = (
+		out = #()
+		isFrozen = cbxIgnoreFrozen.checked 
+		isHidden = cbxIgnoreHidden.checked 
+		isMakePreview = cbxIgnoreDefaultMakePreviewLights.checked
+		for i in _selection where i != undefined do (
+			isAdd = true
+			if(isFrozen and i.isFrozen) do isAdd = false
+			if(isHidden and i.isHidden) do isAdd = false
+			if(isMakePreview) do (
+				if(match i.name "HighLight_") do isAdd = false
+				if(match i.name "MakePreviewDome") do isAdd = false
+			)
+			
+			if(isAdd) do append out i
+		) 
+		
+		return out
+	)
+	
 	fn createInfo szDir previewList ver =
 	(
 		f = szDir + "info.tmp"
@@ -2549,6 +2593,10 @@ rollout _STEP5 "STEP 5: Pack Model"
 	on cbxRenameMaterials changed v do useSettings "RENMAT"	v "w"	
 	on cbxRenameGroups changed v do useSettings "RENGRP"	v "w"
 	on cbxRemoveLayers changed v do useSettings "REMLAYERS"	v "w"
+	on cbxIgnoreDefaultMakePreviewLights changed v do useSettings "IGNOREMAKEPREVIEW" v "w"
+	on cbxIgnoreFrozen changed v do useSettings "IGNOREFROZEN" v "w"
+	on cbxIgnoreHidden changed v do useSettings "IGNOREHIDDEN" v "w"
+		
 	on ddlMaxVer selected v do _lblFormat.text = ddlMaxVer.selected
 
 	
@@ -2567,6 +2615,7 @@ rollout _STEP5 "STEP 5: Pack Model"
 		removeDefaultLights()	
 			
 		_selection = getSelectionByPackType()
+		_selection = filterIgnores _selection
 			
 		v = ddlMaxVer.selected 
 		r = getCurrRender()	

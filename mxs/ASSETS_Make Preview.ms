@@ -2,7 +2,7 @@
 [INFO] 
 
 NAME = Make Preview
-VERSION = 1.2.3
+VERSION = 1.2.4
 AUTHOR = Vasily Lukyanenko
 DEV = VISCO
 HELP = 
@@ -82,6 +82,10 @@ ICON=#("PhysX_Main", 3)
 
 * Changed: Disable VRay region by default for Batch Render=
 * Changed: Save max scene before Batch Render=
+
+[1.2.4]
+
+* Changed: Dome lights now named as MakePreviewDome=
 
 
 [ABOUT]
@@ -1487,7 +1491,7 @@ rollout _rStep1  "HDRI" category:2
 			(
 				backgroundColor = white	
 				dome = getSkylight()
-				if(dome == undefined) do dome = Skylight()
+				if(dome == undefined) do dome = Skylight name: "MakePreviewDome"
 				dome.sky_mode = 0
 				dome.multiplier = 0.9
 								
@@ -1508,7 +1512,7 @@ rollout _rStep1  "HDRI" category:2
 					lightHDR.coords.mappingtype = 1
 					
 					dome = getDome()
-					if(dome == undefined) do dome = VrayLight()
+					if(dome == undefined) do dome = VrayLight name: "MakePreviewDome"
 										
 					dome.type = 1
 					dome.multiplier = 1.0

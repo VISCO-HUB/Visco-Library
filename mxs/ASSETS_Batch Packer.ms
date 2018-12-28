@@ -675,7 +675,13 @@ rollout rBatchSettings "Settings" category: 1  (
 		checkbox cbxRenameGroups "Rename Groups" checked: true
 		checkbox cbxDumy "Dummy" checked: true visible: false
 		
+		progressbar pbDiv1 "" height: 1
 		
+		checkbox cbxIgnoreHidden "Ignore Hidden" across: 3 checked: false
+		checkbox cbxIgnoreFrozen "Ignore Frozen" checked: false
+		checkbox cbxDumy2 "Dummy" checked: true visible: false
+		checkbox cbxIgnoreDefaultMakePreviewLights "Ignore Default MakePreview Lights" checked: false
+			
 		button btnPackAllModels "Pack All Models" height: 30 width: 200
 	)
 	
@@ -929,6 +935,9 @@ rollout rBatchSettings "Settings" category: 1  (
 	on cbxRenameMaterials changed v do useSettings "RENMAT"	v "w"	
 	on cbxRenameGroups changed v do useSettings "RENGRP"	v "w"
 	on cbxRemoveLayers changed v do useSettings "REMLAYERS"	v "w"
+	on cbxIgnoreDefaultMakePreviewLights changed v do useSettings "IGNOREMAKEPREVIEW" v "w"
+	on cbxIgnoreFrozen changed v do useSettings "IGNOREFROZEN" v "w"
+	on cbxIgnoreHidden changed v do useSettings "IGNOREHIDDEN" v "w"
 	-- !!!
 	--on ddlMaxVer selected v do _lblFormat.text = ddlMaxVer.selected
 	
@@ -961,6 +970,15 @@ rollout rBatchSettings "Settings" category: 1  (
 		
 		v = useSettings "REMLAYERS" "bool" "r"	
 		cbxRemoveLayers.checked = if(v == false) then false else true
+		
+		v = useSettings "IGNOREHIDDEN" "bool_not" "r"	
+		cbxIgnoreHidden.checked = if(v == true) then true else false
+		
+		v = useSettings "IGNOREFROZEN" "bool_not" "r"	
+		cbxIgnoreFrozen.checked = if(v == true) then true else false
+		
+		v = useSettings "IGNOREMAKEPREVIEW" "bool_not" "r"	
+		cbxIgnoreDefaultMakePreviewLights.checked = if(v == true) then true else false
 		
 		v = getActuatlMaxVersion()
 		ddlMaxVer.items = v
