@@ -2,7 +2,7 @@
 [INFO] 
 
 NAME = Pack Model
-VERSION = 1.1.3
+VERSION = 1.1.5
 AUTHOR = Vasily Lukyanenko
 DEV = VISCO
 HELP = 
@@ -83,6 +83,10 @@ ICON=#("PhysX_Main", 30)
 [1.1.3]
 
 + Added: Checkbuttons for ignore by hidden, frozen and MakePreview objects=
+
+[1.1.5]
+
++ Added: Support VRayHDRI and VRayOSLTex=
 
 [ABOUT]
 
@@ -198,9 +202,9 @@ fn useSettings k p w =
 	)
 )	
 
-fn getPackTypeText pack: "Pack " = (
-	a = case _ASSETS_PACK_TYPE of (2: "Scene"; default: "Model")
-	return pack + a
+fn getPackTypeText prefix: "Pack " = (
+	a = case _ASSETS_PACK_TYPE of (2: "Scene"; 3: "Material"; default: "Model")
+	return prefix + a
 )
 
 
@@ -213,6 +217,12 @@ fn getSelectionByPackType type: #objects = (
 )
 
 /* CLASSES */
+
+struct file (
+	fn path f = getFilenamePath f,
+	fn name f = getFilenameFile f,
+	fn ext f = getFilenameType f
+)
 
 struct zip
 (
@@ -449,6 +459,26 @@ fn showTooltip c t title: "Warning!" show: 4000=
 fn invalidBitmap b = 
 (	
 	return b == undefined or b.filename == undefined or b.filename == "" or b.filename.count == 0
+)
+
+fn invalidVRayHDRI b = 
+(	
+	return b == undefined or b.HDRIMapName == undefined or b.HDRIMapName == "" or b.HDRIMapName.count == 0
+)
+
+fn invalidVRayOSLTex b = 
+(	
+	return b == undefined or b.shader_file == undefined or b.shader_file == "" or b.shader_file.count == 0
+)
+
+fn validVRayHDRI b = 
+(	
+	return b != undefined and b.HDRIMapName != undefined and b.HDRIMapName != "" and b.HDRIMapName.count != 0
+)
+
+fn validVRayOSLTex b = 
+(	
+	return b != undefined and b.shader_file != undefined and b.shader_file != "" and b.shader_file.count != 0
 )
 
 fn validBitmap b = 
@@ -797,8 +827,8 @@ fn getNA d =
 
 rollout _STEP1 "STEP 1: Model Transform" 
 (
-	group "" (
-		radiobuttons rdoPackType "" labels: #("Pack Model", "Pack Scene")	
+	group "Pack Type" (
+		radiobuttons rdoPackType "" labels: #("Model", "Scene", " Material") columns: 3
 	)
 	
 	group "1. Geometry Fix"
@@ -924,7 +954,7 @@ rollout _STEP1 "STEP 1: Model Transform"
 		callbacks.addScript #filePostOpen "rebuildPackModel()" id:#filePostOpen_PackModel
 		
 		
-		v = useSettings "CONVERTTOMESH" "bool" "r"	
+		v = useSettings "CONVERTTOMESH" "bool" "r"
 		cbxConvertToMesh.checked = if(v == false) then false else true
 		
 		try(rdoPackType.state = _ASSETS_PACK_TYPE) catch()
@@ -1153,7 +1183,7 @@ rollout _STEP1 "STEP 1: Model Transform"
 	
 	on btnNext pressed do 
 	(
-		if(not isSelected() and _ASSETS_PACK_TYPE == 1) do return showTooltip nextWarn "Please select objects!"
+		if(not isSelected() and (_ASSETS_PACK_TYPE == 1 or _ASSETS_PACK_TYPE == 3)) do return showTooltip nextWarn "Please select objects!"
 			
 		goStep 2
 	)
@@ -1669,7 +1699,7 @@ rollout _STEP2 "STEP 2: Model Info"
 				
 		if(not isValidText sModelName edtModelName) do return false 
 		if(not isValidText sManufacturer edtManufacturer) do return false 
-		if(not isSelected() and _ASSETS_PACK_TYPE == 1) do return showTooltip nextWarn "Please select objects!"
+		if(not isSelected() and (_ASSETS_PACK_TYPE == 1 or _ASSETS_PACK_TYPE == 3)) do return showTooltip nextWarn "Please select objects!"
 			
 		saveAllProp()
 			
@@ -1698,7 +1728,7 @@ rollout _STEP2 "STEP 2: Model Info"
 	on _STEP2 open do
 	(	
 		
-		_STEP2.title = getPackTypeText pack: "" + " Info"
+		_STEP2.title = getPackTypeText prefix: "" + " Info"
 		
 		initDotNet()
 		
@@ -1819,7 +1849,7 @@ rollout _STEP3 "STEP 3: Model Review"
 	
 	on _STEP3 open do
 	(
-		_STEP3.title = getPackTypeText pack: "" + " Review"
+		_STEP3.title = getPackTypeText prefix: "" + " Review"
 		
 		edtOverview.MultiLine = true
 		edtOverview.scrollbars = (dotnetclass "System.Windows.Forms.ScrollBars").vertical		
@@ -1860,7 +1890,7 @@ rollout _STEP3 "STEP 3: Model Review"
 	)
 	on btnNext pressed do 
 	(
-		if(not isSelected() and _ASSETS_PACK_TYPE == 1) do return showTooltip nextWarn "Please select objects!"
+		if(not isSelected() and (_ASSETS_PACK_TYPE == 1 or _ASSETS_PACK_TYPE == 3)) do return showTooltip nextWarn "Please select objects!"
 					
 		sOverview = edtOverview.text			
 		sCustom1 = edtCustom1.text			
@@ -1902,7 +1932,7 @@ rollout _STEP4 "STEP 4: Preview"
 	on btnPrev pressed do goStep 3		
 	on btnNext pressed do 
 	(	
-		if(not isSelected() and _ASSETS_PACK_TYPE == 1) do return showTooltip nextWarn "Please select objects!"
+		if(not isSelected() and (_ASSETS_PACK_TYPE == 1 or _ASSETS_PACK_TYPE == 3)) do return showTooltip nextWarn "Please select objects!"
 		if(sPreviewPath.count == 0) do return showTooltip btmPreview "Please add at least one image!\nPress the \"Add New Picture\" button!"
 					
 		saveProp "sPreviewPath" (implode sPreviewPath)
@@ -2294,6 +2324,34 @@ rollout _STEP5 "STEP 5: Pack Model"
 					)
 				)
 			)
+			
+			if(VRayHDRI != undefined) do (
+				for b in getClassInstances VRayHDRI target:i where b != undefined do (
+					if(invalidVRayHDRI b and findItem oldTex b == 0) then
+					(										
+						append errorTex #("empty file name path! Map: " + b.name, i.name) 
+						append oldTex b
+					)
+					else if (validVRayHDRI b and doesFileExist (getFullPath (b.HDRIMapName)) == false) then
+					(
+						append errorTex #(b.HDRIMapName, i.name) 
+					)
+				)
+			)
+			
+			if(VRayOSLTex != undefined) do (
+				for b in getClassInstances VRayOSLTex target:i where b != undefined do (
+					if(invalidVRayOSLTex b and findItem oldTex b == 0) then
+					(										
+						append errorTex #("empty file name path! Map: " + b.name, i.name) 
+						append oldTex b
+					)
+					else if (validVRayOSLTex b and doesFileExist (getFullPath (b.shader_file)) == false) then
+					(
+						append errorTex #(b.shader_file, i.name) 
+					)
+				)
+			)
 		)
 		
 		if (errorTex.count > 0) do
@@ -2339,7 +2397,32 @@ rollout _STEP5 "STEP 5: Pack Model"
 
 		return out
 	)
+	
+	fn copyVRayOSLTex _selection szOsl = (
+		if(VRayOSLTex == undefined) do return false
 		
+		oldTex = #()
+		oldTexPaths = #()
+		
+		for i in _selection where i.material != undefined do (			
+			for b in getClassInstances VRayOSLTex target:i where (validVRayOSLTex b) do (
+				f = getFullPath (b.shader_file)
+				
+				n = file.name f
+				p = file.path f
+				ext = file.ext f
+				
+				n = n + (toLower ext)
+				nn = (szOsl + n)
+				
+				if(doesFileExist f and not doesFileExist nn) do (
+					b.name = "OSL " + (file.name nn)
+					copyFile f nn
+				)				
+			)
+		)
+	)
+			
 	fn copyMaps _selection szMaps szName = 
 	(
 		oldTex = #()
@@ -2354,11 +2437,10 @@ rollout _STEP5 "STEP 5: Pack Model"
 				for b in getClassInstances type target:i where (validBitmap b) and findItem oldTex b == 0 do
 				(																	
 					f = getFullPath (b.filename)
-				
-					--n = filenameFromPath f
-					n = getFilenameFile f
-					p = getFilenamePath f
-					ext = getFilenameType f
+									
+					n = file.name f
+					p = file.path f
+					ext = file.ext f
 										
 					if(cbxRenameTextures.checked) do n = szName + "-" + (getNum iCnt)
 					n = n + (toLower ext)
@@ -2376,7 +2458,33 @@ rollout _STEP5 "STEP 5: Pack Model"
 						append oldTexPaths b.filename
 					)												
 				)
-			)
+				
+				if(VRayOSLTex != undefined) do (
+					for b in getClassInstances VRayHDRI target:i where (validVRayHDRI b) and findItem oldTex b == 0 do (
+						f = getFullPath (b.HDRIMapName)
+									
+						n = file.name f
+						p = file.path f
+						ext = file.ext f
+					
+						if(cbxRenameTextures.checked) do n = szName + "-" + (getNum iCnt)
+						n = n + (toLower ext)
+					
+						if(doesFileExist f) do
+						( 
+							ep = findItem oldTexPaths b.HDRIMapName
+							
+							if(ep != 0) then n = toRename[ep][5]
+							
+							append oldTex b
+							append toRename #(b, (p + n), (szMaps + n), f, n) 
+					
+							if(ep == 0) do iCnt += 1
+							append oldTexPaths b.HDRIMapName
+						)		
+					)
+				)
+			)						
 		)
 							
 		for t in toRename do
@@ -2385,7 +2493,9 @@ rollout _STEP5 "STEP 5: Pack Model"
 			t[1].name = getFilenameFile t[5]
 			
 			copyFile t[4] t[3]
-		)		
+		)	
+
+		return iCnt
 	)
 	
 	fn renameObjects szName = 
@@ -2548,10 +2658,11 @@ rollout _STEP5 "STEP 5: Pack Model"
 		p = polyCount geometry
 		d = getDim geometry
 		u = getUnits()
+		k = toLower (getPackTypeText prefix: "")
 		
 		o = substituteString sOverview "\r\n" "|"
-						
-		setIniInfo f "INFO" "TYPE" "model" 
+		
+		setIniInfo f "INFO" "TYPE" "model"
 		setIniInfo f "INFO" "CATID" (catID as string) 
 		setIniInfo f "INFO" "NAME" sModelName 
 		setIniInfo f "INFO" "TOKEN" sToken 
@@ -2575,6 +2686,7 @@ rollout _STEP5 "STEP 5: Pack Model"
 		setIniInfo f "INFO" "BAKED" (getYesNo bBakedTextures) 
 		setIniInfo f "INFO" "GAMEENGINE" (getYesNo bGameEngineReady) 
 		setIniInfo f "INFO" "PREVIEW" (getYesNo (sPreviewPath.count > 0)) 
+		setIniInfo f "INFO" "KIND" k
 				
 		iCnt = 0	
 		for i in previewList do 
@@ -2603,7 +2715,7 @@ rollout _STEP5 "STEP 5: Pack Model"
 	
 	on btnPackModel pressed do
 	(
-		if(not isSelected() and _ASSETS_PACK_TYPE == 1) do return showTooltip warnMsg "Please select objects!"
+		if(not isSelected() and (_ASSETS_PACK_TYPE == 1 or _ASSETS_PACK_TYPE == 3)) do return showTooltip warnMsg "Please select objects!"
 		fileToLoad = maxFilePath + maxFileName
 		if(fileToLoad.count < 1) do  return showTooltip warnMsg "Please save scene!"
 		if(sModelName.count < 1) do return showTooltip warnMsg "Please specify Model Name in STEP 1!" 
@@ -2625,6 +2737,7 @@ rollout _STEP5 "STEP 5: Pack Model"
 		szName = stripName sModelName
 		
 		szDir = _SAVEPATH + szName + @"\"		
+		szOsl = szDir + @"osl\"
 		szMaps = szDir + @"maps\"
 		szAssets = szDir + @"assets\"
 		szPreview = szDir + @"preview\"
@@ -2639,6 +2752,7 @@ rollout _STEP5 "STEP 5: Pack Model"
 		-- Make dirs
 		
 		makeDir szDir	
+		makeDir szOsl	
 		makeDir szMaps	
 		makeDir szAssets
 		makeDir szPreview	
@@ -2653,7 +2767,11 @@ rollout _STEP5 "STEP 5: Pack Model"
 					
 		-- Copy maps		
 		-- Some maps not copied in row (maxscript bug)	
-		for i in 1 to 3 do copyMaps _selection szMaps szName
+		iCnt = 0
+		for i in 1 to 3 do iCnt = copyMaps _selection szMaps szName
+			
+		-- Copy VRayOSLTex		
+		for i in 1 to 3 do copyVRayOSLTex _selection szOsl
 				
 		-- Copy IES
 		copyIESfiles _selection szAssets szName	
@@ -2668,7 +2786,7 @@ rollout _STEP5 "STEP 5: Pack Model"
 		MetricType = units.MetricType
 			
 		-- Add Versions
-		if(_ASSETS_PACK_TYPE == 1) do (
+		if(_ASSETS_PACK_TYPE == 1 or _ASSETS_PACK_TYPE == 3) do (
 			saveNodes _selection (szDir + "_tmp.max") quiet:true
 			resetMaxFile #noPrompt
 			try(
@@ -2690,7 +2808,7 @@ rollout _STEP5 "STEP 5: Pack Model"
 		select objects						
 		max tool zoomextents all
 		
-		if(_ASSETS_PACK_TYPE == 1) do (	
+		if(_ASSETS_PACK_TYPE == 1 or _ASSETS_PACK_TYPE == 3) do (	
 			renameObjects szName
 			renameMaterials szName 
 			if(cbxRemoveLayers.checked) do removeLayers()

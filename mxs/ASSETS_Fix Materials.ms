@@ -2,7 +2,7 @@
 [INFO] 
 
 NAME = Fix Materials
-VERSION = 1.1.0
+VERSION = 1.1.1
 AUTHOR = Vasily Lukyanenko
 DEV = VISCO
 HELP = 
@@ -12,6 +12,10 @@ HELP =
 
 [1.1.0]
 + Added: Siger Shader plugins replace =
+
+
+[1.1.1]
+- BugFix: Small bug fixes =
 
 [ABOUT]
 
@@ -175,6 +179,7 @@ rollout _rFixSigerShader "Siger Shaders" (
 			n.nmedium = mm.nmedium
 			n.nfilm = mm.nfilm
 			n.ninternal = mm.ninternal
+			try(n.thickness = mm.thicknessmap) catch()
 			
 					
 			-- Add hue/sat/gamma  correction
