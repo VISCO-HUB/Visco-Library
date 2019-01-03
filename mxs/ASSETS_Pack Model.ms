@@ -2416,6 +2416,7 @@ rollout _STEP5 "STEP 5: Pack Model"
 				nn = (szOsl + n)
 				
 				if(doesFileExist f and not doesFileExist nn) do (
+					b.shader_file = @"osl\" + n
 					b.name = "OSL " + (file.name nn)
 					copyFile f nn
 				)				
@@ -2459,7 +2460,7 @@ rollout _STEP5 "STEP 5: Pack Model"
 					)												
 				)
 				
-				if(VRayOSLTex != undefined) do (
+				if(VRayHDRI != undefined) do (
 					for b in getClassInstances VRayHDRI target:i where (validVRayHDRI b) and findItem oldTex b == 0 do (
 						f = getFullPath (b.HDRIMapName)
 									
@@ -2489,7 +2490,10 @@ rollout _STEP5 "STEP 5: Pack Model"
 							
 		for t in toRename do
 		(
-			t[1].filename = @"maps\" + t[5]
+			o = @"maps\" + t[5]
+			
+			if(classOf t[1] == VRayHDRI) do t[1].HDRIMapName = o
+			for type in BitmapTypes where classOf t[1]  == type do t[1].filename = o
 			t[1].name = getFilenameFile t[5]
 			
 			copyFile t[4] t[3]
