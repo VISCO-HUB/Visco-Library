@@ -2,7 +2,7 @@
 [INFO] 
 
 NAME = Assets Library
-VERSION = 1.0.8
+VERSION = 1.0.9
 AUTHOR = Vasily Lukyanenko
 DEV = VISCO
 HELP = 
@@ -43,6 +43,10 @@ ICON=#("AssetsLibrary", 1)
 [1.0.8]
 
 * Improved: Restore window on relaunch Library=
+
+[1.0.9]
+
+* Improved: Support material merge=
 
 [ABOUT]
 
@@ -377,6 +381,36 @@ try(
 			)
 		)
 	)
+	
+	fn setVRayHDRIPath path: "" geom: selection = (
+		if(VRayHDRI == undefined) do return false
+		for i in geom as array do
+		(
+			for b in getClassInstances VRayHDRI target: i do 
+			(	
+				if(b.HDRIMapName == undefined or b.HDRIMapName == "") do continue
+				if(findString b.HDRIMapName path == undefined) do
+				(
+					b.HDRIMapName = path + b.HDRIMapName
+				)
+			)
+		)
+	)
+	
+	fn setVRayOSLTexPath path: "" geom: selection = (
+		if(VRayOSLTex == undefined) do return false
+		for i in geom as array do
+		(
+			for b in getClassInstances VRayOSLTex target: i do 
+			(	
+				if(b.shader_file == undefined or b.shader_file == "") do continue
+				if(findString b.shader_file path == undefined) do
+				(
+					b.shader_file = path + b.shader_file
+				)
+			)
+		)
+	)
 
 	fn setIesPath path: "" geom: selection type: light =
 	(
@@ -437,8 +471,23 @@ try(
 		if(l != undefined) do for i in sel do l.addNode i
 	)
 
+	fn getSMEPos viewNode = (
+		n = viewNode.GetSelectedNodes()
+		if(n[1] != undefined) do (
+			p = n[1].position
+			p[1] = p[1] + 180
+			p[2] = p[2] + 420
+			return  p
+		)
+		
+		return [0, 0]
+	)
+	
 	fn addFile id mode: #merge =
-	(		
+	(				
+		oldSelection = selection as array
+		if(oldSelection.count == 0 and mode == #apply_material) do return messageBox "Please selecte objects" title: "Error!"
+		
 		clearListener()
 		url = siteUrl + "vault/mxs/mxsAddModel.php?id=" + id + "&user=" + sysInfo.username + "&time=" + timeStamp() as string
 		r = httpGet url	
@@ -474,6 +523,64 @@ try(
 				
 		case mode of
 		(
+			#open_material: (				
+							
+				mergeMaxFile f #select #autoRenameDups  #renameMtlDups   quiet:true
+				sel = selection as array
+				
+				if(sel[1] != undefined and sel[1].material != undefined) do (	
+					mat = sel[1].material
+					mat.name = sel[1].name
+					
+					setTexturesPath path: p geom: #(mat) type: BitmapTex
+					try(setTexturesPath path: p geom: #(mat) type: CoronaBitmap)catch()
+										
+					setVRayHDRIPath path: p geom: #(mat)
+					setVRayOSLTexPath path: p geom: #(mat)
+					
+					if(MatEditor.mode == #basic) do (
+						if(not MatEditor.isOpen()) do MatEditor.Open() 
+						mid = medit.GetActiveMtlSlot() 
+						medit.PutMtlToMtlEditor mat mid
+					)
+					
+					if(MatEditor.mode == #advanced) do (
+						if(not sme.IsOpen()) do sme.Open() 
+							
+						viewNode = sme.GetView (sme.activeView)
+						viewNode.createNode mat (getSMEPos viewNode)						
+						sme.SetMtlInParamEditor mat
+						viewNode.setFocus()
+						viewNode.ZoomExtents type: #all	
+						viewNode.ZoomExtents type: #selected						
+					)
+										
+					try(delete sel) catch()
+				)
+			)
+			#apply_material: (				
+				
+				mergeMaxFile f #select #autoRenameDups  #renameMtlDups  quiet:true
+				sel = selection as array
+				
+				if(sel[1] != undefined and sel[1].material != undefined) do (	
+					mat = sel[1].material
+					mat.name = sel[1].name
+					
+					setTexturesPath path: p geom: #(mat) type: BitmapTex
+					try(setTexturesPath path: p geom: #(mat) type: CoronaBitmap)catch()
+										
+					setVRayHDRIPath path: p geom: #(mat)
+					setVRayOSLTexPath path: p geom: #(mat)
+					
+					try(
+						select oldSelection
+						for i in oldSelection do try(i.material = mat) catch()
+					) catch()
+					
+					try(delete sel) catch()
+				)
+			)
 			#open:
 			(
 				setSaveRequired true
@@ -487,6 +594,9 @@ try(
 				setTexturesPath path: p geom: sel type: BitmapTex
 				try(setTexturesPath path: p geom: sel type: CoronaBitmap)catch()
 				
+				setVRayHDRIPath path: p geom: sel
+				setVRayOSLTexPath path: p geom: sel
+				
 				try(select sel)catch()
 			)
 			#xref:
@@ -495,6 +605,9 @@ try(
 				o = xrefs.addNewXrefObject f objs dupMtlNameAction: #autoRename
 				select o
 				sel = selection as array
+				
+				-- Add objects to layer
+				if(catName != false) do moveToLayer catName sel: sel
 			)
 			default: 
 			(
@@ -504,12 +617,15 @@ try(
 				setTexturesPath path: p geom: sel type: BitmapTex
 				try(setTexturesPath path: p geom: sel type: CoronaBitmap)catch()
 				setIesPath path: p geom: sel
+				
+				setVRayHDRIPath path: p geom: sel
+				setVRayOSLTexPath path: p geom: sel
+				
+				-- Add objects to layer
+				if(catName != false) do moveToLayer catName sel: sel
 			)	
 		)
-			
-		-- Add objects to layer
-		if(catName != false) do moveToLayer catName sel: sel
-			
+					
 		toolMode.selectioncenter() 
 		enableSceneRedraw()
 		
@@ -537,7 +653,15 @@ try(
 		scriptPlacer = getFilenamePath (getThisScriptFileName()) + "ASSETS_Object Placer.ms"
 		
 		case t[1] of
-		(
+		(		
+			"APPLY_MATERIAL": 
+			(				
+				addFile p mode: #apply_material				
+			)			
+			"OPEN_MATERIAL": 
+			(				
+				addFile p mode: #open_material				
+			)
 			"MERGE_MODEL": 
 			(
 				__AUTO_PLACE_MODE = true

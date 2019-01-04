@@ -2,7 +2,7 @@
 [INFO] 
 
 NAME = Pack Model
-VERSION = 1.1.5
+VERSION = 1.1.6
 AUTHOR = Vasily Lukyanenko
 DEV = VISCO
 HELP = 
@@ -87,6 +87,10 @@ ICON=#("PhysX_Main", 30)
 [1.1.5]
 
 + Added: Support VRayHDRI and VRayOSLTex=
+
+[1.1.6]
+
++ Added: Save options Model/Scene/Material and load from DB=
 
 [ABOUT]
 
@@ -205,6 +209,10 @@ fn useSettings k p w =
 fn getPackTypeText prefix: "Pack " = (
 	a = case _ASSETS_PACK_TYPE of (2: "Scene"; 3: "Material"; default: "Model")
 	return prefix + a
+)
+
+fn getPackTypeNum v = (
+	return case v of ("scene": 2; "material": 3; default: 1)
 )
 
 
@@ -781,6 +789,7 @@ fn saveAllProp saveCat: #auto =
 	saveProp "cbxLods" bLods
 	saveProp "cbxUnwrap" bUnwrap
 	saveProp "cbxLights" bLights
+	saveProp "rdoPackType" _ASSETS_PACK_TYPE
 	
 	case (saveCat) of
 	(
@@ -899,7 +908,9 @@ rollout _STEP1 "STEP 1: Model Transform"
 		bLods = getTrueFalse (x.get "lods")
 		bUnwrap = getTrueFalse (x.get "unwrap")
 		bLights = getTrueFalse (x.get "lights")
-			
+		_ASSETS_PACK_TYPE = getPackTypeNum (x.get "kind")
+		try(rdoPackType.state = _ASSETS_PACK_TYPE) catch()
+		
 		catId1 = x.get "cat1" type: "id"
 		catId2 = x.get "cat2" type: "id"
 		catId3 = x.get "cat3" type: "id"
@@ -957,7 +968,9 @@ rollout _STEP1 "STEP 1: Model Transform"
 		v = useSettings "CONVERTTOMESH" "bool" "r"
 		cbxConvertToMesh.checked = if(v == false) then false else true
 		
-		try(rdoPackType.state = _ASSETS_PACK_TYPE) catch()
+		v = getProp "rdoPackType"
+		rdoPackType.state = if(v == "") then 1 else (v as integer)
+		--try(rdoPackType.state = _ASSETS_PACK_TYPE) catch()
 		
 		-- Get Model Data from DB
 		externalModelID = getProp "externalModelID"
@@ -1191,6 +1204,7 @@ rollout _STEP1 "STEP 1: Model Transform"
 	on rdoPackType changed a do (
 		_ASSETS_PACK_TYPE = a		
 		rAssetsLibraryModelPack.title = getPackTypeText()
+		saveAllProp()
 	)
 )
 

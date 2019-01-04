@@ -268,6 +268,7 @@ fn packAllModels = (
 		::bLights = false	
 		::sPreviewPath = imgsList[i]
 		::bMainPreview = #(true)
+		::_ASSETS_PACK_TYPE = rBatchSettings.rdoPackType.state
 			
 		saveAllProp saveCat: #force	
 			
@@ -661,8 +662,9 @@ rollout rBatchSettings "Settings" category: 1  (
 		checkbutton btnTag5 "" visible: false width: 80 border: false align: #right	highlightColor: gray	
 	)
 	
-		
-	
+	group "Pack Type" (
+		radiobuttons rdoPackType "" labels: #("Model", "Scene", " Material") align: #left columns: 3
+	)
 	
 	group "Pack Settings" (
 		label lblMaxVer "3Ds Max Version: " across: 2 align: #left 
@@ -703,6 +705,7 @@ rollout rBatchSettings "Settings" category: 1  (
 				edtModeller.text = getDefaultSetting "edtModeller"
 				edtProjects.text = getDefaultSetting "edtProjects"
 				edtTags.text = getDefaultSetting "edtTags"
+				rdoPackType.state = try((getDefaultSetting "rdoPackType") as integer) catch(1)
 			) 
 		)		
 	)
@@ -715,6 +718,11 @@ rollout rBatchSettings "Settings" category: 1  (
 		)
 		
 		return errors
+	)
+	
+	on rdoPackType changed a do (
+		::_ASSETS_PACK_TYPE = a
+		setDefaultSetting "rdoPackType" (a as string)		
 	)
 	
 	on btnPackAllModels pressed do (

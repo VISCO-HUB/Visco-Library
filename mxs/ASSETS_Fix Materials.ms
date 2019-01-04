@@ -2,7 +2,7 @@
 [INFO] 
 
 NAME = Fix Materials
-VERSION = 1.1.1
+VERSION = 1.1.2
 AUTHOR = Vasily Lukyanenko
 DEV = VISCO
 HELP = 
@@ -16,6 +16,9 @@ HELP =
 
 [1.1.1]
 - BugFix: Small bug fixes =
+
+[1.1.2]
+- Deleted: Set gamma when Siger Shader  converted=
 
 [ABOUT]
 
@@ -133,7 +136,8 @@ rollout _rFixSigerShader "Siger Shaders" (
 			nn.hueShift = mm.hue
 			nn.saturation = mm.sat
 			-- Calc inverse gamma
-			g = 2.0 - mm.gamma
+			--g = 2.0 - mm.gamma
+			g = 1.0 / mm.gamma
 			if(g < 0.2) do g = 0.2
 			nn.gammaRGB = g
 			nn.map = n
@@ -188,7 +192,8 @@ rollout _rFixSigerShader "Siger Shaders" (
 			nn.hueShift = mm.hue
 			nn.saturation = mm.sat
 			-- Calc inverse gamma
-			g = 2.0 - mm.gamma
+			--g = 2.0 - mm.gamma
+			g = 1.0 / mm.gamma
 			if(g < 0.2) do g = 0.2
 			nn.gammaRGB = g
 			nn.map = n
