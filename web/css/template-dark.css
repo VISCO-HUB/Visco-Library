@@ -1342,10 +1342,10 @@ label {
 }
 
 .prod-gallery-frame {
-	border: 1px solid #fff;
-	transition: all 0.3s linear;
-	position: relative;
-	background-color: #FFF;
+	border: 1px solid #444444;
+    transition: all 0.3s linear;
+    position: relative;
+    background-color: #2d2d2d;
 }
 
 .prod-gallery-frame img {
@@ -1357,7 +1357,7 @@ label {
 }
 
 .prod-gallery-frame:hover {
-	border: 1px solid #ffffff;
+	/*border: 1px solid #6c6c6c;*/
 }
 
 .prod-gallery li.active,
@@ -1543,13 +1543,15 @@ label {
 }
 
 .comment pre {
-	border: none;
-	background-color: transparent;
-	margin: 0;
-	padding: 0;
-	font-family: inherit;
-	color: #dcdcdc;
-	display: inline-block;
+    border: none;
+    background-color: transparent;
+    margin: 0;
+    padding: 0;
+    font-family: inherit;
+    color: #dcdcdc;
+    display: inline-block;
+    word-wrap: break-word;
+    white-space: pre-line;
 }
 
 /* REPORT */

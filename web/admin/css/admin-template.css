@@ -700,3 +700,11 @@ ul.legend {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
 }
+
+.btn-tag {
+	margin: 3px;
+}
+
+.dropdown-inline {
+	display: inline-block;
+}

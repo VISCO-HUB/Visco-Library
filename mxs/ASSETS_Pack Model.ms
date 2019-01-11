@@ -2,7 +2,7 @@
 [INFO] 
 
 NAME = Pack Model
-VERSION = 1.1.6
+VERSION = 1.1.9
 AUTHOR = Vasily Lukyanenko
 DEV = VISCO
 HELP = 
@@ -91,6 +91,19 @@ ICON=#("PhysX_Main", 30)
 [1.1.6]
 
 + Added: Save options Model/Scene/Material and load from DB=
+
+[1.1.7]
+
++ Added: Save OSL settings in ini file=
+
+[1.1.8]
+
++ Changed: Leave original osl path=
+
+[1.1.9]
+
+- BugFix: Support % in model name=
+* Chaged: Save to lower version scene before upload=
 
 [ABOUT]
 
@@ -229,7 +242,14 @@ fn getSelectionByPackType type: #objects = (
 struct file (
 	fn path f = getFilenamePath f,
 	fn name f = getFilenameFile f,
-	fn ext f = getFilenameType f
+	fn ext f = getFilenameType f,
+	fn nameext f = filenameFromPath f,
+	fn lastfolder f = (
+		p = getFilenamePath f
+		parts = filterString p @"\"
+		if(parts.count == 0) do return ""
+		return parts[parts.count]
+	)
 )
 
 struct zip
@@ -248,6 +268,8 @@ struct zip
 	
 	fn writeFile f t =
 	(
+		t = substituteString t "%" "\%"
+		
 		local tmp
 		try(tmp = createFile f) catch (return false)			
 		format t to:tmp
@@ -970,6 +992,9 @@ rollout _STEP1 "STEP 1: Model Transform"
 		
 		v = getProp "rdoPackType"
 		rdoPackType.state = if(v == "") then 1 else (v as integer)
+		try(_ASSETS_PACK_TYPE = rdoPackType.state ) catch()
+		
+		
 		--try(rdoPackType.state = _ASSETS_PACK_TYPE) catch()
 		
 		-- Get Model Data from DB
@@ -2305,7 +2330,21 @@ rollout _STEP5 "STEP 5: Pack Model"
 			cbxRenameMaterials.checked = false
 			cbxRenameGroups.checked = false
 			cbxRemoveLayers.checked = false						
-		)		
+		)	
+		
+		if(_ASSETS_PACK_TYPE == 3) do (
+			cbxRenameTextures.enabled = false
+			cbxRenameObjects.enabled = false
+			cbxRenameMaterials.enabled = false
+			cbxRenameGroups.enabled = false
+			cbxRemoveLayers.enabled = false
+			
+			cbxRenameTextures.checked = false
+			cbxRenameObjects.checked = true
+			cbxRenameMaterials.checked = true
+			cbxRenameGroups.checked = true
+			cbxRemoveLayers.checked = true	 					
+		)			
 		
 		_STEP5.title = getPackTypeText()
 		btnPackModel.caption = getPackTypeText()
@@ -2412,30 +2451,70 @@ rollout _STEP5 "STEP 5: Pack Model"
 		return out
 	)
 	
-	fn copyVRayOSLTex _selection szOsl = (
+	fn writeOSLProps props b ini = (
+		for pp in props where hasProperty b pp do (
+			vv = getIniSetting ini (b.name) pp
+			if(vv == "") do (
+				val = getProperty b  pp
+				
+				out = case (classOf val) of (
+					Bitmaptexture: "Bitmaptexture filename:\"" + (val.filename as string) + "\""
+					default: val as string
+				)
+				setIniSetting ini b.name pp out
+			)
+		)
+	)
+		
+	fn copyVRayOSLTex szOsl = (
 		if(VRayOSLTex == undefined) do return false
 		
 		oldTex = #()
 		oldTexPaths = #()
 		
-		for i in _selection where i.material != undefined do (			
-			for b in getClassInstances VRayOSLTex target:i where (validVRayOSLTex b) do (
-				f = getFullPath (b.shader_file)
-				
-				n = file.name f
-				p = file.path f
-				ext = file.ext f
-				
-				n = n + (toLower ext)
-				nn = (szOsl + n)
-				
-				if(doesFileExist f and not doesFileExist nn) do (
-					b.shader_file = @"osl\" + n
-					b.name = "OSL " + (file.name nn)
-					copyFile f nn
-				)				
+		local props = #()
+			
+		for b in getClassInstances VRayOSLTex where (validVRayOSLTex b) do (
+			f = getFullPath (b.shader_file)
+			
+			n = file.name f
+			p = file.path f
+			ext = file.ext f
+			nameext = file.nameext f
+			oslIni =  szOsl + nameext + ".ini"
+			
+			n = n + (toLower ext)
+			nn = (szOsl + n)
+			
+			props = #()
+			
+			case nameext of (
+				"complex_ior.osl" : (						
+					append props "n"
+					append props "k"
+								
+					writeOSLProps props b oslIni
+				)
+				"irridescence.osl" : (						
+					append props "thicknessmapenabled"
+					append props "thicknessMin"
+					append props "thicknessMax"
+					append props "nmedium"
+					append props "nfilm"
+					append props "ninternal"
+					append props "thickness"
+								
+					writeOSLProps props b oslIni
+				)
 			)
-		)
+			
+			if(doesFileExist f and not doesFileExist nn) do (
+				-- Leave original network path !!!
+				--b.shader_file = @"osl\" + n
+				--b.name = "OSL " + (file.name nn)
+				copyFile f nn
+			)				
+		)		
 	)
 			
 	fn copyMaps _selection szMaps szName = 
@@ -2741,14 +2820,18 @@ rollout _STEP5 "STEP 5: Pack Model"
 		if(catID == -1) do return showTooltip warnMsg "Please select the category in STEP 2!"
 		max file save
 		
+		v = ddlMaxVer.selected 	
+		r = getCurrRender()	
+		
+		saveMaxFile fileToLoad saveAsVersion:(v as integer) quiet:true	
 			
 		removeDefaultLights()	
 			
 		_selection = getSelectionByPackType()
 		_selection = filterIgnores _selection
 			
-		v = ddlMaxVer.selected 
-		r = getCurrRender()	
+		
+		
 			
 		-- Set paths
 		
@@ -2788,9 +2871,6 @@ rollout _STEP5 "STEP 5: Pack Model"
 		iCnt = 0
 		for i in 1 to 3 do iCnt = copyMaps _selection szMaps szName
 			
-		-- Copy VRayOSLTex		
-		for i in 1 to 3 do copyVRayOSLTex _selection szOsl
-				
 		-- Copy IES
 		copyIESfiles _selection szAssets szName	
 			
@@ -2825,12 +2905,15 @@ rollout _STEP5 "STEP 5: Pack Model"
 			
 		select objects						
 		max tool zoomextents all
-		
+			
 		if(_ASSETS_PACK_TYPE == 1 or _ASSETS_PACK_TYPE == 3) do (	
 			renameObjects szName
 			renameMaterials szName 
 			if(cbxRemoveLayers.checked) do removeLayers()
 		)
+		
+		-- Copy VRayOSLTex		
+		for i in 1 to 3 do copyVRayOSLTex szOsl
 			
 		-- Save file properties
 		saveAllProp()

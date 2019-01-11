@@ -101,8 +101,14 @@
 		
 		$RESULT = DB::SELECT('models', $WHERE, NULL, TRUE);
 		$EXIST = DB::TOARRAY($RESULT);
-				
 		
+		$KIND = 'model';
+		SWITCH($INFO['KIND']) {
+			CASE 'scene': $KIND = 'scene'; BREAK;
+			CASE 'material': $KIND = 'material'; BREAK;
+			DEFAULT: $KIND = 'model';
+		}
+				
 		$SET['name'] = $NAME ;
 		$SET['catid'] = $INFO['CATID'];
 		$SET['format'] = $INFO['FORMAT'];
@@ -127,6 +133,7 @@
 		$SET['token'] = $INFO['TOKEN'];
 		$SET['status'] = 1;
 		$SET['pending'] = 1;
+		$SET['kind'] = $KIND;
 		$SET['date'] = TIME();
 		$SET['uploadedby'] = $AUTH['user']->user;
 		$SET['tags'] = '';

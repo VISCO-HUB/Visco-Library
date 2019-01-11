@@ -16,28 +16,27 @@
 		<div class="text-center capitalize card-title">{{prod.name}}</div>
 		<div class="">
 			<div class="text-left"><small><strong>Render:</strong> {{prod.render}}</small></div>
-			<div class="text-left margin-bottom-5"><small><strong>Format:</strong> {{prod.format}}</small></div>
+			<div class="text-left"><small><strong>Format:</strong> {{prod.format}}</small></div>
+			<div class="text-left margin-bottom-5"><small><strong>Type:</strong> <span class="text-capitalize">{{prod.kind}}</span></small></div>
 
 			<table width="100%" border="0">
 				<tr>
-					<td><div class="btn-group dropup btn-block margin-0" tooltip-placement="right" ng-show="auth.browser=='MXS'">
-							<button type="button" class="btn btn-primary" style="width: 80.5%"  ng-click="placeModel(prod.id)"> 
-								{{placename}} 
+					<td><div class="btn-group dropup btn-block margin-0 text-capitalize" tooltip-placement="right" ng-show="auth.browser=='MXS'">
+							<button type="button" class="btn btn-primary text-capitalize" style="width: 80.5%"  ng-click="interactionAsset(prod.id, prod.kind)"> 
+								{{interactionName[prod.kind]}} 
 							</button>
 							<button type="button" class="btn btn-primary dropdown-toggle width-20" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"> <span class="caret"></span> <span class="sr-only">Toggle Dropdown</span> </button>
-							<ul class="dropdown-menu width-100" aria-labelledby="dropdownMenu1">										
-								<li><a href="" ng-click="changePlace(2)" >Open Model</a></li>
-								<li><a href="" ng-click="changePlace(1)" >X-Ref Model</a></li>
-								<li><a href="" ng-click="changePlace(0)" >Merge Model</a></li>
+							<ul class="dropdown-menu width-100" aria-labelledby="dropdownMenu1" ng-include src="'/templates/mxs-menu.html'">	 																	
 							</ul>
 						</div>
 						
 						<a ng-href="#/{{prod.productpage}}/{{prod.id}}" class="btn-primary btn btn-block margin-0" ng-show="auth.browser!='MXS' && (auth.rights < 0 || !products.candl) && auth.rights != 2">View</a>
-						<button type="button" ng-click="downloadUrl(prod.id, libType)" class="btn btn-block margin-0" ng-show="auth.browser!='MXS' && ((auth.rights >= 0 && products.candl) || auth.rights == 2)" ng-class="{'btn-danger': prodError[prod.id], 'btn-primary': !prodError[prod.id]}">
+						<button type="button" ng-click="downloadUrl(prod.id, libType, prod)" class="btn btn-block margin-0" ng-show="auth.browser!='MXS' && ((auth.rights >= 0 && products.candl) || auth.rights == 2)" ng-class="{'btn-danger': prodError[prod.id], 'btn-primary': !prodError[prod.id]}">
 							<span ng-show="!prodError[prod.id]">Download</span>
 							<span ng-show="prodError[prod.id]==1">File Not Found!</span>
 							<span ng-show="prodError[prod.id]==2">No Access!</span>
-						</button></td>
+						</button>
+					</td>
 					<td width="34px">
 						<div class="btn-group dropup" uib-dropdown is-open="status.isopen">
 							<button type="button" class="btn btn-default custom-button-gray btn-block button-fixed button-heart" uib-dropdown-toggle  ng-click="">&nbsp;</button>

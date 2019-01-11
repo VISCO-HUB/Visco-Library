@@ -16,7 +16,7 @@
 			<li ng-style="{'background-image': 'url(' + productGalleryPreviews[0] + ')'}" ng-show="prod.webgl && auth.browser!='MXS'" ng-click="webglUrl(prod.webgl, prod.name)">
 				<div style="background-image:url('/img/3d2.svg'); background-size: contain; height: 20px; width: 20px; bottom: 0" ></div>
 			</li>
-			<li ng-style="{'background-image': 'url(' + productGalleryPreviews[0] + ')'}" ng-show="prod.webgl && auth.browser!='MXS'" ng-click="debugDevelop()">
+			<li ng-style="{'background-image': 'url(' + productGalleryPreviews[0] + ')'}" ng-show="prod.webgl && auth.browser!='MXS'" ng-click="webglARUrl(prod.webgl, prod.name)">
 				<div style="background-image:url('/img/ar.svg'); background-size: contain; height: 20px; width: 20px; bottom: 0"></div>
 			</li>
 		</ul>
@@ -45,8 +45,8 @@
 						<td>Name</td>
 					</tr>	
 					<tr ng-repeat="file in fileList.files.file">
-						<td>
-							<a href ng-click="downloadItem(prod.id, libType, file)" class="file-list-href" uib-tooltip="Download"><span class="glyphicon glyphicon-download-alt inline" aria-hidden="true"></span></a>
+						<td> 
+							<a href ng-click="downloadItem(prod.id, libType, file, prod)" class="file-list-href" uib-tooltip="Download"><span class="glyphicon glyphicon-download-alt inline" aria-hidden="true"></span></a>
 						</td>
 						<td class="wrap">
 							{{file}}
@@ -66,7 +66,7 @@
 						</tr>
 						<tr ng-repeat="img in fileList.files.img">
 							<td>
-								<a href ng-click="downloadItem(prod.id, libType, (img | rmdir))" class="file-list-href" uib-tooltip="Download"><span class="glyphicon glyphicon-download-alt inline" aria-hidden="true"></span></a>
+								<a href ng-click="downloadItem(prod.id, libType, (img | rmdir), prod)" class="file-list-href" uib-tooltip="Download"><span class="glyphicon glyphicon-download-alt inline" aria-hidden="true"></span></a>
 							</td>
 							<td>								
 								<img drop-file="{{fileList.path + key + '\\' + img}}" ng-src="vault/r.php?p={{fileList.path + key + '\\' + img}}" uib-tooltip="{{imgSize($index)}}" title="{{img | rmdir}}"></span>
@@ -87,7 +87,7 @@
 		<h3 class="capitalize">{{prod.name}}</h3>
 		<button type="button" class="btn btn-default custom-button-gray button-fixed button-rating" ng-class="{'highlight': product.userrate}" uib-tooltip="Rate model" ng-click="rateProduct(prod.id, libType)"> &nbsp;&nbsp;</button>&nbsp;
 		<button type="button" class="btn btn-default custom-button-gray button-fixed button-heart" uib-tooltip="Add to favorite" ng-click="hideShowQuickFavortites(prod)"> &nbsp;&nbsp;</button>&nbsp;
-		<button type="button" class="btn btn-default custom-button-gray button-fixed button-download" uib-tooltip="Download model" ng-click="downloadUrl(prod.id, libType)" ng-show="auth.rights >= 0 && product.candl"> &nbsp;&nbsp;</button>&nbsp;
+		<button type="button" class="btn btn-default custom-button-gray button-fixed button-download" uib-tooltip="Download model" ng-click="downloadUrl(prod.id, libType, prod)" ng-show="auth.rights >= 0 && product.candl"> &nbsp;&nbsp;</button>&nbsp;
 		<a ng-href="admin/#/models-edit/{{prod.id}}/1" class="btn btn-default custom-button-gray button-fixed button-edit" uib-tooltip="Edit" ng-show="auth.rights > 0"> &nbsp;&nbsp;</a>&nbsp;
 		<br><br>
 		<hr>		
@@ -97,6 +97,7 @@
 			<div class="capitalize"><strong>Downloads:</strong> {{prod.downloads}}</div>
 			<div class="capitalize"><strong>Rating:</strong> <a>{{product.rating}}</a></div>
 			<br>
+			<div class="capitalize"><strong>Kind/Type:</strong> {{prod.kind}}</div>		
 			<div class="capitalize"><strong>Manufacturer:</strong> {{isNA(prod.manufacturer)}}</div>		
 			<div class="capitalize"><strong>Project:</strong> {{isNA(prod.project)}}</div>
 			<div class="capitalize"><strong>Client:</strong> {{isNA(prod.client)}}</div>		
@@ -124,29 +125,37 @@
 			<div><strong>Tags:</strong><br><span ng-repeat="tag in prod.tags" ng-include="'tags'">{{tag}}</span></div>
 		</div>
 		<hr>
-		<button type="button" ng-click="downloadUrl(prod.id, libType)" class="btn btn-block margin-0" ng-show="auth.browser!='MXS' && (auth.rights >= 0 && product.candl)" ng-class="{ 'btn-danger': prodError[prod.id], 'btn-primary': !prodError[prod.id]}">
+		
+		
+		<div ng-show="prod.nda">			
+			<div class="alert alert-warning">
+				This model is under <em>NDA (Non-disclosure agreement)</em>!
+			</div>
+		</div>
+		 
+		<button type="button" ng-click="downloadUrl(prod.id, libType, prod)" class="btn btn-block margin-0" ng-show="auth.browser!='MXS' && (auth.rights >= 0 && product.candl)" ng-class="{ 'btn-danger': prodError[prod.id], 'btn-primary': !prodError[prod.id]}"> 
 			<span ng-show="!prodError[prod.id]">Download</span>
 			<span ng-show="prodError[prod.id]==1">File Not Found!</span>
 			<span ng-show="prodError[prod.id]==2">No Access!</span>
 		</button>
 
+		
+		
 		<table class="dropup margin-0" tooltip-placement="right" ng-show="auth.browser=='MXS'" width="100%">
 			<tr>
 			<td>
-				<button type="button" class="btn btn-primary btn-block" ng-click="placeModel(prod.id)"> 
-					{{placename}} 
+				<button type="button" class="btn btn-primary btn-block" ng-click="interactionAsset(prod.id, prod.kind)"> 
+					{{interactionName[prod.kind]}} 
 				</button>
 			</td>
 			<td width="30">
 			<button type="button" class="btn btn-primary dropdown-toggle btn-block" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"> <span class="caret"></span> <span class="sr-only">Toggle Dropdown</span> </button>
-				<ul class="dropdown-menu place-dropdown-menu" aria-labelledby="dropdownMenu1">										
-					<li><a href="" ng-click="changePlace(2)" >Open Model</a></li>
-					<li><a href="" ng-click="changePlace(1)" >X-Ref Model</a></li>
-					<li><a href="" ng-click="changePlace(0)" >Merge Model</a></li>
+				<ul class="dropdown-menu place-dropdown-menu" aria-labelledby="dropdownMenu1" ng-include src="'/templates/mxs-menu.html'">						
 				</ul>
 			</td>
 			</tr>
 		</table>
+		
 	</div>	
 	</div>
 </div>

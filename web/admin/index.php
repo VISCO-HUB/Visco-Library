@@ -45,27 +45,29 @@
 
 <body>
 <div class="header">
-	<div class="container">
-		<div class="padding-0-15">
-			<div class="navbar-header hidden-xxs"> <a href="/"><img src="../visco_logo.svg" class="logo"></a> <span class="head-title hidden-xs">Assets Library</span> </div>
-			<div id="navbar3" class="navbar-default">
-				<ul class="nav nav-buttons">
-					<li class="visible-xs-inline visible-sm-inline"><a href="" ng-click="toggleOverlayMenu()" ><span class="glyphicon glyphicon-menu-hamburger"></span></a></li>	
-					<li class="active"><a href="/" tooltip-popup-delay="200" uib-tooltip="Home" tooltip-placement="bottom"><span class="glyphicon glyphicon-home"></span></a></li>
-					<li ng-show="auth.browser=='MXS'"><a href="" ng-click="mxsGoBack()" tooltip-popup-delay="200" uib-tooltip="Back"><span class="glyphicon glyphicon-arrow-left"></span></a></li>
-					<li ng-show="auth.browser=='MXS'"><a href="" ng-click="mxsGoForward()" tooltip-popup-delay="200" uib-tooltip="Forward"><span class="glyphicon glyphicon-arrow-right"></span></a></li>
-					<li ng-show="auth.browser=='MXS'"><a href="" ng-click="mxsForceRefresh()" tooltip-popup-delay="200" uib-tooltip="Refresh"><span class="glyphicon glyphicon-refresh"></span></a></li>
-					<li class="active"><a href="#/msg/1" tooltip-popup-delay="200" uib-tooltip="Messages" tooltip-placement="bottom">
-						<span class="glyphicon glyphicon-envelope"></span><span class="badge badge-admin" ng-show="msgCnt.cnt > 0">{{msgCnt.cnt}}</span></a></li>
-					<li class="dropdown" ng-show="auth.rights > 0 && auth.browser != 'MXS'"> <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false" tooltip-popup-delay="200" uib-tooltip="User" tooltip-placement="bottom"><span class="glyphicon glyphicon-user"></span></a>
-						<ul class="dropdown-menu" role="menu">
-							<li class="dropdown-header">Hi, {{auth.name || auth.user}}</li>
-							<li class="divider"></li>
-							<li><a ng-href="/#/profile/profile">Profile</a></li>
-						</ul>
-					</li>
-					<li class="active"><a href="" ng-click="singOut()" tooltip-popup-delay="200" uib-tooltip="SignOut" tooltip-placement="bottom"><span class="glyphicon glyphicon-log-out"></span></a></li>
-				</ul>
+	<div class="container-fluid">
+		<div class="row">
+			<div class="padding-0-15">
+				<div class="navbar-header hidden-xxs"> <a href="/"><img src="../visco_logo.svg" class="logo"></a> <span class="head-title hidden-xs">Assets Library</span> </div>
+				<div id="navbar3" class="navbar-default">
+					<ul class="nav nav-buttons">
+						<li class="visible-xs-inline visible-sm-inline"><a href="" ng-click="toggleOverlayMenu()" ><span class="glyphicon glyphicon-menu-hamburger"></span></a></li>	
+						<li class="active"><a href="/" tooltip-popup-delay="200" uib-tooltip="Home" tooltip-placement="bottom"><span class="glyphicon glyphicon-home"></span></a></li>
+						<li ng-show="auth.browser=='MXS'"><a href="" ng-click="mxsGoBack()" tooltip-popup-delay="200" uib-tooltip="Back"><span class="glyphicon glyphicon-arrow-left"></span></a></li>
+						<li ng-show="auth.browser=='MXS'"><a href="" ng-click="mxsGoForward()" tooltip-popup-delay="200" uib-tooltip="Forward"><span class="glyphicon glyphicon-arrow-right"></span></a></li>
+						<li ng-show="auth.browser=='MXS'"><a href="" ng-click="mxsForceRefresh()" tooltip-popup-delay="200" uib-tooltip="Refresh"><span class="glyphicon glyphicon-refresh"></span></a></li>
+						<li class="active"><a href="#/msg/1" tooltip-popup-delay="200" uib-tooltip="Messages" tooltip-placement="bottom">
+							<span class="glyphicon glyphicon-envelope"></span><span class="badge badge-admin" ng-show="msgCnt.cnt > 0">{{msgCnt.cnt}}</span></a></li>
+						<li class="dropdown" ng-show="auth.rights > 0 && auth.browser != 'MXS'"> <a href="" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false" tooltip-popup-delay="200" uib-tooltip="User" tooltip-placement="bottom"><span class="glyphicon glyphicon-user"></span></a>
+							<ul class="dropdown-menu" role="menu">
+								<li class="dropdown-header">Hi, {{auth.name || auth.user}}</li>
+								<li class="divider"></li>
+								<li><a ng-href="/#/profile/profile">Profile</a></li>
+							</ul>
+						</li>
+						<li class="active"><a href="" ng-click="singOut()" tooltip-popup-delay="200" uib-tooltip="SignOut" tooltip-placement="bottom"><span class="glyphicon glyphicon-log-out"></span></a></li>
+					</ul>
+				</div>
 			</div>
 		</div>
 	</div>
@@ -82,16 +84,18 @@
 </div>
 <div class="container" alerts></div>
 
-<div class="container">
-	<div ng-show="globals.status==0" class="alert alert-danger">
-	{{globals.message}}
-	</div>
+<div class="container-fluid">
+	<div class="row">
+		<div ng-show="globals.status==0" class="alert alert-danger">
+		{{globals.message}}
+		</div>
 
-	<div class="col-sm-3 col-md-3 col-lg-3 hidden-xs hidden-sm"> <br>
-		<div menu></div>	
-	</div>
-	<div class="col-sm-12 col-md-9 col-lg-9 col-xs-12">
-		<div ng-view></div>
+		<div class="col-sm-3 col-md-3 col-lg-2 hidden-xs hidden-sm"> <br>
+			<div menu></div>	
+		</div>
+		<div class="col-sm-12 col-md-9 col-lg-10 col-xs-12">
+			<div ng-view></div>
+		</div>
 	</div>
 </div>
 <br>

@@ -171,13 +171,14 @@ app.controller('uploadCtrl', function($scope, FileUploader, vault, $rootScope, $
 	});
 
 	// FILTERS
-
-	uploader.filters.push({
+	/*
 		name: 'customFilter',
-		fn: function(item /*{File|FileLikeObject}*/, options) {
+		fn: function(item, options) {
 				return this.queue.length < 10;
 			}
 		},
+	*/
+	uploader.filters.push(		
 		{
             name: 'zipFilter',
             fn: function(item /*{File|FileLikeObject}*/, options) {
@@ -929,6 +930,7 @@ app.controller("modelsEditCtrl", function ($scope, $rootScope, $routeParams, vau
 	
 	$scope.moveToCat = [];
 	$scope.moveToCatName = [];
+	$rootScope.relTags = [];
 	
 	$scope.selectMoveToCat = function(id, name, lvl) {
 		
@@ -945,6 +947,11 @@ app.controller("modelsEditCtrl", function ($scope, $rootScope, $routeParams, vau
 				$scope.selectMoveToCat(c[v].id, c[v].name, v);
 			});
 			
+		}
+		console.log($rootScope.product)
+		var cid  = $rootScope.product.cat;
+		if(cid) {
+			$scope.getRelTags(id, $rootScope.product.cat.id);
 		}
 	});
 	
@@ -1051,7 +1058,16 @@ app.controller("modelsEditCtrl", function ($scope, $rootScope, $routeParams, vau
 			return false;
 		}
 		
-		vault.addTag(id, tags, $scope.type)
+		vault.addTag(id, tags, $scope.type);
+	}
+	
+	
+	$scope.getRelTags = function(id, catid) {
+		vault.getRelTags(id, catid, $scope.type);
+	}
+	
+	$scope.addRelTag = function(tag) {
+		vault.addTag(id, tag, $scope.type);
 	}
 	
 	$scope.setMainPreview = function(name) {
@@ -1286,11 +1302,52 @@ app.controller("modelsEditCtrl", function ($scope, $rootScope, $routeParams, vau
 	}	
 	
 	$scope.prodDelete = function(id, name) {
-	if(!confirm('Do you really want to delete "' + name + '"?')){
-		return false;
-	}
+		if(!confirm('Do you really want to delete "' + name + '"?')){
+			return false;
+		}
 	
 		vault.prodDelete(id, $scope.type, $scope.page, $rootScope.perpage, $rootScope.modelFilter);
+	}
+	
+	
+	$scope.removeTag = function(id, tag) {
+		if($rootScope.copiedTag != tag) {
+			if(!confirm('Do you really want to delete tag "' + tag + '"?')){
+				return false;
+			}
+		}
+		
+		vault.removeTag(id, tag, $scope.type);
+	}
+	
+	$rootScope.copiedTag = '';
+	$scope.copyTag = function(tag) {
+		$rootScope.copiedTag = tag;
+		vault.showMessage('Tag "' + tag + '" copied!', 'success');
+	}
+	
+	$scope.pasteTag = function(id) {
+		if($rootScope.copiedTag.length == 0) {
+			vault.showMessage('Please copy tag first!', 'error');
+			return false;
+		}
+				
+		vault.addTag(id, $rootScope.copiedTag, $scope.type);		
+		$timeout(function() {
+			vault.showMessage('Tag added!', 'success');	
+		}, 100);		
+	}
+	
+	$scope.addTag = function(id) {
+		var tags = prompt('Please add new tags separated by ","', '');			
+		
+		if(!tags || !tags.length) {			
+			vault.showMessage('Please add tags!', 'warning');
+		
+			return false;
+		}
+		
+		vault.addTag(id, tags, $scope.type);
 	}
  });
  
@@ -1714,7 +1771,7 @@ app.controller("toolsCtrl", function ($scope, $rootScope, vault) {
 // AUTO RUN
 app.run(function($rootScope, $location, $routeParams, vault, $timeout) {
 	
-
+	$rootScope.copiedTag = '';
 	$rootScope.download = '';
 	$rootScope.downloadUrl = function(id, type) {
 		if(!confirm('Do you really want download?')){
@@ -1806,7 +1863,7 @@ app.run(function($rootScope, $location, $routeParams, vault, $timeout) {
 		$rootScope.products = {};
 		$rootScope.product = {};
 		$rootScope.donwloadLog = {};
-		
+				
 		$rootScope.globals = {};
 				
 		$rootScope.libType = function(type) {
@@ -2475,6 +2532,19 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		});
 	}
 	
+	var getRelTags = function(id, cid, type) {
+		var json = {'id': id, 'cid': cid, 'type': type};
+		
+		HttpPost('CATRELTAGS', json).then(function(r){												
+			
+			responceMessage(r.data);
+			$rootScope.relTags = r.data;
+		},
+		function(r){
+			responceMessage(r);
+		});
+	}
+			
 	var prodDelete = function(id, type, page, perpage, filter) {
 		var json = {'id': id, 'type': type};
 		
@@ -2946,6 +3016,7 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		catChangeName: catChangeName,
 		catSort: catSort,
 		tagsGet: tagsGet,
+		getRelTags: getRelTags,
 		tagDelete: tagDelete,
 		tagChange: tagChange,
 		productsGet: productsGet,

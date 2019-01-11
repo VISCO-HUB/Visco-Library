@@ -996,6 +996,52 @@
 			RETURN $ERROR;
 		}
 		
+		PUBLIC STATIC FUNCTION CATRELTAGS($DATA) {
+			$ERROR = '{"responce": "CATGRPTOGGLEBAD"}';
+			
+			IF(!ISSET($DATA->id) OR !ISSET($DATA->cid) OR !ISSET($DATA->type)) RETURN $ERROR;
+			
+			$TYPE = PRODUCTS::TYPE($DATA->type);
+			
+			FUNCTION MAP($A) {
+				RETURN STRTOLOWER(TRIM($A));
+			}
+								
+			IF(!$TYPE) RETURN $ERROR;			
+			$WHERE['catid'] = $DATA->cid;	
+			$RESULT = DB::SELECT($TYPE, $WHERE);
+			$MODELS = DB::TOARRAY($RESULT);
+			
+			
+			$WHERE = [];
+			$WHERE['id'] = $DATA->id;
+			$RESULT = DB::SELECT($TYPE, $WHERE);
+			$MODEL = $RESULT->fetch_object();
+			$MODEL_TAGS = ARRAY_FILTER(ARRAY_MAP(MAP, EXPLODE(',', $MODEL->tags)));
+				
+			$TAGS = [];
+			FOREACH($MODELS AS $MDL) {		
+				$T =  ARRAY_FILTER(ARRAY_MAP(MAP, EXPLODE(',', $MDL->tags)));		
+				$TAGS = ARRAY_MERGE($TAGS, $T);
+			}
+						
+			SORT($TAGS);
+			
+			$TAGS = ARRAY_UNIQUE($TAGS);
+			
+			$DIFF_TAGS = ARRAY_DIFF($TAGS, $MODEL_TAGS);
+						
+			$OUT = [];
+			FOREACH($DIFF_TAGS AS $T) {
+				$K = $T[0];
+				IF(!$OUT[$K]) $OUT[$K] = [];
+				$OUT[$K][] = $T;
+			}
+						
+			RETURN JSON_ENCODE($OUT);
+		}
+			
+			
 		PUBLIC STATIC FUNCTION CATTOGGLEGRP($DATA) {
 			$ERROR = '{"responce": "CATGRPTOGGLEBAD"}';
 			$SUCCESS = '{"responce": "CATGRPTOGGLEOK"}';
@@ -1318,21 +1364,26 @@
 				IF(!$this->IMG) RETURN FALSE;
 			}
 			
-			$BIN = $this->MATRIX($this->IMG, FALSE);
-			$RES = $this->MATRIXEXPLODE($BIN);
-			$HEIGHT = $RES['size'];
-			$CROPY = $RES['padding'];
+			$BIN1 = $this->MATRIX($this->IMG, FALSE);
+			$RES1 = $this->MATRIXEXPLODE($BIN1);
+			$HEIGHT = $RES1['size'];
+			$CROPY = $RES1['padding'];
 			
-			$BIN = $this->MATRIX($this->IMG, TRUE);
-			$RES = $this->MATRIXEXPLODE($BIN);
-			$WIDTH = $RES['size'];
-			$CROPX = $RES['padding'];
+			$BIN2 = $this->MATRIX($this->IMG, TRUE);
+			$RES2 = $this->MATRIXEXPLODE($BIN2);
+			$WIDTH = $RES2['size'];
+			$CROPX = $RES2['padding'];
 			
 			$BIGSIDE = $WIDTH > $HEIGHT ? $WIDTH : $HEIGHT;
 			$this->IMG = $this->CROP($CROPX, $CROPY, $WIDTH, $HEIGHT);
 			
 			$this->CUR_IMG_WIDTH = $WIDTH;
 			$this->CUR_IMG_HEIGHT = $HEIGHT;
+			
+			// CHECK IF LOADED SCENE AND REMOVE WHITE PADDINGS						
+			IF($RES1['padding'] == 0 AND $RES2['padding'] == 0) {
+				$this->BASE_SIZE = IMG_HUGE;
+			}
 						
 			IF($this->BASE_SIZE < $BIGSIDE) {
 				$N = $this->RESIZE($this->BASE_SIZE / $BIGSIDE);
@@ -1437,7 +1488,7 @@
 					IF($I == 0 AND $J == 0)  $BG = $R;
 					$SENS = 15;
 					
-					IF($BG < 170) {
+					IF($BG < 245) {
 						$BIN[$I][$J] = 1;
 					} ELSE {
 						$BIN[$I][$J] = ($R > $BG - $SENS) ? 0 : 1;	

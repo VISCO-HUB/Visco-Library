@@ -1,3 +1,17 @@
+<script type="text/ng-template" id="tags">
+		
+		<div class="dropdown dropdown-inline">
+		  <a href="" class="dropdown-toggle" type="button" id="dropdownMenu1" data-toggle="dropdown">
+			{{tag}}
+		  </a>
+		  <ul class="dropdown-menu dropdown-menu-right" role="menu" aria-labelledby="dropdownMenu1">
+			<li role="presentation"><a role="menuitem" tabindex="-1" href="" ng-click="copyTag(tag)">Copy</a></li>
+			<li role="presentation" class="divider"></li>
+			<li role="presentation"><a role="menuitem" tabindex="-1" href="" ng-click="removeTag(prod.id, tag)">Remove</a></li>
+		  </ul>
+		</div>,
+</script>
+
 <h1>Models</h1>
 <hr>
 <div class="dropdown clr">
@@ -33,6 +47,7 @@
 			<th>Status</th>
 			<th>Date</th>
 			<th width="220px">Actions</th>
+			<th>Tags</th>
 		</tr>
 		<tr ng-repeat="prod in products.products" >
 			<td>{{$index + 1}}.</td>
@@ -40,11 +55,12 @@
 				<div class="is3d-small" ng-show="prod.webgl"></div>
 				<a href="#/models-edit/{{prod.id}}/{{currentPage}}"><img ng-src="{{getMainPreview(prod.previews, 'small')}}"></a>
 			</td>
-			<td><a href="#/models-edit/{{prod.id}}/{{currentPage}}">{{prod.name}}</a></td>
+			<td nowrap><a href="#/models-edit/{{prod.id}}/{{currentPage}}">{{prod.name}}</a></td>
 			<td>
-			<span ng-show="prod.status==0 && prod.pending!=1" class="label label-default pointer" ng-click="prodSetParam('status', '1', prod.id)">Disabled</span> 
-			<span ng-show="prod.status==1 && prod.pending!=1" class="label label-success pointer" ng-click="prodSetParam('status', '0', prod.id)">Enabled</span>
-			<span ng-show="prod.pending==1" class="label label-warning pointer" ng-click="prodSetParam('pending', '0', prod.id)">Pending</span></td>
+				<span ng-show="prod.status==0 && prod.pending!=1" class="label label-default pointer" ng-click="prodSetParam('status', '1', prod.id)">Disabled</span> 
+				<span ng-show="prod.status==1 && prod.pending!=1" class="label label-success pointer" ng-click="prodSetParam('status', '0', prod.id)">Enabled</span>
+				<span ng-show="prod.pending==1" class="label label-warning pointer" ng-click="prodSetParam('pending', '0', prod.id)">Pending</span>
+			</td>
 			<td> {{tm(prod.date)}} </td>
 			<td><a href="#/models-edit/{{prod.id}}/{{currentPage}}">Edit</a> 
 				|
@@ -55,6 +71,12 @@
 				<span ng-show="auth.browser=='MXS'">| <a href="" ng-click="mergeModel(prod.id)">Merge</a></span>
 				| <a href="" ng-click="downloadUrl(prod.id, type)">Download</a>
 			</td>
+			<td>
+				<span ng-repeat="tag in prod.tags.split(',') track by $index" ng-include="'tags'">{{tag}}</span>
+								
+				<button class="btn btn-default btn-xs btn-tag" ng-click="addTag(prod.id)"><span class="glyphicon glyphicon-plus" aria-hidden="true"></span> Add</button>
+				
+				<button class="btn btn-default btn-xs btn-tag" ng-click="pasteTag(prod.id)"><span class="glyphicon glyphicon-paste" aria-hidden="true"></span> Paste</button>
 			</td>
 		</tr>
 	</table>

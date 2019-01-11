@@ -1,0 +1,10 @@
+	<!-- Open -->
+	<li ng-show="prod.kind == 'model' || prod.kind == 'scene' || prod.kind == 'material'"><a href="" ng-click="interactionChange(2, prod.kind)" >{{getInteractionName(prod.kind, 2)}}</a></li>
+	<!-- X-Ref -->
+	<li ng-show="prod.kind == 'model'"><a href="" ng-click="interactionChange(1, prod.kind)" >{{getInteractionName(prod.kind, 1)}}</a></li>
+	<!-- Merge -->
+	<li ng-show="prod.kind == 'model'"><a href="" ng-click="interactionChange(0, prod.kind)" >{{getInteractionName(prod.kind, 0)}}</a></li>
+	<!-- Opein In Medit -->
+	<li ng-show="prod.kind == 'material'"><a href="" ng-click="interactionChange(3, prod.kind)">{{getInteractionName(prod.kind, 3)}}</a></li>
+	<!-- Apply To Object -->
+	<li ng-show="prod.kind == 'material'"><a href="" ng-click="interactionChange(4, prod.kind)">{{getInteractionName(prod.kind, 4)}}</a></li>

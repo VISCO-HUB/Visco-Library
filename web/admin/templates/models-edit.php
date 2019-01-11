@@ -1,7 +1,14 @@
 <script type="text/ng-template" id="tags">
-	<div class="btn-group margin-10-2" ng-if="tag.length > 1">
+	<div class="btn-group btn-tag" ng-if="tag.length > 1">
 		<button type="button" class="btn btn-default btn-xs" disabled>{{tag}}</button>
 		<button type="button" class="btn btn-default btn-xs" ng-click="removeTag(tag)" aria-haspopup="true" aria-expanded="false"><span class="glyphicon glyphicon-remove" aria-hidden="true"></span></button>	
+	</div>
+</script>
+
+<script type="text/ng-template" id="reltags">
+	<div class="btn-group btn-tag" ng-if="tag.length > 1" ng-click="addRelTag(tag)">
+		<button type="button" class="btn btn-default btn-xs">{{tag}}</button>
+		<button type="button" class="btn btn-default btn-xs" aria-haspopup="true" aria-expanded="false"><span class="glyphicon glyphicon-plus" aria-hidden="true"></span></button>	
 	</div>
 </script>
 
@@ -33,6 +40,13 @@
 	<button type="button" class="btn" ng-class="product.info.pending == 0 ? 'btn-success' : 'btn-default'" ng-click="prodSetParam('pending', '0')">&nbsp;NO&nbsp;</button>
 	<button type="button" class="btn" ng-class="product.info.pending == 1 ? 'btn-warning' : 'btn-default'" ng-click="prodSetParam('pending', '1')">YES</button>
 </div>
+
+<h2><small>NDA (Non-disclosure agreement):</small></h2>
+<div class="btn-group" data-toggle="buttons">	
+	<button type="button" class="btn" ng-class="!product.info.nda || product.info.nda ==0  ? 'btn-success' : 'btn-default'" ng-click="prodSetParam('nda', '0')">&nbsp;NO&nbsp;</button>
+	<button type="button" class="btn" ng-class="product.info.nda == 1 ? 'btn-warning' : 'btn-default'" ng-click="prodSetParam('nda', '1')">YES</button>
+</div>
+
 <hr>
 <h2><small>Name:</small></h2>
 <div class="form-group">
@@ -146,16 +160,45 @@
 	
 </div>
 <hr>
-<h2><small>Tags:</small></h2>
-<span ng-repeat="tag in product.info.tags.split(',') track by $index" ng-include="'tags'">{{tag}}</span> <br>
-<br>
-<button type="submit" class="btn btn-primary" ng-click="addTag()">Add Tags</button>
+
+<div class="well well-lg">
+	<h2 style="margin: 0"><small>Tags:</small></h2>
+	<div class="well well-lg" style="background-color: white;">
+		<span ng-repeat="tag in product.info.tags.split(',') track by $index" ng-include="'tags'">{{tag}}</span> <br>
+		<br>	
+		<button type="submit" class="btn btn-primary" ng-click="addTag()">Add Tags</button>
+	</div>
+	
+	<hr>
+	<h4>Recommended Tags:</h4>
+	<div style="max-height: 300px; overflow-y: scroll; ">
+		<div ng-repeat="(key, value) in relTags">
+			<h3><small>{{key.toUpperCase()}}</small></h3>
+			<span ng-repeat="tag in value" ng-include="'reltags'">{{tag}}</span>		
+		</div>
+	</div>
+</div>
+
+
 <hr>
+
+
 <h2><small>Info:</small></h2>
 <table class="model-info" width="100%">
 	<tr>
 		<td width="30%">Uploaded By: </td>
 		<td>{{product.info.uploadedby}}</td>
+		
+	</tr>
+	<tr>
+		<td>Kind: </td>
+		<td>
+			<div class="btn-group btn-toggle" data-toggle="buttons">	
+				<button type="button" class="btn btn-xs" ng-class="product.info.kind=='model' ? 'btn-success' : 'btn-default'" ng-click="prodSetParam('kind', 'model', product.info.id)">Model</button>
+				<button type="button" class="btn btn-xs" ng-class="product.info.kind=='scene' ? 'btn-success' : 'btn-default'" ng-click="prodSetParam('kind', 'scene', product.info.id)">Scene</button>
+				<button type="button" class="btn btn-xs" ng-class="product.info.kind=='material' ? 'btn-success' : 'btn-default'" ng-click="prodSetParam('kind', 'material', product.info.id)">Material</button>				
+			</div>				
+		</td>
 		
 	</tr>
 	<tr>

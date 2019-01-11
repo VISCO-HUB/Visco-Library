@@ -963,7 +963,7 @@
 			$OUT['userrate'] = IN_ARRAY($AUTH->user, $RATING);
 			$OUT['comments'] = SELF::GETCOMMENTS($DATA, TRUE);
 			$OUT['candl'] = $CANDL;
-			
+						
 			RETURN JSON_ENCODE($OUT);
 		}
 		
@@ -1041,7 +1041,10 @@
 				$WHERE['user'] = $V->user;
 				$RES = DB::SELECT('users', $WHERE);
 				$U = $RES->fetch_object();
+				
 				$V->avatar = AVATAR_ABSPATH . $U->avatar;
+				IF(!$U->avatar OR !FILE_EXISTS(AVATAR_PATH . $U->avatar)) $V->avatar = 'img/noavatar.svg';
+				
 				$OUT[] = $V;
 			}
 			

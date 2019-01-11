@@ -2,7 +2,7 @@
 [INFO] 
 
 NAME = Assets Library
-VERSION = 1.0.9
+VERSION = 1.1.0
 AUTHOR = Vasily Lukyanenko
 DEV = VISCO
 HELP = 
@@ -48,6 +48,10 @@ ICON=#("AssetsLibrary", 1)
 
 * Improved: Support material merge=
 
+[1.1.0]
+
++ Added: Restore OSL settings from ini=
+
 [ABOUT]
 
 Open Assets Library via 3Ds Max=
@@ -62,8 +66,7 @@ try(
 	_ViscoAssetsForm.Show()
 	_ViscoAssetsForm.WindowState = (dotNetClass "System.Windows.Forms.FormWindowState").Normal
 	_ViscoAssetsForm.Focus()
-) catch 
-	(
+) catch 	(
 	global siteUrl = @"http://assets.visco.no/"
 	global siteUrl = @"http://svg-web-003/"
 	global iconFile = @"\\visco.local\data\Instal_Sync\scripts\scripts\img\assets_favicon.ico"
@@ -119,6 +122,19 @@ try(
 		return t
 	)
 
+	struct file (
+		fn path f = getFilenamePath f,
+		fn name f = getFilenameFile f,
+		fn ext f = getFilenameType f,
+		fn nameext f = filenameFromPath f,
+		fn lastfolder f = (
+			p = getFilenamePath f
+			parts = filterString p @"\"
+			if(parts.count == 0) do return ""
+			return parts[parts.count]
+		)
+	)
+	
 	fn saveProp p d = try(fileProperties.addProperty #custom p d) catch()
 
 	 fn useSettings k p w =
@@ -173,8 +189,7 @@ try(
 		
 	try(_ViscoAssetsForm.icon = dotNetObject "System.Drawing.Icon" iconFile)catch()
 	--_ViscoAssetsForm.topmost = true
-
-
+		
 	wbTrust = dotNetObject "System.Windows.Forms.WebBrowser"
 	wbTrust.size =dotNetObject "System.Drawing.Size" 0 0
 	wbTrust.location = dotNetObject "System.Drawing.Point" -100 -100
@@ -193,6 +208,7 @@ try(
 	--wb.AllowWebBrowserDrop  = true
 	wb.location = dotNetObject "System.Drawing.Point" 0 0
 	wb.ObjectForScripting = execCommand
+		
 
 	fn getUri s = dotNetObject "System.Uri" s	
 
@@ -205,7 +221,7 @@ try(
 	_ViscoAssetsForm.controls.add  execCommand
 	_ViscoAssetsForm.controls.add  wbTrust
 	_ViscoAssetsForm.controls.add  wb
-
+	
 	fn getWidnowState =
 	(
 		s = dotNetClass "System.Windows.Forms.FormWindowState"
@@ -407,6 +423,15 @@ try(
 				if(findString b.shader_file path == undefined) do
 				(
 					b.shader_file = path + b.shader_file
+					
+					iniOsl = b.shader_file + ".ini"
+					if(doesFileExist iniOsl) do (
+						params = getIniSetting iniOsl "PARAMETERS" 
+						for p in params do (
+							v = getIniSetting iniOsl "PARAMETERS" p
+							try(setProperty b p (execute v)) catch()
+						)
+					)
 				)
 			)
 		)
@@ -471,18 +496,6 @@ try(
 		if(l != undefined) do for i in sel do l.addNode i
 	)
 
-	fn getSMEPos viewNode = (
-		n = viewNode.GetSelectedNodes()
-		if(n[1] != undefined) do (
-			p = n[1].position
-			p[1] = p[1] + 180
-			p[2] = p[2] + 420
-			return  p
-		)
-		
-		return [0, 0]
-	)
-	
 	fn addFile id mode: #merge =
 	(				
 		oldSelection = selection as array
@@ -520,6 +533,7 @@ try(
 		sel = #()
 		
 		disableSceneRedraw()
+		try(setVRaySilentMode()) catch()
 				
 		case mode of
 		(
@@ -532,29 +546,44 @@ try(
 					mat = sel[1].material
 					mat.name = sel[1].name
 					
+					setVRayHDRIPath path: p geom: #(mat)
+					--setVRayOSLTexPath path: p geom: #(mat)
+					
 					setTexturesPath path: p geom: #(mat) type: BitmapTex
 					try(setTexturesPath path: p geom: #(mat) type: CoronaBitmap)catch()
 										
-					setVRayHDRIPath path: p geom: #(mat)
-					setVRayOSLTexPath path: p geom: #(mat)
-					
-					if(MatEditor.mode == #basic) do (
-						if(not MatEditor.isOpen()) do MatEditor.Open() 
-						mid = medit.GetActiveMtlSlot() 
-						medit.PutMtlToMtlEditor mat mid
-					)
-					
-					if(MatEditor.mode == #advanced) do (
+					if(MatEditor.mode == #basic) then (
+						q = queryBox "This operation will replace the active material slot!" title: "Confirm?"
+						if(q) do (
+							if(not MatEditor.isOpen()) do MatEditor.Open() 
+							mid = medit.GetActiveMtlSlot() 
+							medit.PutMtlToMtlEditor mat mid
+						)
+					) else if(MatEditor.mode == #advanced) do (
 						if(not sme.IsOpen()) do sme.Open() 
+						sme.OpenMtlBrowseDlg()
 							
 						viewNode = sme.GetView (sme.activeView)
-						viewNode.createNode mat (getSMEPos viewNode)						
+						viewNode.SelectNone()
+							
+						lastPos = [0, 0]	
+						
+						 for n in 1 to trackViewNodes[#sme][(sme.activeView)].numSubs do (
+							ref = trackViewNodes[#sme][(sme.activeView)][n].reference
+							nd = viewNode.GetNodeByRef ref
+							if(superClassOf ref == material and nd.position[2] > lastPos[2]) do lastPos = nd.position            
+						)	
+						
+							
+						lastPos[2] += 450
+							
+						viewNode.createNode mat lastPos																			
 						sme.SetMtlInParamEditor mat
-						viewNode.setFocus()
-						viewNode.ZoomExtents type: #all	
-						viewNode.ZoomExtents type: #selected						
+						viewNode.SetSelectedNodes mat
+						
+						viewNode.ZoomExtents type: #selected												
 					)
-										
+					
 					try(delete sel) catch()
 				)
 			)
@@ -567,12 +596,12 @@ try(
 					mat = sel[1].material
 					mat.name = sel[1].name
 					
+					setVRayHDRIPath path: p geom: #(mat)
+					--setVRayOSLTexPath path: p geom: #(mat)
+					
 					setTexturesPath path: p geom: #(mat) type: BitmapTex
 					try(setTexturesPath path: p geom: #(mat) type: CoronaBitmap)catch()
 										
-					setVRayHDRIPath path: p geom: #(mat)
-					setVRayOSLTexPath path: p geom: #(mat)
-					
 					try(
 						select oldSelection
 						for i in oldSelection do try(i.material = mat) catch()
@@ -595,7 +624,7 @@ try(
 				try(setTexturesPath path: p geom: sel type: CoronaBitmap)catch()
 				
 				setVRayHDRIPath path: p geom: sel
-				setVRayOSLTexPath path: p geom: sel
+				--setVRayOSLTexPath path: p geom: sel
 				
 				try(select sel)catch()
 			)
@@ -619,7 +648,7 @@ try(
 				setIesPath path: p geom: sel
 				
 				setVRayHDRIPath path: p geom: sel
-				setVRayOSLTexPath path: p geom: sel
+				--setVRayOSLTexPath path: p geom: sel
 				
 				-- Add objects to layer
 				if(catName != false) do moveToLayer catName sel: sel

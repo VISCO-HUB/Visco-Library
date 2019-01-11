@@ -415,6 +415,10 @@ app.controller("favoriteCollectionCtrl", function ($scope, $rootScope, $location
 		vault.favShareCollection(id, status);
 	}
 	
+	$scope.checkPending = function(id) {
+		vault.checkPendingFav(id, 1, $scope.collectionid);
+	}
+	
 	$scope.favGetCollection($scope.collectionid);
 	
 	$("input[type='text']").on("click", function () {
@@ -600,8 +604,13 @@ app.controller("modelCtrl", function ($scope, vault, $rootScope, $location, $rou
 		vault.getFileList(id, type);
 	}
 	
-	$scope.downloadItem = function(id, type, file) {
-		if(!confirm('Do you really want download?')){
+	$scope.downloadItem = function(id, type, file, prod) {
+		ndaMsg = '';
+		if(prod.nda) {
+			ndaMsg = '\n\nThis model is under NDA (Non-disclosure agreement)!';
+		}
+		
+		if(!confirm('Do you really want download?' + ndaMsg)){
 			return false;
 		}
 	
@@ -833,39 +842,102 @@ app.run(function($rootScope, $location, $routeParams, $timeout, $cookieStore, va
 	}
 	
 	// PLACE 
-	
-	$rootScope.place = $cookieStore.get('place-mode');
-	
-	$rootScope.placename = '';
-	$rootScope.getPlaceName = function(mode) {
-		switch(mode) {
-			case 1: $rootScope.placename = 'X-Ref Model';
+		
+	$rootScope.interactionChange = function(mode, kind) {				
+		$cookieStore.put('interaction-' + kind, mode);
+		$rootScope.loadInteractions();
+	}
+		
+	$rootScope.getPlaceTypeMode = function(kind) {
+		var place = 0;
+		var cookie = $cookieStore.get('interaction-' + kind);
+		
+		switch (kind) {
+			// SCENE
+			case 'scene': {
+				switch (cookie) {
+					default: place = 2; break;
+				}	
+			}
 			break;
-			case 2: $rootScope.placename = 'Open Model';
+			// MATERIAL
+			case 'material': {
+				switch (cookie) {
+					case 4: place = 4; break;
+					case 2: place = 2; break;
+					default: place = 3; break;
+				}				
+			}
 			break;
-			default: $rootScope.placename = 'Merge Model';
+			// MODEL
+			default: {
+				switch (cookie) {
+					case 1: place = 1; break;
+					case 2: place = 2; break;
+					default: place = 0; break;
+				}	
+			}
+		}
+		
+		return place;
+	}
+	
+	$rootScope.interactionName = {};
+	
+			
+	$rootScope.getInteractionName = function(kind, def) {		
+		var place = 0;
+		if(def === false) {
+			place = $rootScope.getPlaceTypeMode(kind);
+		} else {
+			place = def;
+		}
+				
+		var name = '';
+		switch(place) {
+			// Scene / Model
+			case 1: name = 'X-Ref ' + kind;
+			break;
+			case 2: name = 'Open ' + kind;
+			break;
+			// Materials
+			case 3: name = 'Open In Medit';
+			break;
+			case 4: name = 'Apply To Object';
+			break;
+			// Model
+			default: name= 'Merge ' + kind;
 			break;
 		}
-	}
-
-	$rootScope.getPlaceName($rootScope.place);
-	
-	$rootScope.changePlace = function(mode) {
-		$rootScope.getPlaceName(mode);
-		$rootScope.place = mode;
-		$cookieStore.put('place-mode', mode);
+		
+		return name;
 	}
 	
-	$rootScope.placeModel = function(id) {		
-		vault.placeModel(id, $rootScope.place);				
+	$rootScope.loadInteractions = function() {
+		$rootScope.interactionName['model'] = $rootScope.getInteractionName('model', false);
+		$rootScope.interactionName['scene'] = $rootScope.getInteractionName('scene', false);
+		$rootScope.interactionName['material'] = $rootScope.getInteractionName('material', false);
+	}
+	
+	$rootScope.loadInteractions();
+	
+	$rootScope.interactionAsset = function(id, kind) {		
+		var place = $rootScope.getPlaceTypeMode(kind);		
+		
+		vault.placeMode(id, place);			
 	}
 	
 	// DOWNLOAD
 	
 	$rootScope.download = '';	
 	
-	$rootScope.downloadUrl = function(id, type) {
-		if(!confirm('Do you really want download?')){
+	$rootScope.downloadUrl = function(id, type, prod) {
+		ndaMsg = '';console.log(prod);
+		if(prod.nda) {
+			ndaMsg = '\n\nThis model is under NDA (Non-disclosure agreement)!';
+		}
+		
+		if(!confirm('Do you really want download?' + ndaMsg)){
 			return false;
 		}
 	
@@ -899,6 +971,23 @@ app.run(function($rootScope, $location, $routeParams, $timeout, $cookieStore, va
 		}*/
 		$rootScope.webglTitle = title;
 		$rootScope.webgl = hostname + 'webgl/?item=' + item;				
+	}
+	
+	$rootScope.webglARUrl = function(item, title) {
+	
+		if(!item) {
+			$rootScope.webgl = '';
+			$rootScope.webglTitle = '';
+			v = document.getElementById('webgl');
+			if(v) {v.contentWindow.document.body.innerHTML='';}
+			return false;
+		}
+		
+		/*if(!confirm('Do you really want open 3D mode?')){
+			return false;
+		}*/
+		$rootScope.webglTitle = title;
+		$rootScope.webgl = hostname + 'webgl/index.ar.php?item=' + item;				
 	}
 	
 	$rootScope.downloadMsg = function() {
@@ -1579,7 +1668,20 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		});
 	}
 	
-	var placeModel = function(id, mode) {
+	var checkPendingFav = function(id, type, favid) {
+		var json = {'id': id, 'type': type};
+		
+		HttpPost('CHECKPENDING', json).then(function(r){						
+			
+			if(r.data.responce = "PENDINGOK") {favGetCollection(favid);};
+			responceMessage(r.data);
+		},
+		function(r){
+			responceMessage(r);
+		});
+	}
+	
+	var placeMode = function(id, mode) {
 		var json = {'id': id};
 		
 		var cmd = '';
@@ -1588,6 +1690,10 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 			case 1: cmd = 'XREF_MODEL';
 			break;
 			case 2: cmd = 'OPEN_MODEL';
+			break;
+			case 3: cmd = 'OPEN_MATERIAL';
+			break;
+			case 4: cmd = 'APPLY_MATERIAL';
 			break;
 			default: cmd = 'MERGE_MODEL';
 			break;
@@ -1974,13 +2080,14 @@ app.service('vault', function($http, $rootScope, $timeout, $interval, $templateC
 		getCat: getCat,
 		getHomeProd: getHomeProd,
 		getProducts: getProducts,
-		placeModel: placeModel,
+		placeMode: placeMode,
 		fastSearch: fastSearch,
 		searchProducts: searchProducts,
 		checkPending: checkPending,
 		getProduct: getProduct,
 		rateProduct: rateProduct,
 		favoriteProduct: favoriteProduct,
+		checkPendingFav: checkPendingFav,
 		feedBack: feedBack,
 		sendComment: sendComment,
 		delComment: delComment,
