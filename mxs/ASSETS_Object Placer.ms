@@ -2,7 +2,7 @@
 [INFO] 
 
 NAME = Assets Object Placer
-VERSION = 1.0.1
+VERSION = 1.0.2
 AUTHOR = Vasily Lukyanenko
 DEV = VISCO
 HELP = 
@@ -23,6 +23,10 @@ ICON=#("AssetsLibrary", 1)
 [1.0.1]
 
 -BugFix: Not stop placing on open new model=
+
+[1.0.2]
+
+-BugFix: Place objects with VRayFur=
 
 [ABOUT]
 
@@ -79,6 +83,11 @@ struct _placer
 		return for i in s where matchPattern i.name pattern: (p + "*") collect i
 	),
 	
+	fn findHairAndFur = (
+		if(VRayFur != undefined) do for i in (selection as array) where classOf i == VRayFur do return true
+		return false
+	),
+	
 	fn rot mode: #cw =
 	(
 		placeObj = handler selection
@@ -94,7 +103,7 @@ struct _placer
 	fn track ir =
 	(
 		if(placeObj == undefined) do return #exit
-		
+				
 		if(ir != undefined) then
 		(											
 			placeObj.pos = ir.pos 
@@ -124,6 +133,7 @@ struct _placer
 			trackCallback = #exit
 			return #exit
 		)
+			
 		case msg of
 		(
 			#freeMove:
@@ -213,6 +223,12 @@ struct _placer
 		(
 			trackCallback = #end
 			return #objectnone
+		)
+		
+		if(findHairAndFur() == true) do (			
+			messageBox "Sorry, you can't place objects with VRayFur!\nPlace these objects manually!" title: "Warning!"
+			trackCallback = #exit
+			return false
 		)
 		
 		currentRotation = placeObj.rotation as eulerAngles
