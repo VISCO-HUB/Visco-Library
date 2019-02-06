@@ -568,13 +568,16 @@ try(
 							
 						lastPos = [0, 0]	
 						
-						 for n in 1 to trackViewNodes[#sme][(sme.activeView)].numSubs do (
-							ref = trackViewNodes[#sme][(sme.activeView)][n].reference
-							nd = viewNode.GetNodeByRef ref
-							if(superClassOf ref == material and nd.position[2] > lastPos[2]) do lastPos = nd.position            
+						smeView = trackViewNodes[#sme][(sme.activeView)]
+						for n in 1 to smeView.numSubs do (
+							gg = smeView[n]							
+							if(isProperty gg "reference") do (
+								ref = gg.reference
+								nd = viewNode.GetNodeByRef ref
+								if(superClassOf ref == material and nd.position[2] > lastPos[2]) do lastPos = nd.position            
+							)
 						)	
-						
-							
+													
 						lastPos[2] += 450
 							
 						viewNode.createNode mat lastPos																			
