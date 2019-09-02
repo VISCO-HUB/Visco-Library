@@ -1794,6 +1794,8 @@
 			$COL = [];			
 			$COL[] = 'tags';
 			$COL[] = 'name';
+			$COL[] = 'overview';
+			
 			
 			$CURPAGE = 1;
 						

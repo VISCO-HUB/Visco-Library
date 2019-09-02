@@ -922,13 +922,14 @@ THREE.OBJLoader2 = (function () {
 				rawObjectDescription = rawObjectDescriptions[ oodIndex ];
 
 				materialName = rawObjectDescription.materialName;
+				
 				material = this.materials[ materialName ];
 				if ( ! material ) {
 
 					material = this.materials[ 'defaultMaterial' ];
 					if ( ! material ) {
 
-						material = new THREE.MeshStandardMaterial( { color: 0xDCF1FF} );
+						material = new THREE.MeshStandardMaterial( /*{ color: 0xDCF1FF}*/ );
 						material.name = 'defaultMaterial';
 						this.materials[ 'defaultMaterial' ] = material;
 

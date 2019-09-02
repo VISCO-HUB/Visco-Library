@@ -275,9 +275,9 @@ FUNCTION E($S) {ECHO "'" . $S . "'";}
 		<script src="./js/Detector.js"></script>
 		<script src="./js/three.js"></script>
 		<script src="./js/TrackballControls.js"></script>
-		<script src="./js/OrbitControls.js"></script>
-		<script src="./js/MTLLoader.js"></script>		
-		<script src="./js/OBJLoader2.js"></script>
+		<script src="./js/OrbitControls.js"></script>			
+		<script src="./js/MTLLoader.js"></script>
+		<script src="./js/OBJLoader2.js"></script>		
 		<script src="./js/Projector.js"></script>
 		<script src="./js/measuring.js"></script>
 		
@@ -468,7 +468,7 @@ FUNCTION E($S) {ECHO "'" . $S . "'";}
 
 					var mtlLoader = new THREE.MTLLoader();
 					mtlLoader.setPath( objDef.texturePath );
-					mtlLoader.setCrossOrigin( 'anonymous' );
+					mtlLoader.setCrossOrigin( 'anonymous' );					
 					mtlLoader.load( objDef.fileMtl, function( materials ) {
 
 						materials.preload();

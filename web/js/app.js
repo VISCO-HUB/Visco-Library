@@ -573,14 +573,14 @@ app.controller("homeCtrl", function ($scope, $rootScope, vault, $interval) {
 			angular.forEach(value.child, function (value2, key2) {				
 				if(value2.name != undefined) {				
 					if(!$scope.activeIndex[value2.id]){$scope.activeImage[value2.id] = value2.previews[value2.previews.length-1];}
-					
-					$interval(function(){
+					// !!!!!
+					/*$interval(function(){
 						if($scope.activeIndex[value2.id] > value2.previews.length-1 || !$scope.activeIndex[value2.id]){$scope.activeIndex[value2.id] = 0}
 						
 						var i = $scope.activeIndex[value2.id];
 						$scope.activeImage[value2.id] = value2.previews[i];			
 						$scope.activeIndex[value2.id]++;
-					},  $scope.rnd(3000, 7000));					
+					},  $scope.rnd(3000, 7000));	*/				
 				}
 			});
 		});
